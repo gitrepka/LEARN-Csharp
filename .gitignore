@@ -1,0 +1,92 @@
+# =========================
+# .NET / C#
+# =========================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# NuGet
+*.nupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+
+# =========================
+# IDE
+# =========================
+
+# Visual Studio
+.vs/
+*.rsuser
+*.sln.iml
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# =========================
+# Godot
+# =========================
+.godot/
+*.import
+export_presets.cfg
+
+# =========================
+# Uno Platform
+# =========================
+Generated/
+
+# =========================
+# OS
+# =========================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# =========================
+# Secrets / Environment
+# =========================
+.env
+.env.*
+*.pfx
+*.key
+appsettings.Development.json
+credentials.json
+
+# =========================
+# Misc
+# =========================
+*.log
+*.tmp
+*.temp
+*.swp
