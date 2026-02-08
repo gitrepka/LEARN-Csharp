@@ -1,0 +1,292 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 01. Типы данных — продвинутый уровень
+**Уровень 3: ООП и коллекции**
+
+**Пререквизиты:** Уровни 1-2 пройдены (базовые типы, операторы, условия, циклы, методы, массивы, строки, основы классов, struct, enum)
+
+---
+
+## Что ты уже знаешь
+На уровне 1 мы изучили `int`, `string`, `bool`, `double` и другие базовые типы. На уровне 2 — `class`, `struct`, `enum`. Теперь мы расширим арсенал: **record-типы**, **кортежи (tuples)**, **выражения коллекций**, **анонимные типы**.
+
+---
+
+## Зачем это нужно?
+Представь: тебе нужно вернуть из метода два значения, или создать класс для хранения данных без кучи boilerplate-кода, или быстро создать массив. Все эти задачи решают инструменты из этого урока.
+
+#!markdown
+
+## 1. Record-типы
+
+### Что такое record?
+`record` — это тип данных, созданный специально для **хранения данных**. Он автоматически генерирует:
+- `Equals()` и `GetHashCode()` — сравнение по значениям, а не по ссылке
+- `ToString()` — красивый вывод всех полей
+- Деконструкцию (deconstruction)
+- Метод `with` для копирования с изменениями
+
+Аналогия: `record` — это как **паспорт**. Два паспорта с одинаковыми данными — это "одинаковые" документы, даже если это разные физические бумаги.
+
+#!csharp
+
+// record class (ссылочный тип, как обычный class)
+record Person(string Name, int Age);
+
+var alice1 = new Person("Alice", 25);
+var alice2 = new Person("Alice", 25);
+
+// Сравнение по значениям — true!
+Console.WriteLine($"alice1 == alice2: {alice1 == alice2}");
+
+// Красивый ToString()
+Console.WriteLine(alice1);
+
+// Копирование с изменением через with
+var olderAlice = alice1 with { Age = 26 };
+Console.WriteLine($"Старше: {olderAlice}");
+
+#!csharp
+
+// record struct (значимый тип, как обычный struct)
+// Появился в C# 10
+record struct Point(double X, double Y);
+
+var p1 = new Point(3.0, 4.0);
+var p2 = new Point(3.0, 4.0);
+
+Console.WriteLine($"p1 == p2: {p1 == p2}");   // true
+Console.WriteLine($"Точка: {p1}");
+
+// with работает и тут
+var p3 = p1 with { X = 10.0 };
+Console.WriteLine($"Сдвинутая: {p3}");
+
+#!csharp
+
+// record class — неизменяемый (immutable) по умолчанию
+record Student(string Name, int Grade);
+
+var student = new Student("Вася", 5);
+// student.Name = "Петя";  // ОШИБКА! init-only свойство
+
+// record struct — изменяемый по умолчанию!
+record struct MutablePoint(double X, double Y);
+
+var mp = new MutablePoint(1, 2);
+mp.X = 100;  // Это работает!
+Console.WriteLine(mp);
+
+// Чтобы сделать record struct неизменяемым — добавь readonly
+// readonly record struct ImmutablePoint(double X, double Y);
+
+#!markdown
+
+### Когда что использовать?
+| Тип | Когда |
+|-----|-------|
+| `record` (record class) | Неизменяемые данные, DTO, конфигурации |
+| `record struct` | Маленькие значимые данные (точки, координаты) |
+| `class` | Когда нужно поведение и изменяемое состояние |
+| `struct` | Маленькие данные без сравнения по значениям |
+
+#!markdown
+
+## 2. Кортежи (Tuples)
+
+### Зачем?
+Иногда нужно вернуть из метода **несколько значений**. Раньше приходилось создавать отдельный класс или использовать `out`-параметры. Кортежи — это лёгкое решение.
+
+Аналогия: кортеж — это как **записка с несколькими пунктами**. Не целый документ, а просто быстрая пометка.
+
+#!csharp
+
+// Простой кортеж — ValueTuple
+var point = (X: 3.0, Y: 4.0);
+Console.WriteLine($"X = {point.X}, Y = {point.Y}");
+
+// Кортеж без имён — доступ через Item1, Item2
+var pair = (42, "hello");
+Console.WriteLine($"{pair.Item1}, {pair.Item2}");
+
+// Возврат нескольких значений из метода
+(int Min, int Max) FindMinMax(int[] numbers)
+{
+    int min = numbers[0], max = numbers[0];
+    foreach (var n in numbers)
+    {
+        if (n < min) min = n;
+        if (n > max) max = n;
+    }
+    return (min, max);
+}
+
+var result = FindMinMax(new[] { 5, 1, 8, 3, 9, 2 });
+Console.WriteLine($"Мин: {result.Min}, Макс: {result.Max}");
+
+#!csharp
+
+// Деконструкция кортежа — разбиваем на отдельные переменные
+var (x, y) = (10.5, 20.3);
+Console.WriteLine($"x = {x}, y = {y}");
+
+// Деконструкция результата метода
+(string Name, int Age) GetPerson() => ("Алексей", 30);
+
+var (name, age) = GetPerson();
+Console.WriteLine($"{name}, {age} лет");
+
+// Отброс ненужных значений через _
+var (_, onlyAge) = GetPerson();
+Console.WriteLine($"Возраст: {onlyAge}");
+
+#!csharp
+
+// Деконструкция работает и с record!
+record Product(string Name, decimal Price, int Stock);
+
+var phone = new Product("Телефон", 29999.99m, 50);
+
+// Деконструируем record
+var (prodName, price, stock) = phone;
+Console.WriteLine($"{prodName}: {price}₽, на складе {stock} шт.");
+
+// Можно и свои классы научить деконструкции
+class Rectangle
+{
+    public double Width { get; init; }
+    public double Height { get; init; }
+
+    // Метод Deconstruct делает класс деконструируемым
+    public void Deconstruct(out double width, out double height)
+    {
+        width = Width;
+        height = Height;
+    }
+}
+
+var rect = new Rectangle { Width = 10, Height = 5 };
+var (w, h) = rect;
+Console.WriteLine($"Прямоугольник: {w} x {h}");
+
+#!markdown
+
+## 3. Выражения коллекций (Collection Expressions) — C# 12
+
+### Зачем?
+Раньше создание массивов и списков требовало разного синтаксиса. Теперь есть **единый синтаксис** `[1, 2, 3]` для всех коллекций.
+
+#!csharp
+
+// Старый способ
+int[] oldArray = new int[] { 1, 2, 3 };
+// List<int> oldList = new List<int> { 1, 2, 3 };
+
+// Новый способ — Collection Expressions (C# 12)
+int[] numbers = [1, 2, 3, 4, 5];
+// List<int> list = [1, 2, 3, 4, 5];
+// Span<int> span = [1, 2, 3];
+
+Console.WriteLine($"Массив: {string.Join(", ", numbers)}");
+
+// Пустая коллекция
+int[] empty = [];
+Console.WriteLine($"Пустой массив: длина = {empty.Length}");
+
+#!csharp
+
+// Spread-оператор (..) — объединение коллекций
+int[] first = [1, 2, 3];
+int[] second = [4, 5, 6];
+
+// Объединяем два массива
+int[] combined = [..first, ..second];
+Console.WriteLine($"Объединено: {string.Join(", ", combined)}");
+
+// Можно добавлять отдельные элементы
+int[] withExtra = [0, ..first, 99, ..second, 100];
+Console.WriteLine($"С доп. элементами: {string.Join(", ", withExtra)}");
+
+// Полезно для фильтрации и пересборки
+string[] greetings = ["Привет", "Мир"];
+string[] fullMessage = [">>>", ..greetings, "<<<"];
+Console.WriteLine(string.Join(" ", fullMessage));
+
+#!markdown
+
+## 4. Анонимные типы (Anonymous Types)
+
+### Зачем?
+Иногда нужен объект "на один раз" — например, для промежуточных вычислений или группировки данных. Создавать для этого отдельный класс — перебор.
+
+Аналогия: анонимный тип — как **стикер-записка**. Быстро написал, использовал, выбросил.
+
+#!csharp
+
+// Анонимный тип — компилятор сам создаёт класс
+var person = new { Name = "Иван", Age = 28, City = "Москва" };
+
+Console.WriteLine($"{person.Name}, {person.Age} лет, {person.City}");
+Console.WriteLine(person.GetType().Name); // Сгенерированное имя
+
+// Анонимный тип неизменяемый
+// person.Name = "Петр";  // ОШИБКА!
+
+// Два объекта с одинаковой структурой — один тип
+var a = new { X = 1, Y = 2 };
+var b = new { X = 3, Y = 4 };
+Console.WriteLine($"Одинаковый тип? {a.GetType() == b.GetType()}"); // true
+
+// Но порядок и имена свойств важны!
+var c = new { Y = 2, X = 1 }; // Это ДРУГОЙ тип!
+Console.WriteLine($"a и c — одинаковый тип? {a.GetType() == c.GetType()}"); // false
+
+#!csharp
+
+// Практический пример — группировка данных для вывода
+var students = new[]
+{
+    new { Name = "Алиса", Grade = 5, Subject = "Математика" },
+    new { Name = "Борис", Grade = 4, Subject = "Физика" },
+    new { Name = "Вера",  Grade = 5, Subject = "Математика" },
+};
+
+Console.WriteLine("=== Отличники ===");
+foreach (var s in students)
+{
+    if (s.Grade == 5)
+        Console.WriteLine($"{s.Name} — {s.Subject}");
+}
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай `record WeatherReport(string City, double Temperature, string Condition)`.
+- Создай 3 отчёта о погоде
+- Используй `with` чтобы создать копию с изменённой температурой
+- Деконструируй один из отчётов в отдельные переменные
+
+### Упражнение 2 (🟢)
+Напиши метод `(int Even, int Odd) CountEvenOdd(int[] numbers)` который возвращает кортеж с количеством чётных и нечётных чисел.
+- Используй collection expression для создания тестового массива
+- Используй spread-оператор чтобы объединить два массива перед подсчётом
+- Деконструируй результат при выводе
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Чем `record` отличается от `class`? Что он генерирует автоматически?
+2. Чем `record struct` отличается от `record class`?
+3. Что делает ключевое слово `with` для record?
+4. Как вернуть несколько значений из метода?
+5. Что такое деконструкция и как она работает?
+6. Что делает spread-оператор `..`?
+7. Когда стоит использовать анонимный тип, а когда — record?
+

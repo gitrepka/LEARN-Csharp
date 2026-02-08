@@ -1,0 +1,506 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 08. Логирование (Logging)
+## Уровень 5: Архитектура и мастерство
+
+**Что это:** Логирование — это запись событий, происходящих в приложении. Логи — это "чёрный ящик" самолёта: когда что-то идёт не так, ты смотришь логи и понимаешь, что произошло.
+
+**Зачем это нужно:**
+- Диагностика ошибок на продакшене (нельзя же поставить breakpoint!)
+- Мониторинг работы приложения
+- Аудит действий пользователей
+- Отладка сложных сценариев (многопоточность, сетевые запросы)
+- В Godot: `GD.Print()` → но для серьёзных проектов нужна система логов
+- В Uno: `Microsoft.Extensions.Logging` — стандарт
+
+**Аналогия:** Логи — это журнал дежурного. "14:30 — пришёл посетитель. 14:35 — отключилось электричество. 14:36 — запустился генератор." Без журнала — "когда-то что-то случилось".
+
+---
+
+### Содержание:
+1. Debug.WriteLine и Trace.WriteLine
+2. Microsoft.Extensions.Logging: ILogger, ILoggerFactory
+3. Уровни логирования
+4. Structured Logging (структурированные логи)
+5. Serilog — основы
+
+#!markdown
+
+## 1. Debug.WriteLine и Trace.WriteLine
+
+Самый простой способ логирования, встроенный в .NET. Подходит для быстрой отладки, но не для продакшена.
+
+#!csharp
+
+using System.Diagnostics;
+
+// === Debug.WriteLine — только в DEBUG-режиме ===
+// В Release-сборке эти строки полностью удаляются компилятором!
+
+Debug.WriteLine("Это видно только в Debug-режиме");
+Debug.WriteLine("Переменная x = {0}", 42);
+
+// Условное логирование
+Debug.WriteLineIf(true, "Условие выполнено!");
+Debug.Assert(1 + 1 == 2, "Математика сломалась!"); // Остановит программу, если false
+
+Console.WriteLine("=== Debug.WriteLine ===");
+Console.WriteLine("Debug.WriteLine выводит в окно Debug Output (не в консоль)");
+Console.WriteLine("В Release-сборке вызовы Debug.* удаляются полностью\n");
+
+// === Trace.WriteLine — работает и в Release ===
+Trace.WriteLine("Это видно и в Debug, и в Release");
+Trace.TraceInformation("Информационное сообщение");
+Trace.TraceWarning("Предупреждение!");
+Trace.TraceError("Ошибка!");
+
+Console.WriteLine("=== Trace.WriteLine ===");
+Console.WriteLine("Trace работает и в Debug, и в Release");
+Console.WriteLine("Trace имеет уровни: Information, Warning, Error");
+
+// === TraceListener — куда выводить логи ===
+Console.WriteLine("\n=== TraceListeners ===");
+
+// Добавляем listener в консоль
+var consoleListener = new ConsoleTraceListener();
+Trace.Listeners.Add(consoleListener);
+
+Trace.TraceInformation("Теперь это видно в консоли!");
+Trace.TraceWarning("И предупреждения тоже!");
+
+Trace.Listeners.Remove(consoleListener);
+
+#!markdown
+
+## 2. Microsoft.Extensions.Logging — стандарт .NET
+
+`ILogger` — это стандартный интерфейс логирования в .NET. Он не привязан к конкретному провайдеру (консоль, файл, Serilog, NLog...).
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+
+// === Создание логгера через LoggerFactory ===
+
+using var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder
+        .SetMinimumLevel(LogLevel.Debug) // Минимальный уровень
+        .AddConsole(); // Вывод в консоль
+});
+
+// Создаём логгер для конкретной категории
+ILogger logger = loggerFactory.CreateLogger("GameApp");
+
+Console.WriteLine("=== ILogger — базовое использование ===\n");
+
+logger.LogDebug("Отладочная информация (для разработчика)");
+logger.LogInformation("Игра запущена");
+logger.LogWarning("Мало памяти: осталось {Memory}MB", 256);
+logger.LogError("Не удалось загрузить уровень: {LevelName}", "Пещера");
+
+// Логгер с категорией-типом
+ILogger<Program> typedLogger = loggerFactory.CreateLogger<Program>();
+typedLogger.LogInformation("Логгер привязан к типу Program");
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+
+// === ILogger через DI ===
+
+public class PlayerManager
+{
+    private readonly ILogger<PlayerManager> _logger;
+
+    public PlayerManager(ILogger<PlayerManager> logger)
+    {
+        _logger = logger;
+    }
+
+    public void CreatePlayer(string name)
+    {
+        _logger.LogInformation("Создаём игрока: {PlayerName}", name);
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            _logger.LogWarning("Попытка создать игрока с пустым именем");
+            return;
+        }
+
+        // Имитация работы
+        _logger.LogDebug("Загрузка модели для {PlayerName}", name);
+        _logger.LogDebug("Инициализация инвентаря для {PlayerName}", name);
+        _logger.LogInformation("Игрок {PlayerName} создан успешно", name);
+    }
+
+    public void TakeDamage(string playerName, int damage)
+    {
+        _logger.LogInformation("{Player} получает {Damage} урона", playerName, damage);
+
+        if (damage > 50)
+        {
+            _logger.LogWarning("Критический урон! {Player} получил {Damage}", playerName, damage);
+        }
+    }
+}
+
+// Настройка через DI
+var services = new ServiceCollection();
+services.AddLogging(builder =>
+{
+    builder.SetMinimumLevel(LogLevel.Debug);
+    builder.AddConsole();
+});
+services.AddTransient<PlayerManager>();
+
+using var provider = services.BuildServiceProvider();
+var manager = provider.GetRequiredService<PlayerManager>();
+
+Console.WriteLine("=== ILogger через DI ===\n");
+manager.CreatePlayer("Аратор");
+Console.WriteLine();
+manager.TakeDamage("Аратор", 25);
+Console.WriteLine();
+manager.TakeDamage("Аратор", 75);
+
+#!markdown
+
+## 3. Уровни логирования (Log Levels)
+
+Уровни помогают **фильтровать** логи. В разработке — показываем всё. На продакшене — только Warning и выше.
+
+| Уровень | Числовое | Когда использовать |
+|---|---|---|
+| `Trace` | 0 | Детальнейшая диагностика (значения переменных в цикле) |
+| `Debug` | 1 | Отладочная информация (вход/выход из метода) |
+| `Information` | 2 | Значимые события (пользователь вошёл, заказ создан) |
+| `Warning` | 3 | Что-то необычное, но не ошибка (мало памяти, долгий ответ) |
+| `Error` | 4 | Ошибка, операция провалилась (файл не найден, сеть недоступна) |
+| `Critical` | 5 | Критический сбой (приложение падает, БД недоступна) |
+| `None` | 6 | Логирование выключено |
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+
+// === Все уровни логирования ===
+
+using var factory = LoggerFactory.Create(builder =>
+{
+    builder.SetMinimumLevel(LogLevel.Trace); // Показываем ВСЁ
+    builder.AddConsole();
+});
+
+var logger = factory.CreateLogger("Demo");
+
+Console.WriteLine("=== Все уровни логирования ===\n");
+
+logger.LogTrace("TRACE: Переменная i = 42, j = 17");
+logger.LogDebug("DEBUG: Вход в метод CalculateDamage()");
+logger.LogInformation("INFO: Игрок 'Аратор' вошёл в игру");
+logger.LogWarning("WARN: Пинг до сервера: 250ms (порог: 200ms)");
+logger.LogError("ERROR: Не удалось сохранить прогресс: файл занят");
+logger.LogCritical("CRITICAL: Сервер базы данных недоступен!");
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+
+// === Логирование исключений ===
+
+using var factory = LoggerFactory.Create(builder =>
+{
+    builder.SetMinimumLevel(LogLevel.Debug);
+    builder.AddConsole();
+});
+
+var logger = factory.CreateLogger("ErrorHandling");
+
+Console.WriteLine("=== Логирование исключений ===\n");
+
+try
+{
+    int[] arr = { 1, 2, 3 };
+    int val = arr[10]; // IndexOutOfRangeException
+}
+catch (Exception ex)
+{
+    // Передаём исключение первым параметром — стек-трейс включается в лог
+    logger.LogError(ex, "Ошибка при доступе к массиву на индексе {Index}", 10);
+}
+
+try
+{
+    string? nullStr = null;
+    int len = nullStr!.Length;
+}
+catch (Exception ex)
+{
+    logger.LogCritical(ex, "Критическая ошибка в методе обработки строк");
+}
+
+#!markdown
+
+## 4. Structured Logging (структурированные логи)
+
+**Обычный лог:** `"Игрок Аратор купил Меч за 100 золота"`
+**Структурированный:** `{Player: "Аратор", Action: "купил", Item: "Меч", Price: 100}`
+
+Структурированные логи можно **фильтровать, искать, анализировать**. "Покажи все покупки дороже 500 золота" — легко!
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+
+using var factory = LoggerFactory.Create(builder =>
+{
+    builder.SetMinimumLevel(LogLevel.Information);
+    builder.AddConsole();
+});
+
+var logger = factory.CreateLogger("Shop");
+
+Console.WriteLine("=== Structured Logging ===\n");
+
+// НЕПРАВИЛЬНО — интерполяция строк (данные теряются)
+string player = "Аратор";
+string item = "Меч";
+int price = 100;
+logger.LogInformation($"Игрок {player} купил {item} за {price}"); // НЕ ДЕЛАЙ ТАК!
+
+// ПРАВИЛЬНО — именованные плейсхолдеры (данные сохраняются как структура)
+logger.LogInformation("Игрок {Player} купил {Item} за {Price} золота",
+    player, item, price);
+
+// Ещё примеры
+logger.LogInformation("Подключение к серверу {Server}:{Port}", "game.server.com", 8080);
+logger.LogWarning("Запрос к API занял {Duration}ms (порог: {Threshold}ms)", 350, 200);
+logger.LogError("Не удалось загрузить ресурс {ResourcePath} (попытка {Attempt}/{MaxAttempts})",
+    "/textures/hero.png", 3, 3);
+
+Console.WriteLine();
+Console.WriteLine("Разница:");
+Console.WriteLine("  Интерполяция: данные 'вклеены' в строку, нельзя фильтровать");
+Console.WriteLine("  Плейсхолдеры: данные сохранены отдельно, можно фильтровать по Player, Item, Price");
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Microsoft.Extensions.Logging.Console, 9.0.0"
+
+using Microsoft.Extensions.Logging;
+
+// === LoggerMessage.Define — высокопроизводительное логирование ===
+// Для горячего кода (вызывается тысячи раз) — заранее компилирует шаблон
+
+using var factory = LoggerFactory.Create(builder =>
+{
+    builder.SetMinimumLevel(LogLevel.Information);
+    builder.AddConsole();
+});
+
+var logger = factory.CreateLogger("Combat");
+
+Console.WriteLine("=== High-Performance Logging ===\n");
+
+// Определяем шаблон один раз
+Action<ILogger, string, int, string, Exception?> logAttack =
+    LoggerMessage.Define<string, int, string>(
+        LogLevel.Information,
+        new EventId(1, "Attack"),
+        "{Attacker} нанёс {Damage} урона по {Target}");
+
+Action<ILogger, string, Exception?> logDeath =
+    LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(2, "Death"),
+        "{Entity} погиб!");
+
+// Используем (быстрее, чем logger.LogInformation каждый раз)
+logAttack(logger, "Герой", 25, "Гоблин", null);
+logAttack(logger, "Гоблин", 10, "Герой", null);
+logDeath(logger, "Гоблин", null);
+
+#!markdown
+
+## 5. Serilog — основы
+
+Serilog — самая популярная библиотека логирования в .NET. Она:
+- Изначально создана для структурированных логов
+- Поддерживает множество "приёмников" (sinks): файл, консоль, Seq, Elasticsearch...
+- Красиво форматирует вывод
+
+#!csharp
+
+#r "nuget: Serilog, 4.2.0"
+#r "nuget: Serilog.Sinks.Console, 6.0.0"
+
+using Serilog;
+using Serilog.Events;
+
+// === Serilog — настройка и использование ===
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+Console.WriteLine("=== Serilog ===\n");
+
+Log.Debug("Отладочное сообщение");
+Log.Information("Игра запущена, версия {Version}", "2.1.0");
+Log.Warning("Высокая нагрузка: {CpuUsage}%", 85);
+Log.Error("Ошибка подключения к серверу {Server}", "game.example.com");
+
+// Структурированные данные
+var playerData = new { Name = "Аратор", Level = 15, Class = "Воин" };
+Log.Information("Игрок подключился: {@Player}", playerData);
+
+// Деструктуризация объектов
+Log.Information("Координаты: {@Position}", new { X = 10.5, Y = 3.2, Z = -1.0 });
+
+// Исключения
+try
+{
+    throw new InvalidOperationException("Инвентарь переполнен");
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Не удалось добавить предмет {Item}", "Зелье здоровья");
+}
+
+Log.CloseAndFlush();
+
+#!csharp
+
+#r "nuget: Serilog, 4.2.0"
+#r "nuget: Serilog.Sinks.Console, 6.0.0"
+#r "nuget: Microsoft.Extensions.Logging, 9.0.0"
+#r "nuget: Serilog.Extensions.Logging, 9.0.0"
+
+using Serilog;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+
+// === Serilog + Microsoft.Extensions.Logging + DI ===
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+// Интеграция Serilog с Microsoft DI
+var services = new ServiceCollection();
+services.AddLogging(builder => builder.AddSerilog());
+
+// Наш сервис использует стандартный ILogger
+public class QuestService
+{
+    private readonly ILogger<QuestService> _logger;
+
+    public QuestService(ILogger<QuestService> logger) => _logger = logger;
+
+    public void StartQuest(string questName)
+    {
+        _logger.LogInformation("Начинаем квест: {QuestName}", questName);
+        _logger.LogDebug("Загрузка данных квеста {QuestName}...", questName);
+        _logger.LogInformation("Квест {QuestName} активирован!", questName);
+    }
+
+    public void CompleteQuest(string questName, int reward)
+    {
+        _logger.LogInformation("Квест {QuestName} завершён! Награда: {Reward} золота",
+            questName, reward);
+    }
+}
+
+services.AddTransient<QuestService>();
+using var provider = services.BuildServiceProvider();
+
+Console.WriteLine("=== Serilog + DI ===\n");
+
+var quests = provider.GetRequiredService<QuestService>();
+quests.StartQuest("Убить дракона");
+quests.CompleteQuest("Убить дракона", 500);
+
+Log.CloseAndFlush();
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Система логирования для игры)
+
+Создай систему логирования с Microsoft.Extensions.Logging:
+1. Класс `BattleLogger` с ILogger, который логирует:
+   - Начало боя (Information)
+   - Каждую атаку (Debug)
+   - Критические удары (Warning)
+   - Смерть персонажа (Error)
+2. Проведи "бой" из 5 раундов, используя Random для урона
+3. Все логи должны быть структурированными (с плейсхолдерами, не интерполяцией)
+
+#!csharp
+
+// Упражнение 1: BattleLogger
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (Свой простой логгер)
+
+Создай свой простой логгер **без** библиотек:
+1. Enum `MyLogLevel` (Trace, Debug, Info, Warning, Error, Critical)
+2. Интерфейс `IMyLogger` с методом `Log(MyLogLevel level, string message, params object[] args)`
+3. Реализация `ConsoleMyLogger` — выводит в консоль с цветами:
+   - Debug: серый
+   - Info: белый
+   - Warning: жёлтый
+   - Error: красный
+   - Critical: красный на белом фоне
+4. Реализация `ListMyLogger` — сохраняет логи в `List<string>`
+5. Реализация `CompositeMyLogger` — пишет сразу в несколько логгеров
+
+#!csharp
+
+// Упражнение 2: Свой простой логгер
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем `Debug.WriteLine` отличается от `Trace.WriteLine`? Когда что использовать?
+2. Назови 6 уровней логирования в Microsoft.Extensions.Logging. Для чего каждый?
+3. Почему `logger.LogInformation("User {Name}", name)` лучше, чем `logger.LogInformation($"User {name}")`?
+4. Что такое structured logging и зачем оно нужно?
+5. Зачем использовать DI для логгера вместо статического `Console.WriteLine`?
+6. Какой минимальный уровень логирования ты бы поставил на продакшене и почему?

@@ -1,0 +1,870 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 05. Паттерны проектирования (Design Patterns)
+## Уровень 5: Архитектура и мастерство
+
+**Что это:** Паттерны проектирования — это проверенные решения типичных задач. Это не готовый код, а **шаблоны мышления**. Как кулинарные рецепты — ты можешь адаптировать их под свои ингредиенты.
+
+**Зачем это нужно:**
+- Общий словарь для разработчиков ("Тут нужен Observer" — и все понимают)
+- Не изобретать велосипед для типовых задач
+- Код становится предсказуемым и понятным
+- В Godot: сигналы = Observer, состояния врагов = State, создание врагов = Factory
+- В Uno: команды в MVVM = Command, построение UI = Builder
+
+---
+
+### Содержание:
+1. Singleton (потокобезопасный)
+2. Factory Method
+3. Strategy
+4. Observer
+5. State
+6. Command
+7. Builder
+8. Decorator
+
+#!markdown
+
+## 1. Singleton — гарантия единственного экземпляра
+
+**Когда нужен:** Один объект на всё приложение — настройки, логгер, аудио-менеджер, пул объектов.
+
+**Аналогия:** Президент страны — может быть только один в данный момент. Все обращаются к одному и тому же.
+
+**Осторожно:** Singleton часто злоупотребляют. Он затрудняет тестирование. Лучше использовать DI с `AddSingleton`.
+
+#!csharp
+
+using System.Threading;
+
+// === Singleton — потокобезопасный (Lazy<T>) ===
+
+public sealed class GameSettings
+{
+    // Lazy<T> гарантирует потокобезопасную инициализацию
+    private static readonly Lazy<GameSettings> _instance =
+        new Lazy<GameSettings>(() => new GameSettings());
+
+    public static GameSettings Instance => _instance.Value;
+
+    // Приватный конструктор — никто не создаст второй экземпляр
+    private GameSettings()
+    {
+        Console.WriteLine("GameSettings создан (только один раз!)");
+        MusicVolume = 0.8f;
+        SfxVolume = 1.0f;
+        Difficulty = "Normal";
+    }
+
+    public float MusicVolume { get; set; }
+    public float SfxVolume { get; set; }
+    public string Difficulty { get; set; }
+
+    public void PrintSettings()
+    {
+        Console.WriteLine($"Музыка: {MusicVolume}, Звуки: {SfxVolume}, Сложность: {Difficulty}");
+    }
+}
+
+// Использование
+var settings1 = GameSettings.Instance;
+var settings2 = GameSettings.Instance;
+
+Console.WriteLine($"Один и тот же объект? {ReferenceEquals(settings1, settings2)}");
+settings1.Difficulty = "Hard";
+settings2.PrintSettings(); // Изменения видны через обе ссылки
+
+// Потокобезопасность
+Console.WriteLine("\n=== Проверка потокобезопасности ===");
+var tasks = Enumerable.Range(0, 10)
+    .Select(_ => Task.Run(() => GameSettings.Instance.GetHashCode()))
+    .ToArray();
+var hashCodes = await Task.WhenAll(tasks);
+Console.WriteLine($"Все хеш-коды одинаковы? {hashCodes.Distinct().Count() == 1}");
+
+#!markdown
+
+## 2. Factory Method — создание объектов без жёсткой привязки
+
+**Когда нужен:** Когда тип создаваемого объекта зависит от условий, и ты хочешь вынести логику создания в отдельное место.
+
+**Аналогия:** Пиццерия. Ты говоришь "Маргарита" — и получаешь готовую пиццу. Тебе не нужно знать рецепт.
+
+#!csharp
+
+// === Factory Method ===
+
+public abstract class Enemy
+{
+    public string Name { get; protected set; } = "";
+    public int Health { get; protected set; }
+    public int Damage { get; protected set; }
+
+    public abstract void Attack();
+
+    public override string ToString() => $"{Name} (HP:{Health}, DMG:{Damage})";
+}
+
+public class Goblin : Enemy
+{
+    public Goblin()
+    {
+        Name = "Гоблин";
+        Health = 30;
+        Damage = 5;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} кусает! (-{Damage})");
+}
+
+public class Skeleton : Enemy
+{
+    public Skeleton()
+    {
+        Name = "Скелет";
+        Health = 50;
+        Damage = 10;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} бьёт мечом! (-{Damage})");
+}
+
+public class Dragon : Enemy
+{
+    public Dragon()
+    {
+        Name = "Дракон";
+        Health = 200;
+        Damage = 50;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} дышит огнём! (-{Damage})");
+}
+
+// Фабрика
+public static class EnemyFactory
+{
+    public static Enemy Create(string type) => type.ToLower() switch
+    {
+        "goblin" => new Goblin(),
+        "skeleton" => new Skeleton(),
+        "dragon" => new Dragon(),
+        _ => throw new ArgumentException($"Неизвестный тип: {type}")
+    };
+
+    // Фабрика с параметрами (уровень сложности)
+    public static Enemy CreateForLevel(int level)
+    {
+        if (level < 5) return new Goblin();
+        if (level < 10) return new Skeleton();
+        return new Dragon();
+    }
+}
+
+// Использование — код не зависит от конкретных классов врагов
+Console.WriteLine("=== Factory Method ===");
+Enemy e1 = EnemyFactory.Create("goblin");
+Enemy e2 = EnemyFactory.Create("dragon");
+Console.WriteLine(e1);
+Console.WriteLine(e2);
+
+Console.WriteLine("\n=== Фабрика по уровню ===");
+for (int level = 1; level <= 15; level += 3)
+{
+    Enemy enemy = EnemyFactory.CreateForLevel(level);
+    Console.WriteLine($"Уровень {level}: {enemy}");
+}
+
+#!markdown
+
+## 3. Strategy — алгоритм как сменный модуль
+
+**Когда нужен:** Когда нужно менять поведение объекта на лету, не меняя сам объект.
+
+**Аналогия:** Навигатор. Один маршрут — но можно выбрать стратегию: "кратчайший", "без пробок", "без платных дорог". Навигатор не меняется, меняется алгоритм.
+
+#!csharp
+
+// === Strategy Pattern ===
+
+// Стратегия — интерфейс поведения
+public interface IAttackStrategy
+{
+    string Name { get; }
+    int Execute(int baseDamage);
+}
+
+public class MeleeAttack : IAttackStrategy
+{
+    public string Name => "Ближний бой";
+    public int Execute(int baseDamage) => baseDamage;
+}
+
+public class RangedAttack : IAttackStrategy
+{
+    public string Name => "Дальний бой";
+    public int Execute(int baseDamage) => (int)(baseDamage * 0.8); // Меньше урона
+}
+
+public class MagicAttack : IAttackStrategy
+{
+    public string Name => "Магия";
+    public int Execute(int baseDamage) => baseDamage * 2; // Двойной урон
+}
+
+public class StealthAttack : IAttackStrategy
+{
+    public string Name => "Скрытная атака";
+    public int Execute(int baseDamage) => baseDamage * 3; // Тройной урон
+}
+
+// Контекст — использует стратегию
+public class Warrior
+{
+    public string Name { get; }
+    public int BaseDamage { get; }
+    private IAttackStrategy _strategy;
+
+    public Warrior(string name, int baseDamage, IAttackStrategy strategy)
+    {
+        Name = name;
+        BaseDamage = baseDamage;
+        _strategy = strategy;
+    }
+
+    // Можно менять стратегию на лету!
+    public void SetStrategy(IAttackStrategy strategy)
+    {
+        _strategy = strategy;
+        Console.WriteLine($"{Name} переключился на: {_strategy.Name}");
+    }
+
+    public void Attack()
+    {
+        int damage = _strategy.Execute(BaseDamage);
+        Console.WriteLine($"{Name} использует [{_strategy.Name}]: {damage} урона");
+    }
+}
+
+// Использование
+var warrior = new Warrior("Аратор", 20, new MeleeAttack());
+warrior.Attack();
+
+warrior.SetStrategy(new RangedAttack());
+warrior.Attack();
+
+warrior.SetStrategy(new MagicAttack());
+warrior.Attack();
+
+warrior.SetStrategy(new StealthAttack());
+warrior.Attack();
+
+#!markdown
+
+## 4. Observer — подписка на события
+
+**Когда нужен:** Когда один объект должен уведомлять много других о своих изменениях, не зная о них напрямую.
+
+**Аналогия:** YouTube-канал. Ты подписываешься — и получаешь уведомления. Канал не знает, кто конкретно подписан.
+
+**В C# это реализовано через `event`!** Но давай посмотрим и ручную реализацию.
+
+#!csharp
+
+// === Observer через event (идиоматичный C#) ===
+
+public class GameEventBus
+{
+    // События — это Observer на уровне языка
+    public event Action<string, int>? OnEnemyKilled;
+    public event Action<string>? OnItemPickedUp;
+    public event Action<int>? OnPlayerLevelUp;
+
+    public void EnemyKilled(string enemyName, int xp)
+    {
+        Console.WriteLine($"[Событие] Враг убит: {enemyName} (+{xp} XP)");
+        OnEnemyKilled?.Invoke(enemyName, xp);
+    }
+
+    public void ItemPickedUp(string item)
+    {
+        Console.WriteLine($"[Событие] Подобран: {item}");
+        OnItemPickedUp?.Invoke(item);
+    }
+
+    public void PlayerLevelUp(int newLevel)
+    {
+        Console.WriteLine($"[Событие] Новый уровень: {newLevel}");
+        OnPlayerLevelUp?.Invoke(newLevel);
+    }
+}
+
+// Наблюдатели (подписчики)
+public class ScoreTracker
+{
+    public int TotalKills { get; private set; }
+    public int TotalXp { get; private set; }
+
+    public void OnEnemyKilled(string name, int xp)
+    {
+        TotalKills++;
+        TotalXp += xp;
+        Console.WriteLine($"  [Счёт] Убийств: {TotalKills}, XP: {TotalXp}");
+    }
+}
+
+public class AchievementSystem
+{
+    public void OnEnemyKilled(string name, int xp)
+    {
+        if (name == "Дракон")
+            Console.WriteLine("  [Ачивка] Драконоборец разблокирован!");
+    }
+
+    public void OnLevelUp(int level)
+    {
+        if (level >= 10)
+            Console.WriteLine("  [Ачивка] Ветеран разблокирован!");
+    }
+}
+
+public class SoundManager
+{
+    public void OnItemPickedUp(string item)
+    {
+        Console.WriteLine($"  [Звук] *ding* подобрали {item}");
+    }
+
+    public void OnEnemyKilled(string name, int xp)
+    {
+        Console.WriteLine($"  [Звук] *slash* враг повержен");
+    }
+}
+
+// Собираем всё вместе
+var eventBus = new GameEventBus();
+var score = new ScoreTracker();
+var achievements = new AchievementSystem();
+var sound = new SoundManager();
+
+// Подписываемся
+eventBus.OnEnemyKilled += score.OnEnemyKilled;
+eventBus.OnEnemyKilled += achievements.OnEnemyKilled;
+eventBus.OnEnemyKilled += sound.OnEnemyKilled;
+eventBus.OnItemPickedUp += sound.OnItemPickedUp;
+eventBus.OnPlayerLevelUp += achievements.OnLevelUp;
+
+// Генерируем события
+eventBus.EnemyKilled("Гоблин", 10);
+Console.WriteLine();
+eventBus.ItemPickedUp("Зелье здоровья");
+Console.WriteLine();
+eventBus.EnemyKilled("Дракон", 500);
+Console.WriteLine();
+eventBus.PlayerLevelUp(10);
+
+#!markdown
+
+## 5. State — поведение зависит от состояния
+
+**Когда нужен:** Когда объект ведёт себя по-разному в зависимости от своего состояния, и переключение между состояниями — явная часть логики.
+
+**Аналогия:** Светофор. Один объект — но поведение зависит от текущего состояния (красный, жёлтый, зелёный).
+
+**В Godot:** идеально для AI врагов (Idle -> Chase -> Attack -> Flee).
+
+#!csharp
+
+// === State Pattern — AI врага ===
+
+public interface IEnemyState
+{
+    string Name { get; }
+    void Enter(EnemyAI enemy);
+    void Update(EnemyAI enemy);
+    void Exit(EnemyAI enemy);
+}
+
+public class EnemyAI
+{
+    public string EnemyName { get; }
+    public float DistanceToPlayer { get; set; }
+    public int Health { get; set; }
+    private IEnemyState _currentState;
+
+    public EnemyAI(string name, IEnemyState initialState)
+    {
+        EnemyName = name;
+        Health = 100;
+        _currentState = initialState;
+        _currentState.Enter(this);
+    }
+
+    public void ChangeState(IEnemyState newState)
+    {
+        Console.WriteLine($"  [{EnemyName}] {_currentState.Name} -> {newState.Name}");
+        _currentState.Exit(this);
+        _currentState = newState;
+        _currentState.Enter(this);
+    }
+
+    public void Update() => _currentState.Update(this);
+}
+
+// Конкретные состояния
+public class IdleState : IEnemyState
+{
+    public string Name => "Idle";
+    public void Enter(EnemyAI e) => Console.WriteLine($"  [{e.EnemyName}] Стоит на месте...");
+    public void Exit(EnemyAI e) { }
+
+    public void Update(EnemyAI e)
+    {
+        if (e.DistanceToPlayer < 10)
+            e.ChangeState(new ChaseState());
+    }
+}
+
+public class ChaseState : IEnemyState
+{
+    public string Name => "Chase";
+    public void Enter(EnemyAI e) => Console.WriteLine($"  [{e.EnemyName}] Заметил игрока! Преследует!");
+    public void Exit(EnemyAI e) { }
+
+    public void Update(EnemyAI e)
+    {
+        if (e.Health < 20)
+            e.ChangeState(new FleeState());
+        else if (e.DistanceToPlayer < 2)
+            e.ChangeState(new AttackState());
+        else if (e.DistanceToPlayer > 15)
+            e.ChangeState(new IdleState());
+    }
+}
+
+public class AttackState : IEnemyState
+{
+    public string Name => "Attack";
+    public void Enter(EnemyAI e) => Console.WriteLine($"  [{e.EnemyName}] АТАКУЕТ!");
+    public void Exit(EnemyAI e) { }
+
+    public void Update(EnemyAI e)
+    {
+        Console.WriteLine($"  [{e.EnemyName}] *удар!*");
+        if (e.Health < 20)
+            e.ChangeState(new FleeState());
+        else if (e.DistanceToPlayer > 2)
+            e.ChangeState(new ChaseState());
+    }
+}
+
+public class FleeState : IEnemyState
+{
+    public string Name => "Flee";
+    public void Enter(EnemyAI e) => Console.WriteLine($"  [{e.EnemyName}] Убегает!");
+    public void Exit(EnemyAI e) => Console.WriteLine($"  [{e.EnemyName}] Перестал убегать");
+
+    public void Update(EnemyAI e)
+    {
+        Console.WriteLine($"  [{e.EnemyName}] *бежит прочь*");
+    }
+}
+
+// Симуляция
+Console.WriteLine("=== State Pattern: AI врага ===\n");
+var goblin = new EnemyAI("Гоблин", new IdleState());
+
+goblin.DistanceToPlayer = 20;
+goblin.Update(); // Idle
+
+goblin.DistanceToPlayer = 8;
+goblin.Update(); // -> Chase
+
+goblin.DistanceToPlayer = 1;
+goblin.Update(); // -> Attack
+
+goblin.Update(); // Attack
+
+goblin.Health = 15;
+goblin.Update(); // -> Flee
+
+goblin.Update(); // Flee
+
+#!markdown
+
+## 6. Command — действие как объект
+
+**Когда нужен:** Undo/Redo, очередь команд, запись макросов, привязка клавиш.
+
+**Аналогия:** Заказ в ресторане. Официант записывает заказ (команда), отдаёт на кухню. Заказ можно отменить, изменить, повторить.
+
+#!csharp
+
+// === Command Pattern с Undo ===
+
+public interface ICommand
+{
+    string Description { get; }
+    void Execute();
+    void Undo();
+}
+
+public class GameWorld
+{
+    public int PlayerX { get; set; }
+    public int PlayerY { get; set; }
+    public int PlayerHealth { get; set; } = 100;
+    public List<string> Inventory { get; } = new();
+
+    public void Print() =>
+        Console.WriteLine($"  Позиция: ({PlayerX},{PlayerY}), HP: {PlayerHealth}, " +
+                          $"Инвентарь: [{string.Join(", ", Inventory)}]");
+}
+
+public class MoveCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly int _dx, _dy;
+    public string Description => $"Движение ({_dx},{_dy})";
+
+    public MoveCommand(GameWorld world, int dx, int dy)
+    {
+        _world = world; _dx = dx; _dy = dy;
+    }
+
+    public void Execute() { _world.PlayerX += _dx; _world.PlayerY += _dy; }
+    public void Undo() { _world.PlayerX -= _dx; _world.PlayerY -= _dy; }
+}
+
+public class PickupCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly string _item;
+    public string Description => $"Подобрать {_item}";
+
+    public PickupCommand(GameWorld world, string item)
+    {
+        _world = world; _item = item;
+    }
+
+    public void Execute() => _world.Inventory.Add(_item);
+    public void Undo() => _world.Inventory.Remove(_item);
+}
+
+public class HealCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly int _amount;
+    private int _actualHeal;
+    public string Description => $"Лечение +{_amount}";
+
+    public HealCommand(GameWorld world, int amount)
+    {
+        _world = world; _amount = amount;
+    }
+
+    public void Execute()
+    {
+        _actualHeal = Math.Min(_amount, 100 - _world.PlayerHealth);
+        _world.PlayerHealth += _actualHeal;
+    }
+    public void Undo() => _world.PlayerHealth -= _actualHeal;
+}
+
+// Менеджер команд с историей
+public class CommandManager
+{
+    private readonly Stack<ICommand> _history = new();
+    private readonly Stack<ICommand> _redoStack = new();
+
+    public void Execute(ICommand command)
+    {
+        command.Execute();
+        _history.Push(command);
+        _redoStack.Clear(); // После нового действия redo сбрасывается
+        Console.WriteLine($"  > {command.Description}");
+    }
+
+    public void Undo()
+    {
+        if (_history.Count == 0) { Console.WriteLine("  Нечего отменять!"); return; }
+        var command = _history.Pop();
+        command.Undo();
+        _redoStack.Push(command);
+        Console.WriteLine($"  < Отменено: {command.Description}");
+    }
+
+    public void Redo()
+    {
+        if (_redoStack.Count == 0) { Console.WriteLine("  Нечего повторять!"); return; }
+        var command = _redoStack.Pop();
+        command.Execute();
+        _history.Push(command);
+        Console.WriteLine($"  >> Повторено: {command.Description}");
+    }
+}
+
+// Демонстрация
+var world = new GameWorld();
+var commands = new CommandManager();
+
+Console.WriteLine("=== Command Pattern с Undo/Redo ===\n");
+
+commands.Execute(new MoveCommand(world, 1, 0));
+commands.Execute(new MoveCommand(world, 0, 1));
+commands.Execute(new PickupCommand(world, "Меч"));
+commands.Execute(new PickupCommand(world, "Зелье"));
+world.PlayerHealth = 60;
+commands.Execute(new HealCommand(world, 30));
+world.Print();
+
+Console.WriteLine("\nОтменяем 2 действия:");
+commands.Undo();
+commands.Undo();
+world.Print();
+
+Console.WriteLine("\nПовторяем 1 действие:");
+commands.Redo();
+world.Print();
+
+#!markdown
+
+## 7. Builder — пошаговое создание сложных объектов
+
+**Когда нужен:** Когда объект имеет много параметров, часть из которых необязательна.
+
+**Аналогия:** Конструктор бургера. Ты выбираешь булку, котлету, соус, овощи — шаг за шагом.
+
+#!csharp
+
+// === Builder Pattern ===
+
+public class Character
+{
+    public string Name { get; init; } = "";
+    public string Class { get; init; } = "";
+    public int Strength { get; init; }
+    public int Agility { get; init; }
+    public int Intelligence { get; init; }
+    public int Health { get; init; }
+    public string Weapon { get; init; } = "";
+    public string Armor { get; init; } = "";
+    public List<string> Skills { get; init; } = new();
+
+    public void Print()
+    {
+        Console.WriteLine($"--- {Name} ({Class}) ---");
+        Console.WriteLine($"  STR:{Strength} AGI:{Agility} INT:{Intelligence} HP:{Health}");
+        Console.WriteLine($"  Оружие: {Weapon}, Броня: {Armor}");
+        Console.WriteLine($"  Навыки: [{string.Join(", ", Skills)}]");
+    }
+}
+
+public class CharacterBuilder
+{
+    private string _name = "Герой";
+    private string _class = "Воин";
+    private int _str = 10, _agi = 10, _int = 10, _hp = 100;
+    private string _weapon = "Кулаки", _armor = "Нет";
+    private List<string> _skills = new();
+
+    public CharacterBuilder WithName(string name) { _name = name; return this; }
+    public CharacterBuilder WithClass(string cls) { _class = cls; return this; }
+    public CharacterBuilder WithStrength(int str) { _str = str; return this; }
+    public CharacterBuilder WithAgility(int agi) { _agi = agi; return this; }
+    public CharacterBuilder WithIntelligence(int intel) { _int = intel; return this; }
+    public CharacterBuilder WithHealth(int hp) { _hp = hp; return this; }
+    public CharacterBuilder WithWeapon(string weapon) { _weapon = weapon; return this; }
+    public CharacterBuilder WithArmor(string armor) { _armor = armor; return this; }
+    public CharacterBuilder WithSkill(string skill) { _skills.Add(skill); return this; }
+
+    public Character Build() => new Character
+    {
+        Name = _name, Class = _class,
+        Strength = _str, Agility = _agi, Intelligence = _int, Health = _hp,
+        Weapon = _weapon, Armor = _armor, Skills = _skills
+    };
+}
+
+// Использование — чистый, читаемый код
+Console.WriteLine("=== Builder Pattern ===\n");
+
+var warrior = new CharacterBuilder()
+    .WithName("Аратор")
+    .WithClass("Воин")
+    .WithStrength(20)
+    .WithAgility(12)
+    .WithHealth(150)
+    .WithWeapon("Двуручный меч")
+    .WithArmor("Латы")
+    .WithSkill("Удар щитом")
+    .WithSkill("Вихрь")
+    .Build();
+
+var mage = new CharacterBuilder()
+    .WithName("Элара")
+    .WithClass("Маг")
+    .WithIntelligence(25)
+    .WithHealth(80)
+    .WithWeapon("Посох")
+    .WithArmor("Мантия")
+    .WithSkill("Огненный шар")
+    .WithSkill("Телепортация")
+    .WithSkill("Ледяная стена")
+    .Build();
+
+warrior.Print();
+Console.WriteLine();
+mage.Print();
+
+#!markdown
+
+## 8. Decorator — добавление поведения обёрткой
+
+**Когда нужен:** Когда нужно добавить функциональность объекту, не меняя его класс. Обёртка поверх обёртки.
+
+**Аналогия:** Пицца. Тесто -> + соус -> + сыр -> + грибы -> + перец. Каждый слой добавляет что-то, не меняя предыдущий.
+
+#!csharp
+
+// === Decorator Pattern — оружие с зачарованиями ===
+
+public interface IWeapon
+{
+    string Name { get; }
+    int Damage { get; }
+    string GetDescription();
+}
+
+public class BasicSword : IWeapon
+{
+    public string Name => "Меч";
+    public int Damage => 10;
+    public string GetDescription() => $"{Name} ({Damage} урона)";
+}
+
+public class BasicBow : IWeapon
+{
+    public string Name => "Лук";
+    public int Damage => 8;
+    public string GetDescription() => $"{Name} ({Damage} урона)";
+}
+
+// Базовый декоратор
+public abstract class WeaponEnchantment : IWeapon
+{
+    protected readonly IWeapon _inner;
+    protected WeaponEnchantment(IWeapon inner) => _inner = inner;
+
+    public abstract string Name { get; }
+    public abstract int Damage { get; }
+    public abstract string GetDescription();
+}
+
+public class FireEnchantment : WeaponEnchantment
+{
+    public FireEnchantment(IWeapon inner) : base(inner) { }
+    public override string Name => $"Огненный {_inner.Name}";
+    public override int Damage => _inner.Damage + 5;
+    public override string GetDescription() => $"{Name} ({Damage} урона, горит!)";
+}
+
+public class IceEnchantment : WeaponEnchantment
+{
+    public IceEnchantment(IWeapon inner) : base(inner) { }
+    public override string Name => $"Ледяной {_inner.Name}";
+    public override int Damage => _inner.Damage + 3;
+    public override string GetDescription() => $"{Name} ({Damage} урона, замораживает!)";
+}
+
+public class PoisonEnchantment : WeaponEnchantment
+{
+    public PoisonEnchantment(IWeapon inner) : base(inner) { }
+    public override string Name => $"Ядовитый {_inner.Name}";
+    public override int Damage => _inner.Damage + 7;
+    public override string GetDescription() => $"{Name} ({Damage} урона, отравляет!)";
+}
+
+public class SharpnessEnchantment : WeaponEnchantment
+{
+    public SharpnessEnchantment(IWeapon inner) : base(inner) { }
+    public override string Name => $"Острый {_inner.Name}";
+    public override int Damage => (int)(_inner.Damage * 1.5);
+    public override string GetDescription() => $"{Name} ({Damage} урона, x1.5!)";
+}
+
+// Использование — оборачиваем слой за слоем
+Console.WriteLine("=== Decorator Pattern ===\n");
+
+IWeapon sword = new BasicSword();
+Console.WriteLine($"1. {sword.GetDescription()}");
+
+sword = new FireEnchantment(sword);
+Console.WriteLine($"2. {sword.GetDescription()}");
+
+sword = new SharpnessEnchantment(sword);
+Console.WriteLine($"3. {sword.GetDescription()}");
+
+Console.WriteLine();
+
+// Другое оружие с другими зачарованиями
+IWeapon bow = new BasicBow();
+bow = new IceEnchantment(bow);
+bow = new PoisonEnchantment(bow);
+Console.WriteLine($"Лук: {bow.GetDescription()}");
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (State Machine для персонажа)
+
+Реализуй состояния для персонажа-платформера:
+- **Idle** — стоит на месте. При нажатии "прыжок" -> Jump. При нажатии "движение" -> Run.
+- **Run** — бежит. При отпускании "движение" -> Idle. При нажатии "прыжок" -> Jump.
+- **Jump** — в воздухе. При приземлении -> Idle (или Run, если зажато "движение").
+- **Hurt** — получил урон. Через 1 секунду -> Idle.
+
+Используй паттерн State. Симулируй последовательность действий.
+
+#!csharp
+
+// Упражнение 1: State Machine для платформера
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (Builder для уровня игры)
+
+Создай Builder для игрового уровня `GameLevel`:
+- Имя уровня
+- Размер карты (ширина, высота)
+- Список врагов (строки)
+- Список предметов
+- Тип окружения ("лес", "пещера", "город")
+- Сложность (1-10)
+- Есть ли босс (bool)
+
+Builder должен иметь fluent API. Создай минимум 3 разных уровня.
+
+#!csharp
+
+// Упражнение 2: Builder для GameLevel
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Почему Singleton считается "антипаттерном" в некоторых ситуациях? Когда его стоит и не стоит использовать?
+2. Чем Factory Method отличается от просто `new Goblin()`? Какое преимущество?
+3. Объясни разницу между Strategy и State. Обе меняют поведение — в чём ключевое различие?
+4. Как Observer реализован в C# на уровне языка? (подсказка: `event`)
+5. В каких ситуациях Command + Undo незаменим?
+6. Чем Decorator отличается от наследования? Почему иногда Decorator лучше?

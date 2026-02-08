@@ -1,0 +1,520 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 01. Рефлексия (Reflection)
+## Уровень 5: Архитектура и мастерство
+
+**Что это:** Рефлексия — это способность программы исследовать саму себя во время выполнения. Представь, что ты можешь открыть капот машины прямо на ходу и посмотреть, какие детали внутри, какие у них характеристики, и даже заменить деталь на лету.
+
+**Зачем это нужно:**
+- Сериализация/десериализация (JSON, XML)
+- Dependency Injection контейнеры
+- ORM-фреймворки (Entity Framework)
+- Плагинные системы
+- Тестовые фреймворки (xUnit, NUnit)
+- В Godot: `GetNode()` и сигнальная система используют похожие концепции
+- В Uno: XAML-биндинги под капотом работают через рефлексию
+
+---
+
+### Содержание:
+1. `typeof()` и `GetType()` — получаем информацию о типе
+2. Класс `Type` и `Assembly` — исследуем типы
+3. `GetMethods()`, `GetProperties()`, `GetCustomAttributes()`
+4. `Activator.CreateInstance()` и `MethodInfo.Invoke()`
+5. Пользовательские атрибуты
+6. Generic-атрибуты C# 11
+
+#!markdown
+
+## 1. typeof() и GetType() — получаем информацию о типе
+
+`typeof()` работает с **именем типа** (на этапе компиляции).
+`GetType()` работает с **экземпляром объекта** (на этапе выполнения).
+
+Аналогия: `typeof(Car)` — это как посмотреть техпаспорт модели "Тойота Камри". `myCar.GetType()` — это как посмотреть техпаспорт конкретной машины у тебя в гараже.
+
+#!csharp
+
+// typeof() — получаем Type по имени типа (во время компиляции)
+Type stringType = typeof(string);
+Console.WriteLine($"Имя типа: {stringType.Name}");          // String
+Console.WriteLine($"Полное имя: {stringType.FullName}");     // System.String
+Console.WriteLine($"Пространство имён: {stringType.Namespace}"); // System
+Console.WriteLine($"Это класс? {stringType.IsClass}");       // True
+Console.WriteLine($"Это значимый тип? {stringType.IsValueType}"); // False
+
+Console.WriteLine();
+
+// GetType() — получаем Type от экземпляра (во время выполнения)
+object obj = 42;
+Type runtimeType = obj.GetType();
+Console.WriteLine($"Тип объекта: {runtimeType.Name}");        // Int32
+Console.WriteLine($"Это значимый тип? {runtimeType.IsValueType}"); // True
+Console.WriteLine($"Это примитив? {runtimeType.IsPrimitive}"); // True
+
+Console.WriteLine();
+
+// Сравнение типов
+Console.WriteLine($"typeof(int) == obj.GetType()? {typeof(int) == runtimeType}"); // True
+Console.WriteLine($"typeof(string) == obj.GetType()? {typeof(string) == runtimeType}"); // False
+
+#!markdown
+
+## 2. Класс Type и Assembly — исследуем типы
+
+`Type` — это главный класс рефлексии. Через него можно узнать всё о типе: поля, свойства, методы, конструкторы, атрибуты, интерфейсы.
+
+`Assembly` — это сборка (.dll или .exe). Она содержит набор типов.
+
+#!csharp
+
+using System.Reflection;
+
+// Исследуем тип List<int>
+Type listType = typeof(List<int>);
+
+Console.WriteLine("=== Базовая информация ===");
+Console.WriteLine($"Имя: {listType.Name}");
+Console.WriteLine($"Полное имя: {listType.FullName}");
+Console.WriteLine($"Базовый класс: {listType.BaseType?.Name}");
+Console.WriteLine($"Это generic? {listType.IsGenericType}");
+
+Console.WriteLine("\n=== Реализованные интерфейсы ===");
+foreach (Type iface in listType.GetInterfaces().Take(5))
+{
+    Console.WriteLine($"  - {iface.Name}");
+}
+
+Console.WriteLine("\n=== Сборка ===");
+Assembly assembly = listType.Assembly;
+Console.WriteLine($"Сборка: {assembly.GetName().Name}");
+Console.WriteLine($"Версия: {assembly.GetName().Version}");
+
+// Получаем все публичные типы из сборки (покажем первые 10)
+Console.WriteLine("\n=== Некоторые типы в сборке ===");
+Type[] types = assembly.GetExportedTypes();
+Console.WriteLine($"Всего публичных типов: {types.Length}");
+foreach (var t in types.Where(t => t.Namespace == "System.Collections.Generic").Take(8))
+{
+    Console.WriteLine($"  - {t.Name}");
+}
+
+#!markdown
+
+## 3. GetMethods(), GetProperties(), GetCustomAttributes()
+
+Это основные методы для исследования содержимого типа. Как рентген для класса — видишь всю структуру.
+
+#!csharp
+
+using System.Reflection;
+
+// Создадим тестовый класс
+public class Player
+{
+    public string Name { get; set; }
+    public int Health { get; set; }
+    public int Level { get; private set; }
+
+    private int _experience;
+
+    public Player(string name)
+    {
+        Name = name;
+        Health = 100;
+        Level = 1;
+    }
+
+    public void TakeDamage(int amount)
+    {
+        Health -= amount;
+        if (Health < 0) Health = 0;
+    }
+
+    public void GainExperience(int xp)
+    {
+        _experience += xp;
+        if (_experience >= Level * 100)
+        {
+            Level++;
+            _experience = 0;
+        }
+    }
+
+    public override string ToString() => $"{Name} (HP: {Health}, Lv: {Level})";
+}
+
+// Исследуем класс Player через рефлексию
+Type playerType = typeof(Player);
+
+Console.WriteLine("=== Свойства (Properties) ===");
+foreach (PropertyInfo prop in playerType.GetProperties())
+{
+    Console.WriteLine($"  {prop.PropertyType.Name} {prop.Name} " +
+                      $"[get: {prop.CanRead}, set: {prop.CanWrite}]");
+}
+
+Console.WriteLine("\n=== Методы (Methods) ===");
+// BindingFlags позволяют фильтровать: публичные, приватные, статические и т.д.
+MethodInfo[] methods = playerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+foreach (MethodInfo method in methods)
+{
+    var parameters = method.GetParameters();
+    string paramStr = string.Join(", ", parameters.Select(p => $"{p.ParameterType.Name} {p.Name}"));
+    Console.WriteLine($"  {method.ReturnType.Name} {method.Name}({paramStr})");
+}
+
+Console.WriteLine("\n=== Поля (Fields) — включая приватные ===");
+FieldInfo[] fields = playerType.GetFields(BindingFlags.NonPublic | BindingFlags.Instance);
+foreach (FieldInfo field in fields)
+{
+    Console.WriteLine($"  {field.FieldType.Name} {field.Name} (приватное)");
+}
+
+Console.WriteLine("\n=== Конструкторы ===");
+foreach (ConstructorInfo ctor in playerType.GetConstructors())
+{
+    var parameters = ctor.GetParameters();
+    string paramStr = string.Join(", ", parameters.Select(p => $"{p.ParameterType.Name} {p.Name}"));
+    Console.WriteLine($"  Player({paramStr})");
+}
+
+#!markdown
+
+## 4. Activator.CreateInstance() и MethodInfo.Invoke()
+
+Это самая мощная часть рефлексии — **создание объектов** и **вызов методов** динамически, без прямого обращения к типу в коде.
+
+Аналогия: обычный код — это когда ты звонишь другу по имени из контактов. Рефлексия — когда ты набираешь номер вручную, зная только цифры.
+
+#!csharp
+
+using System.Reflection;
+
+// === Activator.CreateInstance — создаём объект без знания типа на этапе компиляции ===
+
+// Вариант 1: создаём по Type
+Type playerType = typeof(Player);
+object playerObj = Activator.CreateInstance(playerType, "Рефлексивный Воин")!;
+Console.WriteLine($"Создан объект: {playerObj}");
+
+// Вариант 2: создаём по имени типа (строке)
+// В реальных проектах имя типа может приходить из конфигурации
+Console.WriteLine();
+
+// === MethodInfo.Invoke — вызываем метод динамически ===
+MethodInfo takeDamageMethod = playerType.GetMethod("TakeDamage")!;
+Console.WriteLine($"Вызываем {takeDamageMethod.Name} с аргументом 30...");
+takeDamageMethod.Invoke(playerObj, new object[] { 30 });
+Console.WriteLine($"После урона: {playerObj}");
+
+MethodInfo gainXpMethod = playerType.GetMethod("GainExperience")!;
+Console.WriteLine("\nНабираем опыт 5 раз по 25...");
+for (int i = 0; i < 5; i++)
+{
+    gainXpMethod.Invoke(playerObj, new object[] { 25 });
+}
+Console.WriteLine($"После опыта: {playerObj}");
+
+// === Доступ к приватному полю ===
+FieldInfo expField = playerType.GetField("_experience", BindingFlags.NonPublic | BindingFlags.Instance)!;
+int currentXp = (int)expField.GetValue(playerObj)!;
+Console.WriteLine($"\nПриватное поле _experience = {currentXp}");
+
+// Можно даже изменить приватное поле!
+expField.SetValue(playerObj, 99);
+Console.WriteLine($"После изменения _experience = {expField.GetValue(playerObj)}");
+
+// === Установка свойства через рефлексию ===
+PropertyInfo nameProp = playerType.GetProperty("Name")!;
+nameProp.SetValue(playerObj, "Хакер Рефлексии");
+Console.WriteLine($"\nПосле изменения имени: {playerObj}");
+
+#!markdown
+
+## 5. Пользовательские атрибуты
+
+Атрибуты — это **метаданные**, которые ты навешиваешь на классы, методы, свойства. Сами по себе они ничего не делают — но другой код может прочитать их через рефлексию и принять решение.
+
+Аналогия: атрибуты — это как наклейки/ярлыки. Наклейка "Хрупкое" на коробке не делает содержимое хрупким, но грузчик, увидев её, будет обращаться аккуратнее.
+
+#!csharp
+
+using System.Reflection;
+
+// === Встроенные атрибуты ===
+
+// [Obsolete] — помечает как устаревшее
+public class OldApi
+{
+    [Obsolete("Используй NewMethod() вместо этого")]
+    public void OldMethod() => Console.WriteLine("Старый метод");
+
+    public void NewMethod() => Console.WriteLine("Новый метод");
+}
+
+// === Создаём свой атрибут ===
+
+// AttributeUsage — указывает, куда можно прикрепить атрибут
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false)]
+public class DescriptionAttribute : Attribute
+{
+    public string Text { get; }
+    public string Author { get; set; } = "Unknown";  // именованный параметр
+
+    public DescriptionAttribute(string text)
+    {
+        Text = text;
+    }
+}
+
+[AttributeUsage(AttributeTargets.Property)]
+public class RangeAttribute : Attribute
+{
+    public int Min { get; }
+    public int Max { get; }
+
+    public RangeAttribute(int min, int max)
+    {
+        Min = min;
+        Max = max;
+    }
+}
+
+// === Применяем свои атрибуты ===
+
+[Description("Враг в игре", Author = "Aibek")]
+public class Enemy
+{
+    public string Name { get; set; }
+
+    [Range(1, 100)]
+    public int Health { get; set; }
+
+    [Range(0, 50)]
+    public int Damage { get; set; }
+
+    [Description("Атакует игрока")]
+    public void Attack() => Console.WriteLine($"{Name} атакует!");
+}
+
+// === Читаем атрибуты через рефлексию ===
+
+Type enemyType = typeof(Enemy);
+
+// Атрибут класса
+var classDesc = enemyType.GetCustomAttribute<DescriptionAttribute>();
+if (classDesc != null)
+{
+    Console.WriteLine($"Класс: {classDesc.Text} (автор: {classDesc.Author})");
+}
+
+// Атрибуты свойств
+Console.WriteLine("\nСвойства с ограничениями:");
+foreach (PropertyInfo prop in enemyType.GetProperties())
+{
+    var range = prop.GetCustomAttribute<RangeAttribute>();
+    if (range != null)
+    {
+        Console.WriteLine($"  {prop.Name}: от {range.Min} до {range.Max}");
+    }
+}
+
+// Атрибут метода
+MethodInfo attackMethod = enemyType.GetMethod("Attack")!;
+var methodDesc = attackMethod.GetCustomAttribute<DescriptionAttribute>();
+if (methodDesc != null)
+{
+    Console.WriteLine($"\nМетод Attack: {methodDesc.Text}");
+}
+
+#!csharp
+
+using System.Reflection;
+
+// === Практический пример: простой валидатор на атрибутах ===
+
+public static class Validator
+{
+    public static List<string> Validate(object obj)
+    {
+        var errors = new List<string>();
+        Type type = obj.GetType();
+
+        foreach (PropertyInfo prop in type.GetProperties())
+        {
+            var range = prop.GetCustomAttribute<RangeAttribute>();
+            if (range != null && prop.PropertyType == typeof(int))
+            {
+                int value = (int)prop.GetValue(obj)!;
+                if (value < range.Min || value > range.Max)
+                {
+                    errors.Add($"{prop.Name} = {value} (допустимо: {range.Min}..{range.Max})");
+                }
+            }
+        }
+
+        return errors;
+    }
+}
+
+// Тестируем валидатор
+var enemy = new Enemy { Name = "Гоблин", Health = 150, Damage = 10 };
+var errors = Validator.Validate(enemy);
+
+Console.WriteLine($"Враг: {enemy.Name}, HP: {enemy.Health}, Damage: {enemy.Damage}");
+if (errors.Any())
+{
+    Console.WriteLine("Ошибки валидации:");
+    foreach (var error in errors)
+        Console.WriteLine($"  ⚠ {error}");
+}
+else
+{
+    Console.WriteLine("Валидация пройдена!");
+}
+
+Console.WriteLine();
+
+// Исправляем и проверяем снова
+enemy.Health = 80;
+errors = Validator.Validate(enemy);
+Console.WriteLine($"После исправления: HP = {enemy.Health}");
+Console.WriteLine(errors.Any() ? "Ещё есть ошибки" : "Валидация пройдена!");
+
+#!markdown
+
+## 6. Generic-атрибуты (C# 11)
+
+Начиная с C# 11, атрибуты могут быть **обобщёнными** (generic). Раньше приходилось передавать `Type` как параметр — теперь можно использовать `<T>`.
+
+#!csharp
+
+using System.Reflection;
+
+// === До C# 11: передаём Type как параметр ===
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class ValidatorOldAttribute : Attribute
+{
+    public Type ValidatorType { get; }
+    public ValidatorOldAttribute(Type validatorType)
+    {
+        ValidatorType = validatorType;
+    }
+}
+
+// === C# 11: Generic-атрибут ===
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public class ValidateWithAttribute<T> : Attribute where T : class, new()
+{
+    // T — тип валидатора, доступен на этапе компиляции
+}
+
+// Интерфейс валидатора
+public interface IEntityValidator
+{
+    bool IsValid(object entity);
+}
+
+public class HealthValidator : IEntityValidator
+{
+    public bool IsValid(object entity) => true; // упрощённо
+}
+
+public class NameValidator : IEntityValidator
+{
+    public bool IsValid(object entity) => true; // упрощённо
+}
+
+// До C# 11
+[ValidatorOld(typeof(HealthValidator))]
+public class OldStyleEntity { }
+
+// C# 11 — чище и безопаснее на этапе компиляции
+[ValidateWith<HealthValidator>]
+[ValidateWith<NameValidator>]
+public class NewStyleEntity { }
+
+// Читаем generic-атрибуты
+Console.WriteLine("=== Generic-атрибуты на NewStyleEntity ===");
+Type entityType = typeof(NewStyleEntity);
+foreach (var attr in entityType.GetCustomAttributes())
+{
+    Type attrType = attr.GetType();
+    if (attrType.IsGenericType)
+    {
+        Type validatorType = attrType.GetGenericArguments()[0];
+        Console.WriteLine($"  Валидатор: {validatorType.Name}");
+    }
+}
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Инспектор типов)
+
+Напиши метод `InspectType(Type type)`, который выводит:
+- Имя типа и является ли он классом/структурой/интерфейсом/enum
+- Все публичные свойства с их типами
+- Все публичные методы (только объявленные в самом типе, не унаследованные)
+- Все реализованные интерфейсы
+
+Протестируй на `typeof(List<string>)` и на `typeof(Dictionary<string, int>)`.
+
+#!csharp
+
+// Упражнение 1: Инспектор типов
+// Напиши свой код здесь
+
+// void InspectType(Type type)
+// {
+//     ...
+// }
+
+// InspectType(typeof(List<string>));
+// InspectType(typeof(Dictionary<string, int>));
+
+#!markdown
+
+### Упражнение 2 (Атрибут [MaxLength] + валидатор)
+
+1. Создай атрибут `[MaxLength(int maxLength)]` для строковых свойств
+2. Создай класс `UserProfile` со свойствами:
+   - `Name` (макс. 20 символов)
+   - `Bio` (макс. 200 символов)
+   - `Email` (макс. 50 символов)
+3. Напиши метод `ValidateStrings(object obj)`, который через рефлексию:
+   - Находит все строковые свойства с атрибутом `[MaxLength]`
+   - Проверяет длину значения
+   - Возвращает список ошибок
+
+#!csharp
+
+// Упражнение 2: Атрибут [MaxLength] и валидатор
+// Напиши свой код здесь
+
+// [AttributeUsage(...)]
+// public class MaxLengthAttribute : Attribute { ... }
+
+// public class UserProfile { ... }
+
+// public static List<string> ValidateStrings(object obj) { ... }
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. В чём разница между `typeof(T)` и `obj.GetType()`? Когда используется каждый?
+2. Что такое `BindingFlags` и зачем они нужны в методах `GetMethods()`, `GetFields()`?
+3. Атрибут сам по себе что-то делает или нет? Объясни своими словами.
+4. Назови 3 реальных сценария, где рефлексия незаменима.
+5. Почему рефлексию не стоит использовать в горячем коде (вызываемом тысячи раз в секунду)? Что можно использовать вместо неё?

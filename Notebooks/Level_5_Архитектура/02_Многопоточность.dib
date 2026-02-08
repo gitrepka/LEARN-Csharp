@@ -1,0 +1,653 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 02. Многопоточность (Multithreading)
+## Уровень 5: Архитектура и мастерство
+
+**Что это:** Многопоточность — это возможность выполнять несколько операций одновременно. Представь ресторан: один повар готовит медленно, но если их пять — заказы выполняются параллельно.
+
+**Зачем это нужно:**
+- Не блокировать UI при долгих операциях
+- Использовать все ядра процессора
+- Фоновая загрузка данных
+- В Godot: фоновая генерация мира, загрузка ресурсов
+- В Uno: асинхронные HTTP-запросы, обновление UI
+
+**Важно:** Многопоточность — одна из самых сложных тем в программировании. Баги многопоточности непредсказуемы и трудно воспроизводимы. Поэтому важно понимать примитивы синхронизации.
+
+---
+
+### Содержание:
+1. Класс `Thread`, `Thread.Sleep`, `Join`
+2. `lock`, `Monitor`, `Mutex`
+3. `SemaphoreSlim`, `Interlocked`
+4. Race conditions и как их исправлять
+5. `Task.Run` vs `Thread`
+6. `Channel<T>` для producer-consumer
+
+#!markdown
+
+## 1. Класс Thread — базовый поток
+
+`Thread` — это самый низкоуровневый способ создать поток. Это как нанять нового работника — у него своя задача, он работает параллельно.
+
+#!csharp
+
+using System.Threading;
+
+// === Создание и запуск потока ===
+
+void DoWork(string name, int iterations)
+{
+    for (int i = 1; i <= iterations; i++)
+    {
+        Console.WriteLine($"[{name}] Шаг {i} (поток {Thread.CurrentThread.ManagedThreadId})");
+        Thread.Sleep(100); // Имитация работы
+    }
+    Console.WriteLine($"[{name}] Завершён!");
+}
+
+// Создаём потоки
+Thread thread1 = new Thread(() => DoWork("Поток-А", 5));
+Thread thread2 = new Thread(() => DoWork("Поток-Б", 5));
+
+// Помечаем как фоновые (завершатся при завершении основного)
+thread1.IsBackground = true;
+thread2.IsBackground = true;
+
+Console.WriteLine($"Основной поток: {Thread.CurrentThread.ManagedThreadId}");
+Console.WriteLine("Запускаем потоки...\n");
+
+thread1.Start();
+thread2.Start();
+
+// Join — ждём завершения потоков
+thread1.Join();
+thread2.Join();
+
+Console.WriteLine("\nОба потока завершены!");
+
+#!csharp
+
+using System.Threading;
+
+// === Thread с параметрами и возвратом данных ===
+
+// Thread не возвращает значение напрямую — используем замыкание
+int result = 0;
+
+Thread calcThread = new Thread(() =>
+{
+    int sum = 0;
+    for (int i = 1; i <= 1_000_000; i++)
+    {
+        sum += i % 100; // какие-то вычисления
+    }
+    result = sum; // записываем результат через замыкание
+});
+
+calcThread.Start();
+calcThread.Join(); // ждём результат
+
+Console.WriteLine($"Результат вычислений: {result}");
+
+// === Thread.Sleep vs Thread.SpinWait ===
+// Sleep — отдаёт процессорное время другим потокам (экономит CPU)
+// SpinWait — активное ожидание (тратит CPU, но реагирует быстрее)
+
+Console.WriteLine("\nThread.Sleep(0) — отдаёт квант времени другим потокам");
+Console.WriteLine("Thread.Yield() — предлагает запустить другой поток на этом ядре");
+
+#!markdown
+
+## 2. lock, Monitor, Mutex — защита общих данных
+
+Когда два потока работают с одними данными — это как два человека пытаются одновременно писать в одну тетрадку. Нужны правила доступа.
+
+`lock` — самый простой и часто используемый способ. Только один поток может войти в `lock`-блок одновременно.
+
+#!csharp
+
+using System.Threading;
+
+// === Проблема без lock: потерянные обновления ===
+
+int counterUnsafe = 0;
+int counterSafe = 0;
+object lockObj = new object();
+
+void IncrementUnsafe()
+{
+    for (int i = 0; i < 100_000; i++)
+        counterUnsafe++;
+}
+
+void IncrementSafe()
+{
+    for (int i = 0; i < 100_000; i++)
+        lock (lockObj) { counterSafe++; }
+}
+
+// Запускаем без lock
+var threads = new Thread[5];
+for (int i = 0; i < 5; i++)
+{
+    threads[i] = new Thread(IncrementUnsafe);
+    threads[i].Start();
+}
+foreach (var t in threads) t.Join();
+Console.WriteLine($"Без lock: {counterUnsafe} (ожидали 500000)");
+
+// Запускаем с lock
+for (int i = 0; i < 5; i++)
+{
+    threads[i] = new Thread(IncrementSafe);
+    threads[i].Start();
+}
+foreach (var t in threads) t.Join();
+Console.WriteLine($"С lock:   {counterSafe} (ожидали 500000)");
+
+#!csharp
+
+using System.Threading;
+
+// === Monitor — то же что lock, но с дополнительными возможностями ===
+// lock — это синтаксический сахар для Monitor.Enter/Exit
+
+object monitorLock = new object();
+var sharedList = new List<int>();
+
+void AddItemsWithMonitor(int start)
+{
+    for (int i = start; i < start + 5; i++)
+    {
+        bool lockTaken = false;
+        try
+        {
+            // Monitor.TryEnter позволяет задать таймаут
+            Monitor.TryEnter(monitorLock, TimeSpan.FromSeconds(1), ref lockTaken);
+            if (lockTaken)
+            {
+                sharedList.Add(i);
+                Console.WriteLine($"Поток {Thread.CurrentThread.ManagedThreadId} добавил {i}");
+            }
+            else
+            {
+                Console.WriteLine("Не удалось получить lock за 1 секунду!");
+            }
+        }
+        finally
+        {
+            if (lockTaken) Monitor.Exit(monitorLock);
+        }
+    }
+}
+
+Thread t1 = new Thread(() => AddItemsWithMonitor(0));
+Thread t2 = new Thread(() => AddItemsWithMonitor(100));
+t1.Start(); t2.Start();
+t1.Join(); t2.Join();
+
+Console.WriteLine($"\nВсего элементов: {sharedList.Count}");
+Console.WriteLine($"Элементы: [{string.Join(", ", sharedList)}]");
+
+#!csharp
+
+using System.Threading;
+
+// === Mutex — межпроцессная синхронизация ===
+// Mutex похож на lock, но может работать между разными процессами
+// Используется, например, чтобы не запускать два экземпляра приложения
+
+// Именованный Mutex — виден всем процессам
+// bool createdNew;
+// using var mutex = new Mutex(false, "MyAppMutex", out createdNew);
+
+// Локальный Mutex — работает как lock, но тяжелее
+var mutex = new Mutex();
+
+int mutexCounter = 0;
+
+void WorkWithMutex(string name)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        mutex.WaitOne(); // Захватываем
+        try
+        {
+            mutexCounter++;
+            Console.WriteLine($"[{name}] counter = {mutexCounter}");
+            Thread.Sleep(50);
+        }
+        finally
+        {
+            mutex.ReleaseMutex(); // Обязательно освобождаем!
+        }
+    }
+}
+
+Thread mt1 = new Thread(() => WorkWithMutex("A"));
+Thread mt2 = new Thread(() => WorkWithMutex("B"));
+mt1.Start(); mt2.Start();
+mt1.Join(); mt2.Join();
+
+mutex.Dispose();
+Console.WriteLine($"\nИтог: {mutexCounter}");
+
+#!markdown
+
+## 3. SemaphoreSlim и Interlocked
+
+`SemaphoreSlim` — ограничивает количество одновременных доступов. Как турникет в метро: пропускает не более N человек одновременно.
+
+`Interlocked` — атомарные операции (без lock). Самый быстрый способ безопасно изменить число.
+
+#!csharp
+
+using System.Threading;
+
+// === SemaphoreSlim — ограничение параллелизма ===
+// Разрешаем максимум 2 потока одновременно (из 5)
+
+var semaphore = new SemaphoreSlim(2, 2); // начальное=2, максимум=2
+int activeWorkers = 0;
+
+void LimitedWork(int id)
+{
+    Console.WriteLine($"Поток {id} ждёт разрешения...");
+    semaphore.Wait();
+    try
+    {
+        int current = Interlocked.Increment(ref activeWorkers);
+        Console.WriteLine($"Поток {id} РАБОТАЕТ (активных: {current})");
+        Thread.Sleep(500); // Имитация работы
+        Interlocked.Decrement(ref activeWorkers);
+        Console.WriteLine($"Поток {id} завершён");
+    }
+    finally
+    {
+        semaphore.Release();
+    }
+}
+
+var threads = new Thread[5];
+for (int i = 0; i < 5; i++)
+{
+    int id = i;
+    threads[i] = new Thread(() => LimitedWork(id));
+    threads[i].Start();
+}
+foreach (var t in threads) t.Join();
+semaphore.Dispose();
+
+Console.WriteLine("Все потоки завершены!");
+
+#!csharp
+
+using System.Threading;
+
+// === Interlocked — атомарные операции ===
+// Быстрее чем lock для простых числовых операций
+
+int atomicCounter = 0;
+long atomicSum = 0;
+
+void AtomicWork()
+{
+    for (int i = 0; i < 100_000; i++)
+    {
+        Interlocked.Increment(ref atomicCounter);
+        Interlocked.Add(ref atomicSum, i);
+    }
+}
+
+var threads = new Thread[4];
+for (int i = 0; i < 4; i++)
+{
+    threads[i] = new Thread(AtomicWork);
+    threads[i].Start();
+}
+foreach (var t in threads) t.Join();
+
+Console.WriteLine($"Counter: {atomicCounter} (ожидали: {4 * 100_000})");
+Console.WriteLine($"Sum: {atomicSum}");
+
+// Другие операции Interlocked:
+int val = 10;
+int old = Interlocked.Exchange(ref val, 20);
+Console.WriteLine($"\nExchange: old={old}, new={val}");
+
+// CompareExchange — атомарный CAS (compare-and-swap)
+int current = Interlocked.CompareExchange(ref val, 30, 20); // если val==20, заменить на 30
+Console.WriteLine($"CompareExchange: val={val}, returned={current}");
+
+#!markdown
+
+## 4. Race Conditions и как их исправлять
+
+Race condition (состояние гонки) — когда результат зависит от порядка выполнения потоков. Это как два кассира, которые одновременно читают баланс счёта, каждый снимает деньги, и записывают обратно — деньги "дублируются".
+
+#!csharp
+
+using System.Threading;
+
+// === Классический пример Race Condition: банковский счёт ===
+
+public class BankAccountUnsafe
+{
+    public decimal Balance { get; private set; }
+
+    public BankAccountUnsafe(decimal initial) => Balance = initial;
+
+    public void Withdraw(decimal amount)
+    {
+        // Race condition! Между проверкой и снятием другой поток может снять деньги
+        if (Balance >= amount)
+        {
+            Thread.Sleep(1); // Имитация задержки, увеличивает вероятность бага
+            Balance -= amount;
+        }
+    }
+}
+
+public class BankAccountSafe
+{
+    private decimal _balance;
+    private readonly object _lock = new();
+
+    public decimal Balance => _balance;
+
+    public BankAccountSafe(decimal initial) => _balance = initial;
+
+    public bool Withdraw(decimal amount)
+    {
+        lock (_lock)
+        {
+            if (_balance >= amount)
+            {
+                Thread.Sleep(1);
+                _balance -= amount;
+                return true;
+            }
+            return false;
+        }
+    }
+}
+
+// Тест unsafe
+var unsafeAccount = new BankAccountUnsafe(1000);
+var unsafeThreads = new Thread[20];
+for (int i = 0; i < 20; i++)
+{
+    unsafeThreads[i] = new Thread(() => unsafeAccount.Withdraw(100));
+    unsafeThreads[i].Start();
+}
+foreach (var t in unsafeThreads) t.Join();
+Console.WriteLine($"Unsafe баланс: {unsafeAccount.Balance} (ожидали: 0 или ошибку, но может быть отрицательным!)");
+
+// Тест safe
+var safeAccount = new BankAccountSafe(1000);
+var safeThreads = new Thread[20];
+for (int i = 0; i < 20; i++)
+{
+    safeThreads[i] = new Thread(() => safeAccount.Withdraw(100));
+    safeThreads[i].Start();
+}
+foreach (var t in safeThreads) t.Join();
+Console.WriteLine($"Safe баланс:   {safeAccount.Balance} (всегда >= 0)");
+
+#!markdown
+
+## 5. Task.Run vs Thread
+
+`Task` — это высокоуровневая абстракция поверх пула потоков. Используй `Task`, а не `Thread`, в 95% случаев.
+
+| | Thread | Task |
+|---|---|---|
+| Уровень | Низкий | Высокий |
+| Пул потоков | Нет (создаёт новый) | Да (использует ThreadPool) |
+| Возврат значения | Нет | Да (`Task<T>`) |
+| Исключения | Убивают приложение | Можно перехватить через `await` |
+| Отмена | Вручную | `CancellationToken` |
+| Комбинирование | Сложно | `WhenAll`, `WhenAny` |
+
+#!csharp
+
+using System.Threading;
+using System.Threading.Tasks;
+using System.Diagnostics;
+
+// === Task.Run — запуск работы в пуле потоков ===
+
+var sw = Stopwatch.StartNew();
+
+// Запускаем 3 задачи параллельно
+Task<int> task1 = Task.Run(() =>
+{
+    Thread.Sleep(300);
+    return 10;
+});
+
+Task<int> task2 = Task.Run(() =>
+{
+    Thread.Sleep(200);
+    return 20;
+});
+
+Task<int> task3 = Task.Run(() =>
+{
+    Thread.Sleep(400);
+    return 30;
+});
+
+// Ждём все задачи
+int[] results = await Task.WhenAll(task1, task2, task3);
+sw.Stop();
+
+Console.WriteLine($"Результаты: [{string.Join(", ", results)}]");
+Console.WriteLine($"Сумма: {results.Sum()}");
+Console.WriteLine($"Время: {sw.ElapsedMilliseconds}ms (параллельно, не 900ms)");
+
+#!csharp
+
+using System.Threading;
+using System.Threading.Tasks;
+
+// === CancellationToken — отмена задач ===
+
+var cts = new CancellationTokenSource();
+CancellationToken token = cts.Token;
+
+Task longTask = Task.Run(() =>
+{
+    for (int i = 0; i < 100; i++)
+    {
+        token.ThrowIfCancellationRequested(); // Проверяем, не отменили ли нас
+        Console.WriteLine($"Шаг {i}");
+        Thread.Sleep(100);
+    }
+}, token);
+
+// Отменяем через 500мс
+await Task.Delay(500);
+cts.Cancel();
+
+try
+{
+    await longTask;
+}
+catch (OperationCanceledException)
+{
+    Console.WriteLine("Задача отменена!");
+}
+
+Console.WriteLine($"Статус задачи: {longTask.Status}");
+cts.Dispose();
+
+#!markdown
+
+## 6. Channel\<T\> для Producer-Consumer
+
+`Channel<T>` — это потокобезопасная очередь для передачи данных между потоками/задачами. Паттерн "производитель-потребитель": один поток генерирует данные, другой обрабатывает.
+
+Аналогия: конвейерная лента на заводе. Один работник кладёт детали, другой забирает и обрабатывает.
+
+#!csharp
+
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+// === Channel<T> — Producer/Consumer ===
+
+// Ограниченный канал — макс. 5 элементов в очереди
+var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(5)
+{
+    FullMode = BoundedChannelFullMode.Wait // Если полон — ждём
+});
+
+// Producer — создаёт данные
+async Task ProduceAsync(ChannelWriter<string> writer)
+{
+    string[] events = { "Враг появился", "Игрок прыгнул", "Подобран предмет",
+                        "Урон получен", "Уровень пройден", "Босс побеждён" };
+
+    foreach (var evt in events)
+    {
+        await writer.WriteAsync(evt);
+        Console.WriteLine($"[PRODUCER] Отправил: {evt}");
+        await Task.Delay(100); // Имитация генерации
+    }
+
+    writer.Complete(); // Больше данных не будет
+    Console.WriteLine("[PRODUCER] Канал закрыт");
+}
+
+// Consumer — обрабатывает данные
+async Task ConsumeAsync(ChannelReader<string> reader, string name)
+{
+    await foreach (var item in reader.ReadAllAsync())
+    {
+        Console.WriteLine($"  [{name}] Обработал: {item}");
+        await Task.Delay(150); // Имитация обработки
+    }
+    Console.WriteLine($"  [{name}] Канал пуст, завершён");
+}
+
+// Запускаем
+var producerTask = ProduceAsync(channel.Writer);
+var consumer1Task = ConsumeAsync(channel.Reader, "CONSUMER-1");
+
+await Task.WhenAll(producerTask, consumer1Task);
+Console.WriteLine("\nВсё обработано!");
+
+#!csharp
+
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+// === Несколько Consumer-ов — параллельная обработка ===
+
+var ch = Channel.CreateUnbounded<int>();
+
+// Один Producer генерирует числа
+async Task ProduceNumbers(ChannelWriter<int> writer, int count)
+{
+    for (int i = 1; i <= count; i++)
+    {
+        await writer.WriteAsync(i);
+        await Task.Delay(20);
+    }
+    writer.Complete();
+}
+
+// Consumer обрабатывает числа
+async Task<int> ProcessNumbers(ChannelReader<int> reader, string name)
+{
+    int processed = 0;
+    try
+    {
+        while (await reader.WaitToReadAsync())
+        {
+            while (reader.TryRead(out int number))
+            {
+                processed++;
+                await Task.Delay(50); // "тяжёлая" обработка
+            }
+        }
+    }
+    catch (ChannelClosedException) { }
+
+    Console.WriteLine($"[{name}] обработал {processed} элементов");
+    return processed;
+}
+
+// 1 Producer, 3 Consumer-а
+var producer = ProduceNumbers(ch.Writer, 20);
+var c1 = ProcessNumbers(ch.Reader, "Worker-1");
+var c2 = ProcessNumbers(ch.Reader, "Worker-2");
+var c3 = ProcessNumbers(ch.Reader, "Worker-3");
+
+await producer;
+var counts = await Task.WhenAll(c1, c2, c3);
+
+Console.WriteLine($"\nВсего обработано: {counts.Sum()} из 20");
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Потокобезопасный счётчик)
+
+Создай класс `ThreadSafeCounter` с методами:
+- `Increment()` — увеличивает счётчик на 1
+- `Decrement()` — уменьшает на 1
+- `Value` — текущее значение (свойство)
+
+Используй `Interlocked` для реализации. Проверь на 10 потоках, каждый вызывает `Increment()` 100000 раз. Результат должен быть ровно 1000000.
+
+#!csharp
+
+// Упражнение 1: Потокобезопасный счётчик
+// Напиши свой код здесь
+
+// public class ThreadSafeCounter { ... }
+
+// Проверка:
+// var counter = new ThreadSafeCounter();
+// var threads = new Thread[10];
+// ...
+// Console.WriteLine($"Результат: {counter.Value} (ожидается: 1000000)");
+
+#!markdown
+
+### Упражнение 2 (Producer-Consumer с Channel)
+
+Создай систему обработки заказов:
+1. Producer генерирует заказы (строки вида "Заказ #1", "Заказ #2", ...) с задержкой 100мс
+2. Два Consumer-а читают из канала и "обрабатывают" заказы (задержка 200мс)
+3. Всего 10 заказов
+4. Выводи в консоль, какой Consumer какой заказ обработал
+5. В конце выведи, сколько заказов обработал каждый Consumer
+
+#!csharp
+
+// Упражнение 2: Система заказов на Channel<T>
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем `lock` отличается от `Mutex`? Когда нужен `Mutex`?
+2. Что такое race condition? Приведи простой пример.
+3. Почему лучше использовать `Task.Run` вместо `new Thread()` в большинстве случаев?
+4. Что делает `SemaphoreSlim(3, 3)` — на что ограничивает?
+5. Зачем нужен `Channel<T>`? Чем он лучше, чем `ConcurrentQueue<T>` + бесконечный цикл?
+6. Что произойдёт, если забыть вызвать `Monitor.Exit()` (или `mutex.ReleaseMutex()`)?

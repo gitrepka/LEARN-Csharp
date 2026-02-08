@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CSharpHubApp.MainWindow"
+        Title="CSharp Hub"
+        Width="1280" Height="820"
+        MinWidth="900" MinHeight="600"
+        Background="#2E3440">
+
+    <Grid ColumnDefinitions="190,*,*">
+
+        <!-- ===== Колонка 1: Список уроков ===== -->
+        <Border Grid.Column="0"
+                Background="#2E3440"
+                BorderThickness="0,0,1,0"
+                BorderBrush="#3B4252">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Text="Типы данных"
+                           FontSize="17" FontWeight="SemiBold"
+                           Foreground="#D8DEE9"
+                           Margin="14,14,14,4"/>
+                <TextBlock DockPanel.Dock="Top"
+                           Text="выбери урок"
+                           FontSize="11"
+                           Foreground="#4C566A"
+                           Margin="14,0,14,10"/>
+                <ListBox x:Name="LessonList"
+                         Background="Transparent"
+                         Foreground="#D8DEE9"
+                         SelectionChanged="OnLessonSelected"
+                         Margin="4,0"
+                         FontSize="13"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Колонка 2: Контент урока ===== -->
+        <Border Grid.Column="1"
+                Background="#2E3440"
+                BorderThickness="0,0,1,0"
+                BorderBrush="#3B4252">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           x:Name="LessonTitle"
+                           Text="Выбери урок слева"
+                           FontSize="13"
+                           Foreground="#4C566A"
+                           Margin="20,12,20,0"/>
+                <ScrollViewer Padding="20,8,20,16">
+                    <StackPanel x:Name="ContentPanel" Spacing="2"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- ===== Колонка 3: Редактор кода ===== -->
+        <Grid Grid.Column="2"
+              Background="#3B4252"
+              RowDefinitions="Auto,*,Auto">
+
+            <!-- Заголовок + Запустить -->
+            <DockPanel Grid.Row="0" Margin="16,10,16,6">
+                <TextBlock Text="Редактор"
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="#D8DEE9"
+                           VerticalAlignment="Center"/>
+                <Button x:Name="RunButton"
+                        Content="Запустить"
+                        DockPanel.Dock="Right"
+                        Click="OnRunCode"
+                        HorizontalAlignment="Right"
+                        Padding="14,5"
+                        FontSize="13"
+                        Background="#5E81AC"
+                        Foreground="#ECEFF4"/>
+            </DockPanel>
+
+            <!-- Редактор -->
+            <TextBox Grid.Row="1"
+                     x:Name="CodeEditor"
+                     AcceptsReturn="True"
+                     AcceptsTab="True"
+                     FontFamily="JetBrains Mono, Cascadia Code, Consolas, monospace"
+                     FontSize="13"
+                     Background="#2E3440"
+                     Foreground="#D8DEE9"
+                     Margin="16,0"
+                     CornerRadius="6"
+                     Padding="10,8"
+                     Watermark="// Нажми Попробовать на примере или пиши свой код"/>
+
+            <!-- Ввод + Вывод -->
+            <Grid Grid.Row="2"
+                  ColumnDefinitions="*,*"
+                  Margin="16,8,16,12">
+
+                <!-- Ввод -->
+                <DockPanel Grid.Column="0" Margin="0,0,4,0">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Ввод (ReadLine):"
+                               FontSize="11" Foreground="#4C566A"
+                               Margin="0,0,0,3"/>
+                    <TextBox x:Name="StdinInput"
+                             AcceptsReturn="True"
+                             FontFamily="JetBrains Mono, Cascadia Code, Consolas, monospace"
+                             FontSize="11"
+                             Background="#2E3440"
+                             Foreground="#D8DEE9"
+                             CornerRadius="6"
+                             Padding="8,5"
+                             Watermark="по строке"
+                             MaxHeight="65"/>
+                </DockPanel>
+
+                <!-- Вывод -->
+                <DockPanel Grid.Column="1" Margin="4,0,0,0">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Вывод:"
+                               FontSize="11" Foreground="#4C566A"
+                               Margin="0,0,0,3"/>
+                    <Border Background="#2E3440"
+                            CornerRadius="6"
+                            Padding="8,5"
+                            MaxHeight="65">
+                        <ScrollViewer>
+                            <SelectableTextBlock x:Name="OutputText"
+                                       FontFamily="JetBrains Mono, Cascadia Code, Consolas, monospace"
+                                       FontSize="11"
+                                       Foreground="#A3BE8C"
+                                       TextWrapping="Wrap"
+                                       Text="..."/>
+                        </ScrollViewer>
+                    </Border>
+                </DockPanel>
+            </Grid>
+
+        </Grid>
+    </Grid>
+</Window>

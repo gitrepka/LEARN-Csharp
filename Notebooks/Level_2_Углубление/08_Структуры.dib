@@ -1,0 +1,330 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 08. Структуры (NEW TOPIC)
+## Уровень 2 | LEARN C#
+
+---
+
+### Что ты уже знаешь (Level 1)
+- Классы: поля, свойства, методы, конструкторы
+- Как создавать объекты через `new`
+
+---
+
+### Что нового?
+1. **Что такое `struct`** — и чем он отличается от `class`
+2. **Value type vs Reference type** — два мира в C#
+3. **Стек vs Куча** — где живут данные
+4. **Когда использовать struct, а когда class**
+5. **`readonly struct`** — неизменяемая структура
+
+В Godot: `Vector2`, `Vector3`, `Color` — это структуры!
+В Uno: `Point`, `Size`, `Thickness` — тоже структуры.
+
+#!markdown
+
+## 1. Что такое `struct`
+
+**Аналогия:**
+- **Класс** — это папка с документами. Ты передаёшь **ссылку** на папку (оба видят одну и ту же).
+- **Структура** — это фотография. Ты передаёшь **копию** (каждый имеет свой экземпляр).
+
+Структура выглядит почти как класс, но ведёт себя **совсем иначе**.
+
+#!csharp
+
+// Определение структуры — почти как класс, но struct
+struct Точка
+{
+    public double X;
+    public double Y;
+
+    // Конструктор — в struct тоже есть
+    public Точка(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    // Методы — тоже работают
+    public double РасстояниеДоНуля()
+    {
+        return Math.Sqrt(X * X + Y * Y);
+    }
+
+    public override string ToString()
+    {
+        return $"({X}, {Y})";
+    }
+}
+
+var точка = new Точка(3, 4);
+Console.WriteLine($"Точка: {точка}");
+Console.WriteLine($"Расстояние до (0,0): {точка.РасстояниеДоНуля()}"); // 5
+
+#!markdown
+
+## 2. Value Type vs Reference Type — главное отличие!
+
+Это **самое важное** в этом уроке. Запомни:
+- **struct** = Value Type (значимый тип) — хранит **данные напрямую**
+- **class** = Reference Type (ссылочный тип) — хранит **ссылку на данные**
+
+#!csharp
+
+// === СТРУКТУРА (Value Type) — копирование ===
+
+struct ТочкаStruct
+{
+    public int X, Y;
+    public ТочкаStruct(int x, int y) { X = x; Y = y; }
+    public override string ToString() => $"({X}, {Y})";
+}
+
+var a = new ТочкаStruct(1, 2);
+var b = a;      // КОПИРОВАНИЕ! b — это независимая копия
+
+b.X = 99;       // меняем только b
+
+Console.WriteLine($"a = {a}");  // (1, 2) — НЕ изменилось!
+Console.WriteLine($"b = {b}");  // (99, 2) — изменилось
+
+#!csharp
+
+// === КЛАСС (Reference Type) — ссылка ===
+
+class ТочкаClass
+{
+    public int X, Y;
+    public ТочкаClass(int x, int y) { X = x; Y = y; }
+    public override string ToString() => $"({X}, {Y})";
+}
+
+var a = new ТочкаClass(1, 2);
+var b = a;      // ССЫЛКА! b указывает на тот же объект, что и a
+
+b.X = 99;       // меняем через b — но это ТОТ ЖЕ объект!
+
+Console.WriteLine($"a = {a}");  // (99, 2) — ИЗМЕНИЛОСЬ! Потому что a и b — одно и то же
+Console.WriteLine($"b = {b}");  // (99, 2)
+
+Console.WriteLine($"a и b — один объект? {ReferenceEquals(a, b)}"); // True
+
+#!markdown
+
+## 3. Стек vs Куча (Stack vs Heap)
+
+**Аналогия:**
+- **Стек (Stack)** — стопка тарелок. Быстро положить/взять сверху. Маленький, но быстрый.
+- **Куча (Heap)** — большой склад. Больше места, но поиск медленнее.
+
+| | Value Type (struct) | Reference Type (class) |
+|---|---|---|
+| Где хранится | Стек (обычно) | Куча |
+| При присвоении | Копируется | Копируется ссылка |
+| При передаче в метод | Копия | Ссылка |
+| Может быть null | Нет (если не `?`) | Да |
+| По умолчанию | Все поля = 0/null/false | null |
+
+#!csharp
+
+// Визуализация разницы
+
+// Value Type (struct) — передача в метод = копия
+struct Размер
+{
+    public int Ширина, Высота;
+    public override string ToString() => $"{Ширина}x{Высота}";
+}
+
+void ИзменитьРазмер(Размер р) // получает КОПИЮ
+{
+    р.Ширина = 999;
+    Console.WriteLine($"  Внутри метода: {р}");
+}
+
+var окно = new Размер { Ширина = 800, Высота = 600 };
+Console.WriteLine($"До вызова:  {окно}");
+ИзменитьРазмер(окно);
+Console.WriteLine($"После:      {окно}"); // Не изменилось! (800x600)
+
+#!csharp
+
+// Reference Type (class) — передача в метод = ссылка на оригинал
+class ОкноClass
+{
+    public int Ширина, Высота;
+    public override string ToString() => $"{Ширина}x{Высота}";
+}
+
+void ИзменитьОкно(ОкноClass о) // получает ССЫЛКУ на оригинал
+{
+    о.Ширина = 999;
+    Console.WriteLine($"  Внутри метода: {о}");
+}
+
+var окно = new ОкноClass { Ширина = 800, Высота = 600 };
+Console.WriteLine($"До вызова:  {окно}");
+ИзменитьОкно(окно);
+Console.WriteLine($"После:      {окно}"); // ИЗМЕНИЛОСЬ! (999x600)
+
+#!markdown
+
+## 4. Когда использовать struct, а когда class
+
+### Используй `struct` когда:
+- Данные **маленькие** (до ~16 байт, 2-4 поля простых типов)
+- Объект **недолго живёт** (создаётся и быстро используется)
+- Данные **не изменяются** после создания (immutable)
+- Примеры: координаты, цвет, размер, вектор
+
+### Используй `class` когда:
+- Данные **большие** или **сложные**
+- Нужна **идентичность** (два объекта — один и тот же?)
+- Нужно **наследование**
+- Данные **часто меняются**
+- Примеры: игрок, враг, окно приложения, база данных
+
+#!csharp
+
+// Хорошие структуры — маленькие, неизменяемые данные
+
+struct Вектор2D
+{
+    public readonly double X;
+    public readonly double Y;
+
+    public Вектор2D(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    // Методы возвращают НОВУЮ структуру, а не изменяют текущую
+    public Вектор2D Сложить(Вектор2D другой)
+    {
+        return new Вектор2D(X + другой.X, Y + другой.Y);
+    }
+
+    public double Длина() => Math.Sqrt(X * X + Y * Y);
+
+    public override string ToString() => $"({X:F1}, {Y:F1})";
+}
+
+var позиция = new Вектор2D(3, 4);
+var скорость = new Вектор2D(1, -0.5);
+var новаяПозиция = позиция.Сложить(скорость);
+
+Console.WriteLine($"Позиция:       {позиция}");
+Console.WriteLine($"Скорость:      {скорость}");
+Console.WriteLine($"Новая позиция: {новаяПозиция}");
+Console.WriteLine($"Длина вектора: {позиция.Длина():F2}");
+
+// В Godot: Vector2, Vector3 работают точно так же!
+
+#!markdown
+
+## 5. `readonly struct` — гарантия неизменяемости
+
+`readonly struct` запрещает изменение любых полей после создания. Компилятор проверит за тебя.
+
+#!csharp
+
+// readonly struct — все поля должны быть readonly
+readonly struct Цвет
+{
+    public readonly byte R, G, B, A;
+
+    public Цвет(byte r, byte g, byte b, byte a = 255)
+    {
+        R = r; G = g; B = b; A = a;
+    }
+
+    // Предопределённые цвета — static readonly
+    public static readonly Цвет Красный = new Цвет(255, 0, 0);
+    public static readonly Цвет Зелёный = new Цвет(0, 255, 0);
+    public static readonly Цвет Синий   = new Цвет(0, 0, 255);
+    public static readonly Цвет Белый   = new Цвет(255, 255, 255);
+
+    public override string ToString() => $"rgba({R}, {G}, {B}, {A})";
+}
+
+var цвет = new Цвет(128, 64, 32);
+Console.WriteLine($"Цвет: {цвет}");
+
+// цвет.R = 200; // ОШИБКА! readonly — нельзя изменить
+
+Console.WriteLine($"Красный: {Цвет.Красный}");
+Console.WriteLine($"Зелёный: {Цвет.Зелёный}");
+
+#!csharp
+
+// Встроенные структуры в .NET
+// Все "простые" типы — это структуры!
+
+Console.WriteLine($"int — это struct:    {typeof(int).IsValueType}");      // True
+Console.WriteLine($"double — это struct: {typeof(double).IsValueType}");   // True
+Console.WriteLine($"bool — это struct:   {typeof(bool).IsValueType}");     // True
+Console.WriteLine($"char — это struct:   {typeof(char).IsValueType}");     // True
+Console.WriteLine($"DateTime — struct:   {typeof(DateTime).IsValueType}"); // True
+
+Console.WriteLine($"\nstring — это class:  {!typeof(string).IsValueType}");   // True
+Console.WriteLine($"object — это class:  {!typeof(object).IsValueType}");    // True
+Console.WriteLine($"int[] — это class:   {!typeof(int[]).IsValueType}");     // True
+
+#!markdown
+
+---
+
+## Упражнения
+
+### 🟢 Упражнение 1: Структура "Деньги"
+Создай `readonly struct Деньги`:
+- Поля: `Сумма` (decimal), `Валюта` (string)
+- Конструктор
+- Методы: `Сложить(Деньги другие)` — возвращает новые Деньги (только если валюта совпадает, иначе — выводит ошибку и возвращает текущие)
+- `ToString()` — "1 234.50 KZT"
+
+Создай 2 суммы в тенге, сложи их. Попробуй сложить тенге с долларами.
+
+#!csharp
+
+// Упражнение 1 — напиши код здесь
+
+
+#!markdown
+
+### 🟢 Упражнение 2: struct vs class — эксперимент
+1. Создай `struct ТочкаS { public int X, Y; }`
+2. Создай `class ТочкаC { public int X, Y; }`
+3. Для каждого:
+   - Создай переменную `a` = (5, 10)
+   - Присвой `b = a`
+   - Измени `b.X = 100`
+   - Выведи `a.X` и `b.X`
+4. Объясни (в комментарии), почему результаты отличаются.
+
+#!csharp
+
+// Упражнение 2 — напиши код здесь
+
+
+#!markdown
+
+---
+
+## ❓ Контрольные вопросы
+
+1. В чём главное отличие struct от class при присвоении `b = a`?
+2. Где хранятся структуры (обычно) — в стеке или куче?
+3. Может ли struct быть null? А если добавить `?`?
+4. Назови 3 встроенных типа C#, которые являются структурами.
+5. Когда лучше создать struct, а не class? Назови 2 критерия.
+
+---
+
+**Следующая тема:** [09. Перечисления](./09_Перечисления.dib)

@@ -1,0 +1,501 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 09. Исключения (Exceptions)
+**Уровень 3: ООП и коллекции**
+
+**Пререквизиты:** Уровни 1-2 пройдены, уроки 03-08 (ООП, коллекции)
+
+**Новая тема**
+
+---
+
+## Зачем это нужно?
+Программы ломаются. Пользователь вводит букву вместо числа. Файл не найден. Сервер не отвечает. Деление на ноль. Индекс за пределами массива.
+
+**Исключения** — это механизм C# для **контролируемой обработки ошибок**. Вместо того чтобы программа просто упала, ты можешь **поймать** ошибку и решить, что делать.
+
+Аналогия: **Страховка**. Ты не планируешь аварию, но если она случится — страховка (catch) покроет последствия. А `finally` — это как техосмотр: выполняется **всегда**, независимо от аварий.
+
+#!markdown
+
+## 1. try / catch / finally — основы
+
+#!csharp
+
+// Базовый try-catch
+Console.WriteLine("=== Деление чисел ===");
+
+try
+{
+    int a = 100;
+    int b = 0;
+    int result = a / b; // Это выбросит исключение!
+    Console.WriteLine($"Результат: {result}"); // Эта строка НЕ выполнится
+}
+catch (DivideByZeroException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+finally
+{
+    // finally ВСЕГДА выполняется — и при ошибке, и без
+    Console.WriteLine("Операция завершена (finally)");
+}
+
+Console.WriteLine("\nПрограмма продолжает работать!");
+
+#!csharp
+
+// try-catch с несколькими типами исключений
+void ProcessInput(string input)
+{
+    try
+    {
+        Console.WriteLine($"Обработка: '{input}'");
+
+        // Может выбросить FormatException
+        int number = int.Parse(input);
+
+        // Может выбросить DivideByZeroException
+        int result = 100 / number;
+
+        // Может выбросить IndexOutOfRangeException
+        int[] arr = { 1, 2, 3 };
+        Console.WriteLine($"arr[{number}] = {arr[number]}");
+
+        Console.WriteLine($"Всё ОК! Результат: {result}");
+    }
+    catch (FormatException)
+    {
+        Console.WriteLine($"  Ошибка формата: '{input}' — не число!");
+    }
+    catch (DivideByZeroException)
+    {
+        Console.WriteLine("  Ошибка: деление на ноль!");
+    }
+    catch (IndexOutOfRangeException ex)
+    {
+        Console.WriteLine($"  Ошибка индекса: {ex.Message}");
+    }
+    catch (Exception ex) // Ловит ВСЁ остальное (всегда в конце!)
+    {
+        Console.WriteLine($"  Неизвестная ошибка: {ex.Message}");
+    }
+    finally
+    {
+        Console.WriteLine("  ---");
+    }
+}
+
+ProcessInput("hello"); // FormatException
+ProcessInput("0");     // DivideByZeroException
+ProcessInput("5");     // IndexOutOfRangeException
+ProcessInput("2");     // OK!
+
+#!markdown
+
+## 2. Фильтры исключений (when)
+
+С C# 6 можно добавлять **условие** к catch-блоку.
+
+#!csharp
+
+// catch с фильтром when
+void MakeRequest(string url, int statusCode)
+{
+    try
+    {
+        if (statusCode >= 400)
+            throw new HttpRequestException($"HTTP {statusCode} от {url}");
+
+        Console.WriteLine($"Успех: {url}");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+    {
+        Console.WriteLine($"  Страница не найдена: {url}");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("500"))
+    {
+        Console.WriteLine($"  Сервер упал: {url}. Попробуем позже.");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+    {
+        Console.WriteLine($"  Доступ запрещён: {url}");
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.WriteLine($"  Другая HTTP ошибка: {ex.Message}");
+    }
+}
+
+MakeRequest("api.game.com/players", 200);
+MakeRequest("api.game.com/secret", 403);
+MakeRequest("api.game.com/missing", 404);
+MakeRequest("api.game.com/data", 500);
+MakeRequest("api.game.com/other", 418);
+
+#!markdown
+
+## 3. Иерархия исключений
+
+Все исключения наследуются от `System.Exception`. Знание иерархии помогает **ловить правильно**.
+
+```
+Exception
+├── SystemException
+│   ├── NullReferenceException    — обращение к null
+│   ├── IndexOutOfRangeException  — индекс за пределами
+│   ├── DivideByZeroException     — деление на ноль
+│   ├── InvalidOperationException — неверная операция
+│   ├── ArgumentException         — неверный аргумент
+│   │   ├── ArgumentNullException — аргумент null
+│   │   └── ArgumentOutOfRangeException — аргумент вне диапазона
+│   ├── FormatException           — неверный формат
+│   ├── OverflowException         — переполнение
+│   ├── InvalidCastException      — неверное приведение типа
+│   └── StackOverflowException    — переполнение стека
+├── IOException                    — ошибка ввода/вывода
+│   └── FileNotFoundException      — файл не найден
+└── ...
+```
+
+#!csharp
+
+// Демонстрация иерархии
+void ShowExceptionHierarchy(Exception ex)
+{
+    Console.Write($"  Тип: {ex.GetType().Name}");
+    var type = ex.GetType().BaseType;
+    while (type != null && type != typeof(object))
+    {
+        Console.Write($" → {type.Name}");
+        type = type.BaseType;
+    }
+    Console.WriteLine();
+}
+
+var exceptions = new Exception[]
+{
+    new ArgumentNullException("param"),
+    new ArgumentOutOfRangeException("index"),
+    new FileNotFoundException("save.dat"),
+    new DivideByZeroException(),
+    new FormatException("bad input"),
+};
+
+Console.WriteLine("=== Иерархия исключений ===");
+foreach (var ex in exceptions)
+{
+    ShowExceptionHierarchy(ex);
+}
+
+// Важно: catch ловит ВСЕ наследники!
+Console.WriteLine("\ncatch (ArgumentException) поймает и ArgumentNull, и ArgumentOutOfRange!");
+
+#!markdown
+
+## 4. Пользовательские исключения
+
+### Когда создавать?
+Когда стандартные исключения **не описывают** твою ошибку достаточно точно.
+
+#!csharp
+
+// Пользовательское исключение
+class InsufficientFundsException : Exception
+{
+    public decimal Balance { get; }
+    public decimal Amount { get; }
+
+    public InsufficientFundsException(decimal balance, decimal amount)
+        : base($"Недостаточно средств. Баланс: {balance:C}, запрошено: {amount:C}")
+    {
+        Balance = balance;
+        Amount = amount;
+    }
+}
+
+class InvalidLevelException : Exception
+{
+    public int Level { get; }
+    public int MaxLevel { get; }
+
+    public InvalidLevelException(int level, int maxLevel)
+        : base($"Уровень {level} недопустим. Максимум: {maxLevel}")
+    {
+        Level = level;
+        MaxLevel = maxLevel;
+    }
+}
+
+class GameAccount
+{
+    public string Player { get; }
+    public decimal Gold { get; private set; }
+    public int Level { get; private set; }
+    private const int MaxLevel = 50;
+
+    public GameAccount(string player, decimal gold)
+    {
+        Player = player;
+        Gold = gold;
+        Level = 1;
+    }
+
+    public void SpendGold(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), "Сумма должна быть положительной");
+        if (amount > Gold)
+            throw new InsufficientFundsException(Gold, amount);
+
+        Gold -= amount;
+        Console.WriteLine($"  {Player} потратил {amount:C}. Осталось: {Gold:C}");
+    }
+
+    public void SetLevel(int level)
+    {
+        if (level < 1 || level > MaxLevel)
+            throw new InvalidLevelException(level, MaxLevel);
+
+        Level = level;
+        Console.WriteLine($"  {Player} теперь уровень {Level}");
+    }
+}
+
+var account = new GameAccount("Герой", 100m);
+
+try
+{
+    account.SpendGold(50m);
+    account.SpendGold(200m); // Ошибка!
+}
+catch (InsufficientFundsException ex)
+{
+    Console.WriteLine($"  Ошибка: {ex.Message}");
+    Console.WriteLine($"  Не хватает: {ex.Amount - ex.Balance:C}");
+}
+
+try
+{
+    account.SetLevel(99); // Ошибка!
+}
+catch (InvalidLevelException ex)
+{
+    Console.WriteLine($"  Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+## 5. throw vs throw ex
+
+**Критически важная** разница!
+
+#!csharp
+
+void MethodA()
+{
+    throw new InvalidOperationException("Ошибка в MethodA");
+}
+
+// ПРАВИЛЬНО: throw — сохраняет полный стек вызовов
+void CorrectRethrow()
+{
+    try
+    {
+        MethodA();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Логируем ошибку...");
+        throw; // Пробрасываем дальше С СОХРАНЕНИЕМ стека!
+    }
+}
+
+// НЕПРАВИЛЬНО: throw ex — ТЕРЯЕТ стек вызовов
+void WrongRethrow()
+{
+    try
+    {
+        MethodA();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Логируем ошибку...");
+        throw ex; // ПЛОХО! Стек обрезается. Будет казаться что ошибка тут.
+    }
+}
+
+// Демонстрация
+Console.WriteLine("=== throw (правильно) ===");
+try
+{
+    CorrectRethrow();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Стек: {ex.StackTrace}");
+    Console.WriteLine("^ Видно что ошибка из MethodA!");
+}
+
+Console.WriteLine("\n=== throw ex (неправильно) ===");
+try
+{
+    WrongRethrow();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Стек: {ex.StackTrace}");
+    Console.WriteLine("^ Стек обрезан — MethodA не видно!");
+}
+
+#!markdown
+
+## 6. Guard Clauses — проверки на входе
+
+Современный подход: проверяй аргументы **в начале метода**, до основной логики. Это называется **guard clause** (защитное условие).
+
+#!csharp
+
+// Современные guard-методы (.NET 6+)
+
+void CreatePlayer(string name, int health, string[] items)
+{
+    // Guard clauses — проверки в самом начале
+    ArgumentNullException.ThrowIfNull(name);           // Выбросит если null
+    ArgumentNullException.ThrowIfNull(items);
+
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя не может быть пустым", nameof(name));
+
+    ArgumentOutOfRangeException.ThrowIfNegativeOrZero(health); // .NET 8+
+
+    // Если дошли сюда — все аргументы валидны
+    Console.WriteLine($"Создан игрок: {name}, HP: {health}, предметов: {items.Length}");
+}
+
+// Тестируем guard clauses
+var tests = new (string Name, int Health, string[] Items)[]
+{
+    (null, 100, new[] { "Меч" }),
+    ("Герой", -5, new[] { "Щит" }),
+    ("", 100, new[] { "Зелье" }),
+    ("Герой", 100, new[] { "Меч", "Щит" }),
+};
+
+foreach (var (name, health, items) in tests)
+{
+    try
+    {
+        CreatePlayer(name, health, items);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Ошибка: [{ex.GetType().Name}] {ex.Message}");
+    }
+}
+
+#!csharp
+
+// Паттерн: метод Try... — не бросает исключение, возвращает bool
+class SafeParser
+{
+    // Вместо исключения — возвращаем success/failure
+    public static bool TryParseAge(string input, out int age)
+    {
+        age = 0;
+
+        if (!int.TryParse(input, out age))
+            return false;
+
+        if (age < 0 || age > 150)
+        {
+            age = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool TryParseEmail(string input, out string email)
+    {
+        email = "";
+
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        if (!input.Contains('@') || !input.Contains('.'))
+            return false;
+
+        email = input.Trim().ToLower();
+        return true;
+    }
+}
+
+var inputs = new[] { "25", "abc", "-5", "200", "30" };
+foreach (var input in inputs)
+{
+    if (SafeParser.TryParseAge(input, out int age))
+        Console.WriteLine($"  '{input}' → возраст: {age}");
+    else
+        Console.WriteLine($"  '{input}' → неверный возраст");
+}
+
+Console.WriteLine();
+var emails = new[] { "user@mail.com", "bad-email", "test@example.org", "" };
+foreach (var input in emails)
+{
+    if (SafeParser.TryParseEmail(input, out string email))
+        Console.WriteLine($"  '{input}' → email: {email}");
+    else
+        Console.WriteLine($"  '{input}' → неверный email");
+}
+
+#!markdown
+
+## Правила работы с исключениями
+
+| Правило | Пояснение |
+|---------|----------|
+| Не ловить всё подряд | `catch (Exception)` — только на верхнем уровне |
+| Не глушить ошибки | `catch { }` — **никогда** так не делай! |
+| `throw`, не `throw ex` | Сохраняй стек вызовов |
+| Guard clauses | Проверяй аргументы в начале метода |
+| Try-паттерн | Для ожидаемых ошибок (парсинг, поиск) |
+| Пользовательские исключения | Когда стандартные не подходят |
+| finally для ресурсов | Или лучше `using` |
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай метод `int[] ParseNumbers(string[] inputs)` который:
+- Пытается преобразовать каждую строку в число через `int.TryParse`
+- Для неудачных преобразований — выводит предупреждение
+- Возвращает массив только успешно распарсенных чисел
+- Протестируй с входом: `["42", "hello", "13", "", "7", "abc", "99"]`
+
+### Упражнение 2 (🟢)
+Создай класс `BankAccount` с:
+- Свойства: `string Owner`, `decimal Balance`
+- Метод `Deposit(decimal amount)` — guard clause: ArgumentOutOfRangeException если amount <= 0
+- Метод `Withdraw(decimal amount)` — пользовательское исключение `InsufficientFundsException` если не хватает средств
+- Используй try/catch для тестирования: сделай несколько операций, поймай ошибки, выведи баланс в finally
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Для чего нужен блок `try/catch/finally`?
+2. В каком порядке нужно располагать catch-блоки? Почему?
+3. Для чего нужен `finally`?
+4. Чем `throw` отличается от `throw ex`?
+5. Что такое guard clause? Приведи пример.
+6. Когда стоит создавать пользовательское исключение?
+7. Что такое Try-паттерн (TryParse, TryGetValue)? Когда его использовать?
+

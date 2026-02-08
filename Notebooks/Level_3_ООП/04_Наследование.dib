@@ -1,0 +1,406 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 04. Наследование
+**Уровень 3: ООП и коллекции**
+
+**Пререквизиты:** Уровни 1-2 пройдены, урок 03 (классы продвинутый уровень)
+
+**Новая тема**
+
+---
+
+## Зачем это нужно?
+Представь, что ты делаешь игру. У тебя есть Воин, Маг и Лучник. У всех есть имя, здоровье, метод атаки. Но атакуют они **по-разному**. Копировать код во все три класса? Нет! Мы создадим **базовый класс** `Character` и **унаследуем** от него.
+
+Наследование — один из **трёх столпов ООП** (наследование, полиморфизм, инкапсуляция). Это механизм, когда один класс **получает** все поля и методы другого класса и может **добавить свои** или **изменить** существующие.
+
+Аналогия: **Биология**. Все млекопитающие дышат и двигаются (базовый класс). Кошка, собака, человек — наследники, у каждого свои особенности.
+
+#!markdown
+
+## 1. Базовый синтаксис наследования
+
+#!csharp
+
+// Базовый класс (родитель, суперкласс)
+class Character
+{
+    public string Name { get; }
+    public int Health { get; protected set; }  // protected — доступен наследникам
+
+    public Character(string name, int health)
+    {
+        Name = name;
+        Health = health;
+    }
+
+    public void TakeDamage(int amount)
+    {
+        Health -= amount;
+        if (Health < 0) Health = 0;
+        Console.WriteLine($"  {Name} получает {amount} урона. HP: {Health}");
+    }
+
+    public void ShowInfo()
+    {
+        Console.WriteLine($"{Name} — HP: {Health}");
+    }
+}
+
+// Наследник (дочерний класс, подкласс) — знак : означает наследование
+class Warrior : Character
+{
+    public int Armor { get; }
+
+    // base(...) — вызов конструктора РОДИТЕЛЯ
+    public Warrior(string name, int health, int armor) : base(name, health)
+    {
+        Armor = armor;
+    }
+
+    public void ShieldBash(Character target)
+    {
+        Console.WriteLine($"{Name} бьёт щитом!");
+        target.TakeDamage(Armor * 2);
+    }
+}
+
+class Mage : Character
+{
+    public int Mana { get; private set; }
+
+    public Mage(string name, int health, int mana) : base(name, health)
+    {
+        Mana = mana;
+    }
+
+    public void CastFireball(Character target)
+    {
+        if (Mana >= 20)
+        {
+            Mana -= 20;
+            Console.WriteLine($"{Name} кастует огненный шар! (Мана: {Mana})");
+            target.TakeDamage(40);
+        }
+        else
+            Console.WriteLine($"{Name}: недостаточно маны!");
+    }
+}
+
+// Используем
+var warrior = new Warrior("Артур", 150, 20);
+var mage = new Mage("Мерлин", 80, 100);
+
+warrior.ShowInfo();  // Метод из базового класса — работает!
+mage.ShowInfo();
+
+Console.WriteLine();
+mage.CastFireball(warrior);
+warrior.ShieldBash(mage);
+
+#!markdown
+
+## 2. virtual / override — переопределение методов
+
+### Зачем?
+Базовый класс может пометить метод как `virtual` — "наследники, вы можете **заменить** мою реализацию своей". Наследник использует `override` для замены.
+
+#!csharp
+
+class Animal
+{
+    public string Name { get; }
+
+    public Animal(string name) => Name = name;
+
+    // virtual — наследники МОГУТ переопределить
+    public virtual string MakeSound() => "...";
+
+    // virtual ToString уже есть в object, мы переопределяем
+    public override string ToString() => $"{Name} говорит: {MakeSound()}";
+}
+
+class Dog : Animal
+{
+    public Dog(string name) : base(name) { }
+
+    // override — ЗАМЕНЯЕМ реализацию родителя
+    public override string MakeSound() => "Гав!";
+}
+
+class Cat : Animal
+{
+    public Cat(string name) : base(name) { }
+
+    public override string MakeSound() => "Мяу!";
+}
+
+class Duck : Animal
+{
+    public Duck(string name) : base(name) { }
+
+    public override string MakeSound() => "Кря!";
+}
+
+// Важно: все они — Animal
+Animal[] animals = { new Dog("Бобик"), new Cat("Мурка"), new Duck("Дональд") };
+
+foreach (var animal in animals)
+{
+    Console.WriteLine(animal); // Вызывается ПЕРЕОПРЕДЕЛЁННЫЙ ToString() каждого типа
+}
+
+#!markdown
+
+## 3. Скрытие метода (new) vs Переопределение (override)
+
+### В чём разница?
+- `override` — **заменяет** метод родителя. Вызывается **правильная** версия даже через ссылку на базовый тип.
+- `new` — **скрывает** метод родителя. Какая версия вызовется — зависит от **типа переменной**, а не объекта.
+
+#!csharp
+
+class Base
+{
+    public virtual void Say() => Console.WriteLine("Я Base (virtual)");
+    public void Greet() => Console.WriteLine("Привет от Base");
+}
+
+class OverrideChild : Base
+{
+    public override void Say() => Console.WriteLine("Я OverrideChild (override)");
+}
+
+class NewChild : Base
+{
+    public new void Greet() => Console.WriteLine("Привет от NewChild (new)");
+}
+
+// override — всегда вызывается версия реального типа
+Base obj1 = new OverrideChild();
+obj1.Say(); // "Я OverrideChild (override)" — правильно!
+
+// new — вызывается версия типа ПЕРЕМЕННОЙ
+Base obj2 = new NewChild();
+obj2.Greet();    // "Привет от Base" — вызвалась версия Base!!
+
+NewChild obj3 = new NewChild();
+obj3.Greet();    // "Привет от NewChild" — а вот тут версия NewChild
+
+Console.WriteLine();
+Console.WriteLine("Правило: используй override, а не new. new — для редких случаев.");
+
+#!markdown
+
+## 4. sealed — запрет наследования
+
+#!csharp
+
+// sealed класс — от него НЕЛЬЗЯ наследоваться
+sealed class FinalBoss : Character
+{
+    public FinalBoss() : base("Финальный Босс", 9999) { }
+
+    public void UltimateAttack(Character target)
+    {
+        Console.WriteLine($"{Name} использует ультимативную атаку!");
+        target.TakeDamage(999);
+    }
+}
+
+// Это бы НЕ скомпилировалось:
+// class SuperBoss : FinalBoss { }  // ОШИБКА! FinalBoss — sealed
+
+// sealed метод — можно запечатать отдельный переопределённый метод
+class A
+{
+    public virtual void Do() => Console.WriteLine("A.Do");
+}
+
+class B : A
+{
+    public sealed override void Do() => Console.WriteLine("B.Do — дальше нельзя override");
+}
+
+// class C : B
+// {
+//     public override void Do() { }  // ОШИБКА! B.Do — sealed
+// }
+
+var boss = new FinalBoss();
+boss.ShowInfo();
+Console.WriteLine("sealed = запечатанный. Наследование запрещено.");
+
+#!markdown
+
+## 5. abstract — абстрактные классы и методы
+
+### Зачем?
+Иногда базовый класс **не должен создаваться** сам по себе. "Фигура" — это абстракция. Нельзя нарисовать "просто фигуру". Можно нарисовать круг, квадрат, треугольник.
+
+`abstract` класс — шаблон, от которого **нельзя создать экземпляр**. `abstract` метод — **заставляет** наследника реализовать метод.
+
+#!csharp
+
+// abstract класс — нельзя создать new Shape()
+abstract class Shape
+{
+    public string Color { get; }
+
+    protected Shape(string color) => Color = color;
+
+    // abstract метод — НЕТ тела! Наследник ОБЯЗАН реализовать
+    public abstract double Area();
+    public abstract double Perimeter();
+
+    // Обычный метод — наследники получают как есть
+    public void Describe()
+    {
+        Console.WriteLine($"{GetType().Name} ({Color}): S={Area():F2}, P={Perimeter():F2}");
+    }
+}
+
+class Circle : Shape
+{
+    public double Radius { get; }
+
+    public Circle(double radius, string color) : base(color)
+        => Radius = radius;
+
+    // ОБЯЗАНЫ реализовать абстрактные методы
+    public override double Area() => Math.PI * Radius * Radius;
+    public override double Perimeter() => 2 * Math.PI * Radius;
+}
+
+class Rectangle : Shape
+{
+    public double Width { get; }
+    public double Height { get; }
+
+    public Rectangle(double w, double h, string color) : base(color)
+    {
+        Width = w;
+        Height = h;
+    }
+
+    public override double Area() => Width * Height;
+    public override double Perimeter() => 2 * (Width + Height);
+}
+
+// Shape s = new Shape("red"); // ОШИБКА! abstract — нельзя создать
+
+Shape[] shapes =
+{
+    new Circle(5, "Красный"),
+    new Rectangle(4, 6, "Синий"),
+    new Circle(3, "Зелёный")
+};
+
+foreach (var shape in shapes)
+{
+    shape.Describe(); // Каждая фигура сама знает как вычислить S и P
+}
+
+#!markdown
+
+## 6. Класс object — корень всего
+
+### Факт
+**Все** классы в C# наследуются от `System.Object` (алиас `object`). Это значит, что у **любого** объекта есть методы:
+- `ToString()` — строковое представление
+- `Equals(object)` — сравнение
+- `GetHashCode()` — хеш-код (для Dictionary, HashSet)
+
+#!csharp
+
+class Student
+{
+    public string Name { get; }
+    public int Grade { get; }
+
+    public Student(string name, int grade)
+    {
+        Name = name;
+        Grade = grade;
+    }
+
+    // Переопределяем ToString — красивый вывод
+    public override string ToString() => $"{Name} (оценка: {Grade})";
+
+    // Переопределяем Equals — сравнение по значениям
+    public override bool Equals(object obj)
+    {
+        if (obj is Student other)
+            return Name == other.Name && Grade == other.Grade;
+        return false;
+    }
+
+    // Переопределяем GetHashCode — ОБЯЗАТЕЛЬНО если переопределяешь Equals
+    public override int GetHashCode() => HashCode.Combine(Name, Grade);
+}
+
+var s1 = new Student("Вася", 5);
+var s2 = new Student("Вася", 5);
+var s3 = new Student("Петя", 4);
+
+// ToString
+Console.WriteLine(s1);
+
+// Equals
+Console.WriteLine($"s1 == s2? {s1.Equals(s2)}"); // true — одинаковые данные
+Console.WriteLine($"s1 == s3? {s1.Equals(s3)}"); // false — разные данные
+
+// GetHashCode
+Console.WriteLine($"Hash s1: {s1.GetHashCode()}");
+Console.WriteLine($"Hash s2: {s2.GetHashCode()}"); // Должен совпадать с s1!
+Console.WriteLine($"Hash s3: {s3.GetHashCode()}"); // Другой
+
+#!markdown
+
+## Важные правила наследования
+
+| Правило | Описание |
+|---------|----------|
+| Одиночное наследование | Класс может наследоваться только от ОДНОГО класса |
+| `base` | Вызов конструктора или метода родителя |
+| `virtual` | "Наследники могут переопределить" |
+| `override` | "Я переопределяю метод родителя" |
+| `abstract` | "Наследники ОБЯЗАНЫ реализовать" |
+| `sealed` | "Наследование запрещено" |
+| `new` | "Я скрываю метод родителя" (избегай) |
+| `protected` | Доступен классу и его наследникам |
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай иерархию транспорта:
+- Абстрактный класс `Vehicle` с: `string Name`, `int Speed`, абстрактный метод `string Describe()`, обычный метод `void Move()` (выводит "[Name] движется со скоростью [Speed] км/ч")
+- Класс `Car : Vehicle` — добавь `int Doors`, реализуй `Describe()`
+- Класс `Bicycle : Vehicle` — добавь `bool HasGears`, реализуй `Describe()`
+- Создай массив `Vehicle[]` из 3 объектов и вызови `Move()` и `Describe()` для каждого
+
+### Упражнение 2 (🟢)
+Создай класс `Money` с полями `decimal Amount` и `string Currency`.
+- Переопредели `ToString()` чтобы выводило "100.00 USD"
+- Переопредели `Equals()` чтобы сравнивал по Amount и Currency
+- Переопредели `GetHashCode()`
+- Проверь: два объекта Money(100, "USD") должны быть Equals == true
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Что такое наследование? Зачем оно нужно?
+2. Для чего ключевое слово `base`?
+3. В чём разница между `virtual/override` и `new`?
+4. Что такое `abstract` класс? Можно ли создать его экземпляр?
+5. Что делает `sealed`?
+6. Почему при переопределении `Equals` нужно также переопределять `GetHashCode`?
+7. Сколько классов может наследовать один класс в C#?
+

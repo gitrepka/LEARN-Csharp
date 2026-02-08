@@ -1,0 +1,514 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Pattern Matching — сопоставление с образцом
+
+> **Уровень:** 4 (Продвинутый C#)
+> **Предыдущая тема:** 06_Async
+> **Следующая тема:** 08_Файлы
+> **Статус:** ★ НОВАЯ ТЕМА
+
+---
+
+## Что ты уже знаешь
+- `if/else`, `switch` — базовые конструкции ветвления
+- Оператор `is` для проверки типа: `if (obj is string)`
+- Приведение типов: `(int)obj`, `obj as string`
+- Кортежи (tuples): `(int x, int y)`
+
+Pattern matching — это **эволюция** ветвления. Вместо цепочек `if/else` — элегантные, читаемые выражения.
+
+---
+
+## Зачем это нужно?
+
+Pattern matching убирает тонны шаблонного кода. Сравни:
+
+```csharp
+// БЕЗ pattern matching (старый стиль)
+if (shape is Circle)
+{
+    var circle = (Circle)shape;
+    return Math.PI * circle.Radius * circle.Radius;
+}
+else if (shape is Rectangle)
+{
+    var rect = (Rectangle)shape;
+    return rect.Width * rect.Height;
+}
+
+// С pattern matching
+return shape switch
+{
+    Circle c => Math.PI * c.Radius * c.Radius,
+    Rectangle r => r.Width * r.Height,
+    _ => 0
+};
+```
+
+В **Godot:** обработка столкновений с разными типами нодов.
+В **Uno Platform:** маршрутизация, конвертеры значений.
+
+---
+
+## 1. Type Patterns — проверка и приведение типа
+
+#!csharp
+
+// Иерархия типов для примеров
+public abstract class Shape
+{
+    public string Color { get; init; } = "Чёрный";
+}
+public class Circle : Shape
+{
+    public double Radius { get; init; }
+}
+public class Rectangle : Shape
+{
+    public double Width { get; init; }
+    public double Height { get; init; }
+}
+public class Triangle : Shape
+{
+    public double A { get; init; }
+    public double B { get; init; }
+    public double C { get; init; }
+}
+
+// Type pattern с is — проверяет тип И объявляет переменную
+static string Describe(Shape shape)
+{
+    if (shape is Circle circle)
+        return $"Круг с радиусом {circle.Radius}";
+
+    if (shape is Rectangle rect)
+        return $"Прямоугольник {rect.Width}x{rect.Height}";
+
+    if (shape is Triangle tri)
+        return $"Треугольник со сторонами {tri.A}, {tri.B}, {tri.C}";
+
+    return "Неизвестная фигура";
+}
+
+Shape[] shapes = {
+    new Circle { Radius = 5 },
+    new Rectangle { Width = 3, Height = 4 },
+    new Triangle { A = 3, B = 4, C = 5 }
+};
+
+foreach (var shape in shapes)
+    Console.WriteLine(Describe(shape));
+
+#!markdown
+
+## 2. Constant Patterns и Null-проверки
+
+#!csharp
+
+// Constant pattern — сравнение с конкретным значением
+static string ClassifyNumber(object value)
+{
+    if (value is null) return "null";
+    if (value is 0) return "ноль";
+    if (value is 42) return "ответ на всё";
+    if (value is "hello") return "приветствие";
+    if (value is int n) return $"целое число: {n}";
+    if (value is double d) return $"дробное: {d}";
+    return $"что-то другое: {value}";
+}
+
+Console.WriteLine(ClassifyNumber(null));     // null
+Console.WriteLine(ClassifyNumber(0));        // ноль
+Console.WriteLine(ClassifyNumber(42));       // ответ на всё
+Console.WriteLine(ClassifyNumber(7));        // целое число: 7
+Console.WriteLine(ClassifyNumber(3.14));     // дробное: 3.14
+Console.WriteLine(ClassifyNumber("hello"));  // приветствие
+
+// is not null — удобная проверка на не-null
+string name = "Артас";
+if (name is not null)
+    Console.WriteLine($"Имя: {name}");
+
+#!markdown
+
+## 3. Relational Patterns — сравнения (`>`, `<`, `>=`, `<=`)
+
+#!csharp
+
+// Relational patterns — сравниваем значение с константами
+static string GetGrade(int score) => score switch
+{
+    >= 90 => "Отлично (A)",
+    >= 80 => "Хорошо (B)",
+    >= 70 => "Удовлетворительно (C)",
+    >= 60 => "Посредственно (D)",
+    _     => "Неудовлетворительно (F)"
+};
+
+Console.WriteLine($"95: {GetGrade(95)}");
+Console.WriteLine($"82: {GetGrade(82)}");
+Console.WriteLine($"45: {GetGrade(45)}");
+
+// Комбинирование с and — диапазоны
+static string ClassifyTemp(double temp) => temp switch
+{
+    < -30 => "Экстремальный мороз",
+    >= -30 and < 0 => "Мороз",
+    >= 0 and < 15 => "Прохладно",
+    >= 15 and < 25 => "Комфортно",
+    >= 25 and < 35 => "Жарко",
+    _ => "Пекло!"
+};
+
+Console.WriteLine($"\n-40°C: {ClassifyTemp(-40)}");
+Console.WriteLine($"5°C: {ClassifyTemp(5)}");
+Console.WriteLine($"22°C: {ClassifyTemp(22)}");
+Console.WriteLine($"38°C: {ClassifyTemp(38)}");
+
+#!markdown
+
+## 4. Logical Patterns — `and`, `or`, `not`
+
+#!csharp
+
+// Логические комбинации
+static string ClassifyAge(int age) => age switch
+{
+    < 0 or > 150 => "Невозможный возраст",
+    0 => "Новорождённый",
+    >= 1 and <= 3 => "Малыш",
+    >= 4 and <= 12 => "Ребёнок",
+    >= 13 and <= 17 => "Подросток",
+    >= 18 and <= 64 => "Взрослый",
+    _ => "Пожилой"
+};
+
+foreach (int age in new[] { -1, 0, 2, 8, 15, 30, 70, 200 })
+    Console.WriteLine($"  Возраст {age}: {ClassifyAge(age)}");
+
+// not pattern — отрицание
+static bool IsValid(string? input) => input is not (null or "");
+// Эквивалент: !string.IsNullOrEmpty(input)
+
+Console.WriteLine($"\nIsValid(null): {IsValid(null)}");
+Console.WriteLine($"IsValid(\"\"): {IsValid("")}");
+Console.WriteLine($"IsValid(\"ok\"): {IsValid("ok")}");
+
+#!markdown
+
+## 5. Property Patterns — проверка свойств объекта
+
+Самый мощный вид паттернов. Позволяет проверять **значения свойств** объекта.
+
+#!csharp
+
+// Property pattern — проверяем значения свойств
+static double CalculateArea(Shape shape) => shape switch
+{
+    Circle { Radius: 0 } => 0,
+    Circle { Radius: var r } => Math.PI * r * r,
+    Rectangle { Width: var w, Height: var h } => w * h,
+    Triangle { A: var a, B: var b, C: var c } =>
+    {
+        // Формула Герона
+        var s = (a + b + c) / 2;
+        return Math.Sqrt(s * (s - a) * (s - b) * (s - c));
+    },
+    _ => 0
+};
+
+Console.WriteLine($"Круг (r=5): {CalculateArea(new Circle { Radius = 5 }):F2}");
+Console.WriteLine($"Прямоугольник (3x4): {CalculateArea(new Rectangle { Width = 3, Height = 4 }):F2}");
+Console.WriteLine($"Треугольник (3,4,5): {CalculateArea(new Triangle { A = 3, B = 4, C = 5 }):F2}");
+
+#!csharp
+
+// Property patterns — вложенные проверки
+public record Address(string City, string Country);
+public record Person(string Name, int Age, Address Address);
+
+static decimal CalculateTax(Person person) => person switch
+{
+    { Age: < 18 } => 0m,
+    { Address.Country: "Россия", Age: >= 65 } => 0.05m,
+    { Address.Country: "Россия" } => 0.13m,
+    { Address.Country: "США" } => 0.25m,
+    { Address.Country: "ОАЭ" } => 0m,
+    _ => 0.20m
+};
+
+var people = new Person[]
+{
+    new("Иван", 30, new Address("Москва", "Россия")),
+    new("Анна", 15, new Address("Питер", "Россия")),
+    new("Борис", 70, new Address("Казань", "Россия")),
+    new("Джон", 40, new Address("NYC", "США")),
+    new("Ахмед", 35, new Address("Дубай", "ОАЭ")),
+};
+
+Console.WriteLine("Налоговые ставки:");
+foreach (var p in people)
+    Console.WriteLine($"  {p.Name} ({p.Age}, {p.Address.Country}): {CalculateTax(p) * 100}%");
+
+#!markdown
+
+## 6. Positional Patterns — деконструкция
+
+Работает с типами, у которых есть `Deconstruct` (записи record, кортежи).
+
+#!csharp
+
+// Positional pattern с кортежами
+static string GetQuadrant((double x, double y) point) => point switch
+{
+    (0, 0) => "Начало координат",
+    (> 0, > 0) => "I четверть",
+    (< 0, > 0) => "II четверть",
+    (< 0, < 0) => "III четверть",
+    (> 0, < 0) => "IV четверть",
+    (0, _) => "На оси Y",
+    (_, 0) => "На оси X",
+};
+
+var points = new[] { (0.0, 0.0), (3.0, 5.0), (-2.0, 4.0), (-1.0, -3.0), (0.0, 7.0) };
+foreach (var p in points)
+    Console.WriteLine($"  ({p.Item1}, {p.Item2}): {GetQuadrant(p)}");
+
+#!csharp
+
+// Positional pattern с record (record автоматически имеет Deconstruct)
+public record GameEvent(string Type, string Target, int Damage);
+
+static string HandleEvent(GameEvent e) => e switch
+{
+    ("attack", _, > 100)              => "Критический удар!",
+    ("attack", "boss", _)             => "Бой с боссом!",
+    ("attack", var target, var dmg)   => $"Атака {target}: {dmg} урона",
+    ("heal", var target, var amount)  => $"Лечение {target}: +{amount} HP",
+    ("death", var who, _)             => $"{who} погиб!",
+    (var type, _, _)                  => $"Неизвестное событие: {type}"
+};
+
+var events = new GameEvent[]
+{
+    new("attack", "goblin", 35),
+    new("attack", "boss", 80),
+    new("attack", "dragon", 150),
+    new("heal", "player", 50),
+    new("death", "goblin", 0),
+};
+
+Console.WriteLine("Лог событий:");
+foreach (var e in events)
+    Console.WriteLine($"  {HandleEvent(e)}");
+
+#!markdown
+
+## 7. List Patterns (.NET 7+) — проверка элементов коллекции
+
+#!csharp
+
+// List patterns — проверяем содержимое массива
+static string DescribeArray(int[] arr) => arr switch
+{
+    [] => "Пустой массив",
+    [var single] => $"Один элемент: {single}",
+    [var first, var second] => $"Пара: ({first}, {second})",
+    [1, 2, 3] => "Счёт: 1, 2, 3!",
+    [0, .., 0] => "Начинается и заканчивается нулём",
+    [var first, .., var last] => $"От {first} до {last} ({arr.Length} элементов)",
+};
+
+Console.WriteLine(DescribeArray(Array.Empty<int>()));
+Console.WriteLine(DescribeArray(new[] { 42 }));
+Console.WriteLine(DescribeArray(new[] { 10, 20 }));
+Console.WriteLine(DescribeArray(new[] { 1, 2, 3 }));
+Console.WriteLine(DescribeArray(new[] { 0, 5, 6, 7, 0 }));
+Console.WriteLine(DescribeArray(new[] { 100, 200, 300, 400, 500 }));
+
+#!csharp
+
+// Практический пример: парсинг команд
+static string ParseCommand(string input)
+{
+    var parts = input.Split(' ');
+    return parts switch
+    {
+        ["quit" or "exit"] => "Выход из игры",
+        ["help"] => "Показать справку",
+        ["move", var direction] => $"Движение: {direction}",
+        ["attack", var target] => $"Атака цели: {target}",
+        ["attack", var target, "with", var weapon] =>
+            $"Атака {target} оружием {weapon}",
+        ["give", var item, "to", var npc] =>
+            $"Передать {item} персонажу {npc}",
+        ["use", var item, "on", var target] =>
+            $"Использовать {item} на {target}",
+        [var cmd, ..] => $"Неизвестная команда: {cmd}",
+        [] => "Пустая команда"
+    };
+}
+
+var commands = new[]
+{
+    "quit", "help", "move north", "attack goblin",
+    "attack dragon with fire_sword",
+    "give potion to merchant",
+    "use key on door",
+    "dance"
+};
+
+Console.WriteLine("Парсинг команд:");
+foreach (var cmd in commands)
+    Console.WriteLine($"  \"{cmd}\" => {ParseCommand(cmd)}");
+
+#!markdown
+
+## 8. Switch Expression — всё вместе
+
+#!csharp
+
+// Комплексный пример: система скидок
+public record Customer(string Name, string Tier, int OrderCount, decimal TotalSpent);
+
+static (decimal discountPercent, string reason) GetDiscount(Customer customer) => customer switch
+{
+    { Tier: "VIP", TotalSpent: > 100_000m }
+        => (0.25m, "VIP + крупный покупатель"),
+
+    { Tier: "VIP" }
+        => (0.15m, "VIP-клиент"),
+
+    { OrderCount: > 50, TotalSpent: > 50_000m }
+        => (0.12m, "Лояльный клиент"),
+
+    { OrderCount: > 20 }
+        => (0.08m, "Постоянный клиент"),
+
+    { Tier: not "Новичок", OrderCount: > 5 }
+        => (0.05m, "Активный клиент"),
+
+    _ => (0m, "Без скидки")
+};
+
+var customers = new Customer[]
+{
+    new("Анна", "VIP", 100, 200_000m),
+    new("Борис", "VIP", 10, 30_000m),
+    new("Виктор", "Постоянный", 60, 80_000m),
+    new("Галина", "Постоянный", 25, 15_000m),
+    new("Денис", "Обычный", 8, 5_000m),
+    new("Елена", "Новичок", 2, 500m),
+};
+
+Console.WriteLine("Система скидок:");
+foreach (var c in customers)
+{
+    var (discount, reason) = GetDiscount(c);
+    Console.WriteLine($"  {c.Name} ({c.Tier}): {discount * 100}% — {reason}");
+}
+
+#!csharp
+
+// Pattern matching с when-условиями
+public record Order(string Product, int Quantity, decimal UnitPrice, bool IsExpress);
+
+static decimal CalculateShipping(Order order) => order switch
+{
+    { IsExpress: true } when order.Quantity * order.UnitPrice > 5000m
+        => 0m, // Бесплатная экспресс-доставка для дорогих заказов
+
+    { IsExpress: true }
+        => 500m, // Экспресс
+
+    _ when order.Quantity * order.UnitPrice > 3000m
+        => 0m, // Бесплатная обычная доставка
+
+    { Quantity: <= 2 }
+        => 200m, // Маленький заказ
+
+    _ => 350m // Обычная доставка
+};
+
+var orders = new Order[]
+{
+    new("Ноутбук", 1, 80_000m, true),
+    new("Наушники", 1, 3_000m, true),
+    new("Книги", 5, 1_000m, false),
+    new("Ручка", 2, 50m, false),
+};
+
+Console.WriteLine("\nРасчёт доставки:");
+foreach (var o in orders)
+{
+    var total = o.Quantity * o.UnitPrice;
+    var shipping = CalculateShipping(o);
+    Console.WriteLine($"  {o.Product} ({total:N0} руб, Express={o.IsExpress}): доставка {shipping:N0} руб");
+}
+
+#!markdown
+
+---
+
+## 🟢 Упражнение 1: Калькулятор фигур
+
+Создай иерархию фигур и используй pattern matching:
+
+1. Создай типы: `Circle(double Radius)`, `Rectangle(double Width, double Height)`, `Triangle(double Base, double Height)`, `RegularPolygon(int Sides, double SideLength)`
+2. Метод `CalculateArea` — через switch expression с property patterns
+3. Метод `Classify` — возвращает строку:
+   - Круг с радиусом > 10 -> "Большой круг"
+   - Прямоугольник с Width == Height -> "Квадрат"
+   - Треугольник с Base == Height -> "Равнобедренный треугольник" (условно)
+   - Полигон с Sides == 6 -> "Гексагон"
+   - Любая фигура с площадью > 100 -> "Крупная фигура"
+   - Всё остальное -> описание по умолчанию
+
+Используй when-условия и вложенные property patterns.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 🟢 Упражнение 2: Парсер конфигурации
+
+Создай систему, которая обрабатывает конфигурационные значения:
+
+```csharp
+record ConfigValue(string Key, object Value);
+```
+
+Используй pattern matching для:
+1. Валидации: `("port", int p) when p > 0 and p < 65536` -> OK
+2. Преобразования: `("debug", string s)` -> преобразовать "true"/"yes"/"1" в bool
+3. Списочные значения: `("hosts", string s)` -> разбить по запятым, проверить list pattern для результата
+4. Значения по умолчанию для неизвестных ключей
+
+Метод `ProcessConfig(ConfigValue[] values)` обрабатывает массив и возвращает результат для каждого значения.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+
+## ❓ Контрольные вопросы
+
+1. Чем switch expression (`=>`) отличается от switch statement (`case:`)? Когда что использовать?
+2. Что делает `_` (discard) в switch expression?
+3. Как работает property pattern `{ Prop: value }`? Можно ли проверять вложенные свойства?
+4. В чём разница между `is null` и `== null`? (Подсказка: перегрузка `==`)
+5. Что означает `..` в list pattern? Приведи пример.
+6. Можно ли совмещать type pattern и property pattern в одном case?
+
+---
+
+> **Следующая тема:** 08_Файлы.dib — работа с файлами и JSON

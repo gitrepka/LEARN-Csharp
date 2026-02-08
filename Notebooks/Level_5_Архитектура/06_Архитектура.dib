@@ -1,0 +1,807 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# 06. Архитектура приложений
+## Уровень 5: Архитектура и мастерство
+
+**Что это:** Архитектура — это структура приложения "в большом". Если SOLID — это правила для отдельных классов, то архитектура — это правила для целого проекта: как организованы слои, кто от кого зависит, как данные текут.
+
+**Зачем это нужно:**
+- Проект на 1000 строк можно написать как угодно. Проект на 50000 строк без архитектуры — хаос.
+- Разные части можно разрабатывать и тестировать независимо
+- Новый разработчик быстро разберётся в проекте
+- В Uno: MVVM — стандарт для UI-приложений
+- В Godot: разделение логики, данных и представления
+
+---
+
+### Содержание:
+1. MVVM (Model-View-ViewModel)
+2. INotifyPropertyChanged
+3. Commands (ICommand)
+4. Clean Architecture
+5. Repository Pattern
+6. CQRS (краткое знакомство)
+
+#!markdown
+
+## 1. MVVM — Model-View-ViewModel
+
+MVVM разделяет приложение на три слоя:
+
+- **Model** — данные и бизнес-логика (не знает про UI)
+- **View** — то, что видит пользователь (XAML, HTML, Godot-нода)
+- **ViewModel** — посредник. Адаптирует Model для View
+
+Аналогия: Ресторан.
+- **Model** = кухня (готовит еду, не знает про посетителей)
+- **View** = зал (столы, тарелки — то, что видит гость)
+- **ViewModel** = официант (берёт заказ у гостя, передаёт на кухню, приносит еду)
+
+Главное правило: **View знает о ViewModel, ViewModel знает о Model, но НЕ наоборот!**
+
+#!csharp
+
+// === Model — чистые данные и логика ===
+
+public class TodoItem
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public bool IsCompleted { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+    public override string ToString() =>
+        $"[{(IsCompleted ? "x" : " ")}] {Title} (создано: {CreatedAt:HH:mm})";
+}
+
+// Сервис — бизнес-логика (тоже часть Model)
+public class TodoService
+{
+    private readonly List<TodoItem> _items = new();
+    private int _nextId = 1;
+
+    public IReadOnlyList<TodoItem> GetAll() => _items.AsReadOnly();
+
+    public TodoItem Add(string title)
+    {
+        var item = new TodoItem { Id = _nextId++, Title = title };
+        _items.Add(item);
+        return item;
+    }
+
+    public bool ToggleComplete(int id)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        if (item == null) return false;
+        item.IsCompleted = !item.IsCompleted;
+        return true;
+    }
+
+    public bool Remove(int id)
+    {
+        var item = _items.FirstOrDefault(i => i.Id == id);
+        return item != null && _items.Remove(item);
+    }
+
+    public int CompletedCount => _items.Count(i => i.IsCompleted);
+    public int TotalCount => _items.Count;
+}
+
+Console.WriteLine("=== Model (данные) ===");
+var service = new TodoService();
+service.Add("Изучить MVVM");
+service.Add("Написать приложение");
+service.Add("Сделать рефакторинг");
+
+foreach (var item in service.GetAll())
+    Console.WriteLine(item);
+
+Console.WriteLine($"\nВсего: {service.TotalCount}, Выполнено: {service.CompletedCount}");
+
+#!markdown
+
+## 2. INotifyPropertyChanged — уведомление View об изменениях
+
+Когда ViewModel меняет свойство, View должно об этом узнать и обновить UI. Для этого существует `INotifyPropertyChanged`.
+
+#!csharp
+
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+// === Базовый класс для всех ViewModel ===
+
+public abstract class ViewModelBase : INotifyPropertyChanged
+{
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    // Вспомогательный метод: устанавливает значение и уведомляет, если оно изменилось
+    protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+            return false;
+
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
+}
+
+// === ViewModel для списка задач ===
+
+public class TodoViewModel : ViewModelBase
+{
+    private readonly TodoService _service = new();
+
+    private string _newItemTitle = "";
+    public string NewItemTitle
+    {
+        get => _newItemTitle;
+        set => SetProperty(ref _newItemTitle, value);
+    }
+
+    private string _statusText = "";
+    public string StatusText
+    {
+        get => _statusText;
+        set => SetProperty(ref _statusText, value);
+    }
+
+    public List<TodoItem> Items => _service.GetAll().ToList();
+
+    public void AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(NewItemTitle))
+        {
+            StatusText = "Введите название задачи!";
+            return;
+        }
+
+        _service.Add(NewItemTitle);
+        NewItemTitle = ""; // Очищаем поле ввода
+        UpdateStatus();
+        OnPropertyChanged(nameof(Items)); // Уведомляем, что список изменился
+    }
+
+    public void ToggleItem(int id)
+    {
+        _service.ToggleComplete(id);
+        UpdateStatus();
+        OnPropertyChanged(nameof(Items));
+    }
+
+    public void RemoveItem(int id)
+    {
+        _service.Remove(id);
+        UpdateStatus();
+        OnPropertyChanged(nameof(Items));
+    }
+
+    private void UpdateStatus()
+    {
+        StatusText = $"Задач: {_service.TotalCount}, Выполнено: {_service.CompletedCount}";
+    }
+}
+
+// Симуляция "View" (в реальности это XAML в Uno)
+Console.WriteLine("=== ViewModel (MVVM) ===\n");
+
+var vm = new TodoViewModel();
+
+// "View" подписывается на изменения
+vm.PropertyChanged += (sender, e) =>
+{
+    Console.WriteLine($"  [View уведомлён] Свойство '{e.PropertyName}' изменилось");
+};
+
+// Пользователь вводит текст
+vm.NewItemTitle = "Изучить MVVM";
+vm.AddItem();
+
+vm.NewItemTitle = "Написать приложение";
+vm.AddItem();
+
+vm.NewItemTitle = "Тесты";
+vm.AddItem();
+
+Console.WriteLine($"\nСтатус: {vm.StatusText}");
+Console.WriteLine("Задачи:");
+foreach (var item in vm.Items)
+    Console.WriteLine($"  {item}");
+
+// Отмечаем задачу
+Console.WriteLine("\nОтмечаем задачу 1...");
+vm.ToggleItem(1);
+Console.WriteLine($"Статус: {vm.StatusText}");
+
+#!markdown
+
+## 3. Commands (ICommand) — действия в MVVM
+
+В MVVM кнопки не вызывают методы напрямую. Вместо этого они привязываются к **командам** — объектам, реализующим `ICommand`.
+
+#!csharp
+
+using System.Windows.Input;
+
+// === RelayCommand — универсальная реализация ICommand ===
+
+public class RelayCommand : ICommand
+{
+    private readonly Action _execute;
+    private readonly Func<bool>? _canExecute;
+
+    public RelayCommand(Action execute, Func<bool>? canExecute = null)
+    {
+        _execute = execute;
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
+    public void Execute(object? parameter) => _execute();
+
+    public event EventHandler? CanExecuteChanged;
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
+public class RelayCommand<T> : ICommand
+{
+    private readonly Action<T?> _execute;
+    private readonly Func<T?, bool>? _canExecute;
+
+    public RelayCommand(Action<T?> execute, Func<T?, bool>? canExecute = null)
+    {
+        _execute = execute;
+        _canExecute = canExecute;
+    }
+
+    public bool CanExecute(object? parameter) => _canExecute?.Invoke((T?)parameter) ?? true;
+    public void Execute(object? parameter) => _execute((T?)parameter);
+
+    public event EventHandler? CanExecuteChanged;
+    public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+}
+
+// === ViewModel с командами ===
+
+public class TodoViewModelWithCommands : ViewModelBase
+{
+    private readonly TodoService _service = new();
+
+    private string _newItemTitle = "";
+    public string NewItemTitle
+    {
+        get => _newItemTitle;
+        set
+        {
+            SetProperty(ref _newItemTitle, value);
+            _addCommand.RaiseCanExecuteChanged(); // Обновляем доступность кнопки
+        }
+    }
+
+    public string StatusText => $"Задач: {_service.TotalCount}, Выполнено: {_service.CompletedCount}";
+    public List<TodoItem> Items => _service.GetAll().ToList();
+
+    // Команды
+    private readonly RelayCommand _addCommand;
+    public ICommand AddCommand => _addCommand;
+    public ICommand ToggleCommand { get; }
+    public ICommand RemoveCommand { get; }
+
+    public TodoViewModelWithCommands()
+    {
+        _addCommand = new RelayCommand(
+            execute: () =>
+            {
+                _service.Add(NewItemTitle);
+                NewItemTitle = "";
+                RefreshAll();
+            },
+            canExecute: () => !string.IsNullOrWhiteSpace(NewItemTitle)
+        );
+
+        ToggleCommand = new RelayCommand<int>(
+            execute: id => { if (id.HasValue) { _service.ToggleComplete(id.Value); RefreshAll(); } }
+        );
+
+        RemoveCommand = new RelayCommand<int>(
+            execute: id => { if (id.HasValue) { _service.Remove(id.Value); RefreshAll(); } }
+        );
+    }
+
+    private void RefreshAll()
+    {
+        OnPropertyChanged(nameof(Items));
+        OnPropertyChanged(nameof(StatusText));
+    }
+}
+
+// Демонстрация
+Console.WriteLine("=== Commands в MVVM ===\n");
+
+var vm = new TodoViewModelWithCommands();
+
+// Проверяем CanExecute
+Console.WriteLine($"Можно добавить (пустой ввод)? {vm.AddCommand.CanExecute(null)}"); // false
+
+vm.NewItemTitle = "Задача 1";
+Console.WriteLine($"Можно добавить (есть текст)? {vm.AddCommand.CanExecute(null)}"); // true
+
+vm.AddCommand.Execute(null);
+vm.NewItemTitle = "Задача 2";
+vm.AddCommand.Execute(null);
+vm.NewItemTitle = "Задача 3";
+vm.AddCommand.Execute(null);
+
+Console.WriteLine($"\n{vm.StatusText}");
+foreach (var item in vm.Items)
+    Console.WriteLine($"  {item}");
+
+vm.ToggleCommand.Execute(1);
+vm.RemoveCommand.Execute(3);
+
+Console.WriteLine($"\nПосле изменений: {vm.StatusText}");
+foreach (var item in vm.Items)
+    Console.WriteLine($"  {item}");
+
+#!markdown
+
+## 4. Clean Architecture — слоистая архитектура
+
+Clean Architecture (Чистая архитектура Роберта Мартина) делит код на слои, где **зависимости направлены внутрь**:
+
+```
+┌─────────────────────────────┐
+│   Presentation (UI, API)    │  <- Зависит от Application
+│   ┌─────────────────────┐   │
+│   │   Infrastructure    │   │  <- Зависит от Application
+│   │   ┌─────────────┐   │   │
+│   │   │ Application  │   │   │  <- Зависит только от Domain
+│   │   │ ┌─────────┐ │   │   │
+│   │   │ │ Domain  │ │   │   │  <- Не зависит ни от кого!
+│   │   │ └─────────┘ │   │   │
+│   │   └─────────────┘   │   │
+│   └─────────────────────┘   │
+└─────────────────────────────┘
+```
+
+#!csharp
+
+// === Clean Architecture — пример структуры ===
+
+// ╔════════════════════╗
+// ║   DOMAIN (ядро)    ║ — Сущности и интерфейсы
+// ╚════════════════════╝
+
+// Сущность (Entity) — чистая бизнес-логика
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+
+    public bool IsInStock => Stock > 0;
+    public bool CanApplyDiscount(decimal percent) => percent >= 0 && percent <= 50;
+}
+
+// Интерфейс репозитория (определён в Domain, реализован в Infrastructure)
+public interface IProductRepository
+{
+    Task<Product?> GetByIdAsync(int id);
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task AddAsync(Product product);
+    Task UpdateAsync(Product product);
+    Task DeleteAsync(int id);
+}
+
+// Интерфейс для уведомлений
+public interface INotificationService
+{
+    Task NotifyAsync(string message);
+}
+
+Console.WriteLine("Domain слой: сущности и интерфейсы (без зависимостей)");
+
+#!csharp
+
+// ╔════════════════════════╗
+// ║   APPLICATION (логика) ║ — Use Cases, зависит только от Domain
+// ╚════════════════════════╝
+
+// Use Case — конкретный сценарий использования
+public class CreateProductUseCase
+{
+    private readonly IProductRepository _repository;
+    private readonly INotificationService _notifications;
+
+    public CreateProductUseCase(IProductRepository repository, INotificationService notifications)
+    {
+        _repository = repository;
+        _notifications = notifications;
+    }
+
+    public async Task<Product> ExecuteAsync(string name, decimal price, int stock)
+    {
+        // Валидация
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Имя продукта не может быть пустым");
+        if (price <= 0)
+            throw new ArgumentException("Цена должна быть положительной");
+
+        var product = new Product { Name = name, Price = price, Stock = stock };
+        await _repository.AddAsync(product);
+        await _notifications.NotifyAsync($"Новый продукт: {name}");
+
+        return product;
+    }
+}
+
+public class GetAllProductsUseCase
+{
+    private readonly IProductRepository _repository;
+
+    public GetAllProductsUseCase(IProductRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<IEnumerable<Product>> ExecuteAsync()
+    {
+        return await _repository.GetAllAsync();
+    }
+}
+
+Console.WriteLine("Application слой: Use Cases (бизнес-логика, зависит от Domain)");
+
+#!csharp
+
+// ╔══════════════════════════════╗
+// ║   INFRASTRUCTURE (внешнее)  ║ — Реализации интерфейсов из Domain
+// ╚══════════════════════════════╝
+
+// In-Memory реализация репозитория (в реальности — база данных)
+public class InMemoryProductRepository : IProductRepository
+{
+    private readonly List<Product> _products = new();
+    private int _nextId = 1;
+
+    public Task<Product?> GetByIdAsync(int id) =>
+        Task.FromResult(_products.FirstOrDefault(p => p.Id == id));
+
+    public Task<IEnumerable<Product>> GetAllAsync() =>
+        Task.FromResult<IEnumerable<Product>>(_products.ToList());
+
+    public Task AddAsync(Product product)
+    {
+        product.Id = _nextId++;
+        _products.Add(product);
+        Console.WriteLine($"  [DB] Сохранён: {product.Name}");
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Product product)
+    {
+        Console.WriteLine($"  [DB] Обновлён: {product.Name}");
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(int id)
+    {
+        _products.RemoveAll(p => p.Id == id);
+        Console.WriteLine($"  [DB] Удалён: #{id}");
+        return Task.CompletedTask;
+    }
+}
+
+public class ConsoleNotificationService : INotificationService
+{
+    public Task NotifyAsync(string message)
+    {
+        Console.WriteLine($"  [Уведомление] {message}");
+        return Task.CompletedTask;
+    }
+}
+
+// ╔═══════════════════════════╗
+// ║   PRESENTATION (UI/API)   ║ — Собирает всё вместе
+// ╚═══════════════════════════╝
+
+Console.WriteLine("=== Clean Architecture в действии ===\n");
+
+// Composition Root — здесь создаём все зависимости
+IProductRepository repository = new InMemoryProductRepository();
+INotificationService notifications = new ConsoleNotificationService();
+
+var createProduct = new CreateProductUseCase(repository, notifications);
+var getAllProducts = new GetAllProductsUseCase(repository);
+
+// Используем Use Cases
+await createProduct.ExecuteAsync("Ноутбук", 1200, 10);
+await createProduct.ExecuteAsync("Мышка", 50, 100);
+await createProduct.ExecuteAsync("Клавиатура", 80, 50);
+
+Console.WriteLine("\nВсе продукты:");
+foreach (var p in await getAllProducts.ExecuteAsync())
+{
+    Console.WriteLine($"  #{p.Id} {p.Name}: {p.Price:C} (в наличии: {p.Stock})");
+}
+
+#!markdown
+
+## 5. Repository Pattern
+
+Паттерн **Repository** — это абстракция доступа к данным. Приложение не знает, откуда приходят данные (база, файл, API) — оно работает через интерфейс.
+
+Мы уже видели `IProductRepository` выше. Давай посмотрим обобщённый (generic) вариант.
+
+#!csharp
+
+// === Generic Repository ===
+
+public interface IRepository<T> where T : class
+{
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(Func<T, bool> predicate);
+    Task AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task<int> CountAsync();
+}
+
+// In-Memory реализация (базовая)
+public class InMemoryRepository<T> : IRepository<T> where T : class
+{
+    protected readonly List<T> _items = new();
+    private readonly Func<T, int> _getId;
+    private readonly Action<T, int> _setId;
+    private int _nextId = 1;
+
+    public InMemoryRepository(Func<T, int> getId, Action<T, int> setId)
+    {
+        _getId = getId;
+        _setId = setId;
+    }
+
+    public Task<T?> GetByIdAsync(int id) =>
+        Task.FromResult(_items.FirstOrDefault(i => _getId(i) == id));
+
+    public Task<IEnumerable<T>> GetAllAsync() =>
+        Task.FromResult<IEnumerable<T>>(_items.ToList());
+
+    public Task<IEnumerable<T>> FindAsync(Func<T, bool> predicate) =>
+        Task.FromResult(_items.Where(predicate));
+
+    public Task AddAsync(T entity)
+    {
+        _setId(entity, _nextId++);
+        _items.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(T entity) => Task.CompletedTask;
+
+    public Task DeleteAsync(int id)
+    {
+        _items.RemoveAll(i => _getId(i) == id);
+        return Task.CompletedTask;
+    }
+
+    public Task<int> CountAsync() => Task.FromResult(_items.Count);
+}
+
+// Использование
+public class GameScore
+{
+    public int Id { get; set; }
+    public string PlayerName { get; set; } = "";
+    public int Score { get; set; }
+    public DateTime Date { get; set; } = DateTime.Now;
+}
+
+var scoreRepo = new InMemoryRepository<GameScore>(
+    getId: s => s.Id,
+    setId: (s, id) => s.Id = id
+);
+
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Алексей", Score = 1500 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Мария", Score = 2200 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Алексей", Score = 1800 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Иван", Score = 900 });
+
+Console.WriteLine("=== Generic Repository ===\n");
+Console.WriteLine($"Всего записей: {await scoreRepo.CountAsync()}");
+
+Console.WriteLine("\nТоп результаты Алексея:");
+var alexScores = await scoreRepo.FindAsync(s => s.PlayerName == "Алексей");
+foreach (var s in alexScores.OrderByDescending(s => s.Score))
+    Console.WriteLine($"  {s.PlayerName}: {s.Score}");
+
+Console.WriteLine("\nВсе результаты:");
+foreach (var s in (await scoreRepo.GetAllAsync()).OrderByDescending(s => s.Score))
+    Console.WriteLine($"  {s.PlayerName}: {s.Score} ({s.Date:HH:mm:ss})");
+
+#!markdown
+
+## 6. CQRS — Command Query Responsibility Segregation
+
+**CQRS** разделяет операции **чтения** (Query) и **записи** (Command) в разные модели. Это не паттерн для каждого проекта, но полезно знать концепцию.
+
+**Аналогия:** В банке есть отдельные окна: "Приём документов" (команды) и "Справки/выписки" (запросы). Каждое окно оптимизировано под свою задачу.
+
+#!csharp
+
+// === Простой пример CQRS ===
+
+// Команды (записи) — меняют состояние
+public interface ICommandHandler<TCommand>
+{
+    Task HandleAsync(TCommand command);
+}
+
+// Запросы (чтения) — не меняют состояние, возвращают данные
+public interface IQueryHandler<TQuery, TResult>
+{
+    Task<TResult> HandleAsync(TQuery query);
+}
+
+// --- Команды ---
+public record CreatePlayerCommand(string Name, string Class);
+public record UpdateHealthCommand(int PlayerId, int NewHealth);
+
+// --- Запросы ---
+public record GetPlayerQuery(int Id);
+public record GetLeaderboardQuery(int Top);
+
+// --- Модель данных ---
+public class PlayerRecord
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Class { get; set; } = "";
+    public int Health { get; set; } = 100;
+}
+
+// --- Общее хранилище (упрощённо) ---
+public static class PlayerStore
+{
+    public static List<PlayerRecord> Players { get; } = new();
+    public static int NextId { get; set; } = 1;
+}
+
+// --- Обработчики команд ---
+public class CreatePlayerHandler : ICommandHandler<CreatePlayerCommand>
+{
+    public Task HandleAsync(CreatePlayerCommand cmd)
+    {
+        var player = new PlayerRecord
+        {
+            Id = PlayerStore.NextId++,
+            Name = cmd.Name,
+            Class = cmd.Class
+        };
+        PlayerStore.Players.Add(player);
+        Console.WriteLine($"  [CMD] Создан игрок: {player.Name} ({player.Class})");
+        return Task.CompletedTask;
+    }
+}
+
+public class UpdateHealthHandler : ICommandHandler<UpdateHealthCommand>
+{
+    public Task HandleAsync(UpdateHealthCommand cmd)
+    {
+        var player = PlayerStore.Players.FirstOrDefault(p => p.Id == cmd.PlayerId);
+        if (player != null)
+        {
+            player.Health = cmd.NewHealth;
+            Console.WriteLine($"  [CMD] Здоровье {player.Name}: {player.Health}");
+        }
+        return Task.CompletedTask;
+    }
+}
+
+// --- Обработчики запросов ---
+public class GetPlayerHandler : IQueryHandler<GetPlayerQuery, PlayerRecord?>
+{
+    public Task<PlayerRecord?> HandleAsync(GetPlayerQuery query)
+    {
+        return Task.FromResult(PlayerStore.Players.FirstOrDefault(p => p.Id == query.Id));
+    }
+}
+
+public class GetLeaderboardHandler : IQueryHandler<GetLeaderboardQuery, List<PlayerRecord>>
+{
+    public Task<List<PlayerRecord>> HandleAsync(GetLeaderboardQuery query)
+    {
+        var result = PlayerStore.Players
+            .OrderByDescending(p => p.Health)
+            .Take(query.Top)
+            .ToList();
+        return Task.FromResult(result);
+    }
+}
+
+// === Использование ===
+Console.WriteLine("=== CQRS — разделение команд и запросов ===\n");
+
+var createHandler = new CreatePlayerHandler();
+var healthHandler = new UpdateHealthHandler();
+var getPlayer = new GetPlayerHandler();
+var leaderboard = new GetLeaderboardHandler();
+
+// Команды (изменяют состояние)
+await createHandler.HandleAsync(new CreatePlayerCommand("Аратор", "Воин"));
+await createHandler.HandleAsync(new CreatePlayerCommand("Элара", "Маг"));
+await createHandler.HandleAsync(new CreatePlayerCommand("Торин", "Гном"));
+
+await healthHandler.HandleAsync(new UpdateHealthCommand(1, 85));
+await healthHandler.HandleAsync(new UpdateHealthCommand(2, 60));
+
+// Запросы (читают состояние)
+Console.WriteLine("\nЗапрос конкретного игрока:");
+var player = await getPlayer.HandleAsync(new GetPlayerQuery(1));
+Console.WriteLine($"  {player?.Name} ({player?.Class}), HP: {player?.Health}");
+
+Console.WriteLine("\nТаблица лидеров:");
+var leaders = await leaderboard.HandleAsync(new GetLeaderboardQuery(3));
+foreach (var p in leaders)
+    Console.WriteLine($"  {p.Name}: HP {p.Health}");
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (MVVM: счётчик)
+
+Создай простое MVVM-приложение "Счётчик":
+- **Model:** класс `Counter` с полем `Value` и методами `Increment()`, `Decrement()`, `Reset()`
+- **ViewModel:** класс `CounterViewModel` с:
+  - Свойством `CountText` (строка "Счёт: 42")
+  - Командами `IncrementCommand`, `DecrementCommand`, `ResetCommand`
+  - `DecrementCommand` недоступна, когда Value <= 0
+- **"View":** симуляция через Console.WriteLine — подпишись на `PropertyChanged` и выводи изменения
+
+#!csharp
+
+// Упражнение 1: MVVM счётчик
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (Clean Architecture: система заметок)
+
+Спроектируй систему заметок по Clean Architecture:
+- **Domain:** сущность `Note` (Id, Title, Content, CreatedAt, Tags), интерфейс `INoteRepository`
+- **Application:** Use Case-ы: `CreateNote`, `GetAllNotes`, `SearchByTag`
+- **Infrastructure:** `InMemoryNoteRepository`
+- Продемонстрируй работу: создай 5 заметок с тегами, найди все по тегу "csharp"
+
+#!csharp
+
+// Упражнение 2: Система заметок по Clean Architecture
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Объясни MVVM своими словами. Почему View не должен знать о Model напрямую?
+2. Зачем нужен `INotifyPropertyChanged`? Что будет, если не уведомлять View об изменениях?
+3. Чем `ICommand` лучше, чем просто вызов метода из View?
+4. Нарисуй (или опиши словами) направление зависимостей в Clean Architecture. Что от чего зависит?
+5. Зачем нужен Repository Pattern? Почему не обращаться к базе данных напрямую?
+6. Когда CQRS оправдан, а когда это излишнее усложнение?
