@@ -1,0 +1,168 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Лямбда-выражения и замыкания
+> **Уровень:** 4 — Продвинутый | **Тема:** Методы (2/3)
+> **Предыдущий:** [Делегаты](01_Делегаты.dib) | **Следующий:** [События](03_События.dib)
+---
+
+## Что ты уже знаешь
+- Делегаты, `Action`, `Func`, `Predicate`
+- Как передавать методы как параметры
+- Multicast-делегаты
+
+Теперь ты узнаешь про **анонимные методы** — лямбды — и про **замыкания** (closures).
+
+---
+
+## 1. Лямбда-выражения
+
+Лямбда — это **анонимный метод** (метод без имени). Вместо объявления отдельного метода пишем его прямо на месте.
+
+#!csharp
+
+// Эволюция синтаксиса:
+
+// 1. Обычный метод
+static bool IsPositive(int n) => n > 0;
+
+// 2. Анонимный метод (старый стиль, C# 2.0)
+Predicate<int> isPositiveOld = delegate(int n) { return n > 0; };
+
+// 3. Лямбда-выражение (expression lambda)
+Predicate<int> isPositiveLambda = n => n > 0;
+
+// 4. Лямбда-блок (statement lambda) — для многострочной логики
+Predicate<int> isPositiveBlock = n =>
+{
+    Console.WriteLine($"Проверяю {n}...");
+    return n > 0;
+};
+
+// Все работают одинаково
+Console.WriteLine($"IsPositive(5) = {IsPositive(5)}");
+Console.WriteLine($"Lambda(5) = {isPositiveLambda(5)}");
+isPositiveBlock(-3); // С выводом
+
+#!csharp
+
+// Лямбды в действии — обработка коллекций
+var names = new List<string> { "Алиса", "Боб", "Виктория", "Ге", "Дмитрий" };
+
+// Фильтрация: имена длиннее 3 символов
+var longNames = names.FindAll(name => name.Length > 3);
+Console.WriteLine($"Длинные имена: {string.Join(", ", longNames)}");
+
+// Сортировка: по длине имени
+names.Sort((a, b) => a.Length.CompareTo(b.Length));
+Console.WriteLine($"По длине: {string.Join(", ", names)}");
+
+// ForEach с лямбдой
+Console.Write("Приветствия: ");
+names.ForEach(name => Console.Write($"Привет {name}! "));
+Console.WriteLine();
+
+// Преобразование: имена в верхний регистр
+var upperNames = names.ConvertAll(name => name.ToUpper());
+Console.WriteLine($"CAPS: {string.Join(", ", upperNames)}");
+
+#!markdown
+
+## 2. Замыкания (Closures)
+
+**Замыкание** — когда лямбда "захватывает" переменную из внешней области видимости.
+
+**Аналогия:** Лямбда — как фото. Замыкание — как видеозвонок: оно "помнит" переменную и видит её **текущее** значение.
+
+#!csharp
+
+// Замыкание — лямбда захватывает внешнюю переменную
+int counter = 0;
+Action increment = () => counter++; // Захватывает counter!
+
+increment();
+increment();
+increment();
+Console.WriteLine($"counter = {counter}"); // 3! Лямбда изменяет ОРИГИНАЛ
+
+// Фабрика функций через замыкания
+static Func<int, int> CreateMultiplier(int factor)
+{
+    // factor "замкнут" — живёт дольше, чем метод CreateMultiplier
+    return x => x * factor;
+}
+
+var double_it = CreateMultiplier(2);
+var triple = CreateMultiplier(3);
+Console.WriteLine($"double(5) = {double_it(5)}"); // 10
+Console.WriteLine($"triple(5) = {triple(5)}");   // 15
+
+#!markdown
+
+## 3. Ловушка замыканий в циклах
+
+**Это частая ошибка!** Замыкание захватывает **переменную**, а не **значение**.
+
+#!csharp
+
+// ЛОВУШКА: замыкание захватывает ПЕРЕМЕННУЮ, а не ЗНАЧЕНИЕ!
+var actions = new List<Action>();
+for (int i = 0; i < 5; i++)
+{
+    actions.Add(() => Console.Write($"{i} ")); // Захватывает i
+}
+Console.Write("Ловушка: ");
+actions.ForEach(a => a()); // 5 5 5 5 5 — все видят финальное i=5!
+Console.WriteLine();
+
+// Исправление: локальная копия
+var fixedActions = new List<Action>();
+for (int i = 0; i < 5; i++)
+{
+    int local = i; // Копия!
+    fixedActions.Add(() => Console.Write($"{local} "));
+}
+Console.Write("Исправлено: ");
+fixedActions.ForEach(a => a()); // 0 1 2 3 4
+Console.WriteLine();
+
+#!markdown
+
+---
+
+## Упражнение: Наблюдаемое свойство
+
+Создай обобщённый класс `ObservableProperty<T>`:
+- Свойство `Value` — при изменении вызывает делегат `Changed`
+- Поле `Changed` типа `Action<T, T>` (oldValue, newValue)
+- Не вызывает Changed, если новое значение равно старому
+
+Пример:
+```csharp
+var score = new ObservableProperty<int>(0);
+score.Changed += (oldVal, newVal) => Console.WriteLine($"Score: {oldVal} -> {newVal}");
+score.Value = 10;  // Score: 0 -> 10
+score.Value = 10;  // (ничего — значение не изменилось)
+score.Value = 25;  // Score: 10 -> 25
+```
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем expression lambda (`n => n > 0`) отличается от statement lambda (`n => { return n > 0; }`)?
+2. Что такое замыкание? Почему в цикле `for` лямбда может захватить "не то" значение?
+3. Как исправить ловушку замыканий в цикле?
+
+---
+
+> **Следующий:** [События](03_События.dib) — events, publisher/subscriber, EventArgs

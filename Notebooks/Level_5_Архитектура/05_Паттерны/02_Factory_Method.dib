@@ -1,0 +1,127 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Factory Method — создание объектов без жёсткой привязки
+> **Уровень:** 5 — Архитектура | **Тема:** Паттерны (2/8)
+> **Предыдущий:** [Singleton](01_Singleton.dib) | **Следующий:** [Strategy](03_Strategy.dib)
+---
+
+**Когда нужен:** Когда тип создаваемого объекта зависит от условий, и ты хочешь вынести логику создания в отдельное место.
+
+**Аналогия:** Пиццерия. Ты говоришь "Маргарита" — и получаешь готовую пиццу. Тебе не нужно знать рецепт.
+
+#!csharp
+
+// === Factory Method ===
+
+public abstract class Enemy
+{
+    public string Name { get; protected set; } = "";
+    public int Health { get; protected set; }
+    public int Damage { get; protected set; }
+
+    public abstract void Attack();
+
+    public override string ToString() => $"{Name} (HP:{Health}, DMG:{Damage})";
+}
+
+public class Goblin : Enemy
+{
+    public Goblin()
+    {
+        Name = "Гоблин";
+        Health = 30;
+        Damage = 5;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} кусает! (-{Damage})");
+}
+
+public class Skeleton : Enemy
+{
+    public Skeleton()
+    {
+        Name = "Скелет";
+        Health = 50;
+        Damage = 10;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} бьёт мечом! (-{Damage})");
+}
+
+public class Dragon : Enemy
+{
+    public Dragon()
+    {
+        Name = "Дракон";
+        Health = 200;
+        Damage = 50;
+    }
+    public override void Attack() => Console.WriteLine($"{Name} дышит огнём! (-{Damage})");
+}
+
+// Фабрика
+public static class EnemyFactory
+{
+    public static Enemy Create(string type) => type.ToLower() switch
+    {
+        "goblin" => new Goblin(),
+        "skeleton" => new Skeleton(),
+        "dragon" => new Dragon(),
+        _ => throw new ArgumentException($"Неизвестный тип: {type}")
+    };
+
+    // Фабрика с параметрами (уровень сложности)
+    public static Enemy CreateForLevel(int level)
+    {
+        if (level < 5) return new Goblin();
+        if (level < 10) return new Skeleton();
+        return new Dragon();
+    }
+}
+
+// Использование — код не зависит от конкретных классов врагов
+Console.WriteLine("=== Factory Method ===");
+Enemy e1 = EnemyFactory.Create("goblin");
+Enemy e2 = EnemyFactory.Create("dragon");
+Console.WriteLine(e1);
+Console.WriteLine(e2);
+
+Console.WriteLine("\n=== Фабрика по уровню ===");
+for (int level = 1; level <= 15; level += 3)
+{
+    Enemy enemy = EnemyFactory.CreateForLevel(level);
+    Console.WriteLine($"Уровень {level}: {enemy}");
+}
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Фабрика предметов)
+
+Создай фабрику для игровых предметов:
+- Базовый класс `Item` с Name, Weight, Value
+- Подклассы: `Potion`, `Weapon`, `Armor`, `Key`
+- `ItemFactory.Create(string type)` — создаёт предмет
+- `ItemFactory.CreateLoot(int enemyLevel)` — генерирует случайный лут в зависимости от уровня
+
+#!csharp
+
+// Упражнение 1: Фабрика предметов
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем Factory Method отличается от просто `new Goblin()`? Какое преимущество?
+2. Когда фабрика оправдана, а когда это overkill?
+
+---
+> **Предыдущий:** [Singleton](01_Singleton.dib) | **Следующий:** [Strategy](03_Strategy.dib)

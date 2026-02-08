@@ -1,0 +1,401 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Инкапсуляция
+> **Уровень:** 3 — ООП | **Тема:** Инкапсуляция (1/1)
+> **Предыдущий:** [Полиморфизм](../05_Полиморфизм/01_Полиморфизм.dib) | **Следующий:** [Основы интерфейсов](../07_Интерфейсы/01_Основы_интерфейсов.dib)
+---
+
+**Новая тема**
+
+## Зачем это нужно?
+Инкапсуляция — третий столп ООП. Идея: **спрятать внутренности** объекта и дать доступ только через **контролируемый интерфейс**.
+
+Аналогия: **Банкомат**. Ты не лезешь рукой в хранилище за деньгами. Ты вводишь PIN, нажимаешь кнопку "Снять 1000 руб." — и банкомат **сам** проверяет баланс, выдаёт купюры, записывает транзакцию. Внутренности спрятаны, наружу торчат только кнопки.
+
+Зачем прятать?
+- **Защита данных** — нельзя установить возраст -5 или здоровье 999999
+- **Контролируемый доступ** — можно добавить валидацию, логирование
+- **Свобода менять реализацию** — внешний код не зависит от внутренностей
+
+#!markdown
+
+## 1. Private поля + Public свойства с валидацией
+
+### Базовый паттерн
+Поле — `private`. Доступ — через свойство с проверкой.
+
+#!csharp
+
+class Player
+{
+    // Приватные поля — НИКТО снаружи не имеет прямого доступа
+    private string _name;
+    private int _health;
+    private int _maxHealth;
+    private int _level;
+
+    // Публичные свойства — контролируемый доступ
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Имя не может быть пустым!");
+            _name = value.Trim();
+        }
+    }
+
+    public int Health
+    {
+        get => _health;
+        private set // private set — изменять может только сам класс!
+        {
+            _health = Math.Clamp(value, 0, _maxHealth); // Гарантируем 0..maxHealth
+        }
+    }
+
+    public int MaxHealth => _maxHealth; // Только чтение
+
+    public int Level
+    {
+        get => _level;
+        private set
+        {
+            if (value < 1) throw new ArgumentException("Уровень не может быть < 1");
+            _level = value;
+        }
+    }
+
+    public bool IsAlive => Health > 0;
+
+    public Player(string name, int maxHealth)
+    {
+        Name = name; // Используем свойство — валидация сработает!
+        _maxHealth = maxHealth > 0 ? maxHealth : 100;
+        Health = _maxHealth;
+        Level = 1;
+    }
+
+    // Публичные методы — безопасный интерфейс
+    public void TakeDamage(int amount)
+    {
+        if (amount < 0) return; // Защита от отрицательного урона
+        Health -= amount;
+        Console.WriteLine($"  {Name} получает {amount} урона -> HP: {Health}/{MaxHealth}");
+    }
+
+    public void Heal(int amount)
+    {
+        if (amount < 0) return;
+        Health += amount;
+        Console.WriteLine($"  {Name} исцеляется на {amount} -> HP: {Health}/{MaxHealth}");
+    }
+
+    public void LevelUp()
+    {
+        Level++;
+        _maxHealth += 10;
+        Health = _maxHealth; // Полное восстановление
+        Console.WriteLine($"  {Name} повысил уровень до {Level}! MaxHP: {MaxHealth}");
+    }
+
+    public override string ToString() => $"{Name} [Lvl {Level}] HP: {Health}/{MaxHealth}";
+}
+
+var player = new Player("  Герой  ", 100); // Пробелы обрежутся
+Console.WriteLine(player);
+
+player.TakeDamage(30);
+player.TakeDamage(-999); // Ничего не произойдёт — защита!
+player.Heal(15);
+player.LevelUp();
+
+// player.Health = 9999;  // ОШИБКА — private set
+// player._health = 9999; // ОШИБКА — private поле
+
+#!markdown
+
+## 2. init-only vs set vs private set
+
+Три уровня "разрешённости" для свойств. Каждый ограничивает **когда** и **кто** может менять значение.
+
+#!csharp
+
+class Example
+{
+    // set — ЛЮБОЙ может менять В ЛЮБОЕ ВРЕМЯ
+    public string PublicMutable { get; set; } = "Можно менять всем и всегда";
+
+    // private set — ТОЛЬКО сам класс может менять
+    public string PrivateMutable { get; private set; } = "Менять может только класс";
+
+    // init — можно задать ТОЛЬКО при создании (конструктор или инициализатор)
+    public string InitOnly { get; init; } = "Задать только при создании";
+
+    // get — только чтение (задаётся в конструкторе через backing field)
+    public string ReadOnly { get; }
+
+    public Example(string readOnly)
+    {
+        ReadOnly = readOnly;
+    }
+
+    public void InternalChange()
+    {
+        PublicMutable = "Изменено изнутри";  // OK
+        PrivateMutable = "Изменено изнутри"; // OK — мы внутри класса
+        // InitOnly = "Нет";                 // ОШИБКА — даже изнутри нельзя после создания!
+    }
+}
+
+var ex = new Example("Неизменяемое")
+{
+    PublicMutable = "Заданное",
+    InitOnly = "Заданное при создании"
+};
+
+Console.WriteLine($"set:         {ex.PublicMutable}");
+Console.WriteLine($"private set: {ex.PrivateMutable}");
+Console.WriteLine($"init:        {ex.InitOnly}");
+Console.WriteLine($"get only:    {ex.ReadOnly}");
+
+ex.PublicMutable = "Изменено снаружи";  // OK
+// ex.PrivateMutable = "Нет";           // ОШИБКА — private set
+// ex.InitOnly = "Нет";                 // ОШИБКА — init only
+// ex.ReadOnly = "Нет";                 // ОШИБКА — нет set вообще
+
+Console.WriteLine($"\nПосле изменения: {ex.PublicMutable}");
+
+#!markdown
+
+### Таблица сравнения
+
+| Модификатор | Кто может задать | Когда можно менять |
+|-------------|------------------|--------------------|
+| `{ get; set; }` | Кто угодно | Когда угодно |
+| `{ get; private set; }` | Только сам класс | В любое время, но только изнутри |
+| `{ get; protected set; }` | Класс и наследники | В любое время, но только изнутри/из наследника |
+| `{ get; init; }` | Кто угодно | Только при создании объекта |
+| `{ get; }` | Только конструктор | Только в конструкторе |
+
+#!markdown
+
+## 3. readonly поля
+
+### Зачем?
+`readonly` поле можно задать **только в конструкторе**. После этого — неизменяемо. Отличие от `const`: `readonly` определяется **в runtime**, а `const` — **в compile time**.
+
+#!csharp
+
+class GameConfig
+{
+    // const — значение ФИКСИРОВАНО на этапе компиляции
+    public const double Gravity = 9.81;
+    public const string GameName = "Roguelike Survivor";
+
+    // readonly — значение задаётся в конструкторе (в runtime)
+    public readonly DateTime CreatedAt;
+    public readonly int Seed;
+    public readonly string Difficulty;
+
+    public GameConfig(string difficulty)
+    {
+        CreatedAt = DateTime.Now;       // Определяется при запуске
+        Seed = new Random().Next(9999); // Случайное значение
+        Difficulty = difficulty;
+
+        // Можно задать в конструкторе
+    }
+
+    public void ShowConfig()
+    {
+        Console.WriteLine($"Игра: {GameName}");
+        Console.WriteLine($"Гравитация: {Gravity}");
+        Console.WriteLine($"Создано: {CreatedAt}");
+        Console.WriteLine($"Сид: {Seed}");
+        Console.WriteLine($"Сложность: {Difficulty}");
+
+        // Нельзя менять после конструктора:
+        // Seed = 42;          // ОШИБКА — readonly
+        // Difficulty = "Easy"; // ОШИБКА — readonly
+    }
+}
+
+var config = new GameConfig("Хардкор");
+config.ShowConfig();
+
+// const доступен без создания объекта
+Console.WriteLine($"\n{GameConfig.GameName}, гравитация = {GameConfig.Gravity}");
+
+#!markdown
+
+## 4. Неизменяемые (Immutable) классы
+
+### Зачем?
+Неизменяемый объект — после создания **ничего нельзя изменить**. Это **безопасно**: можно передавать куда угодно, не боясь что кто-то изменит данные.
+
+Примеры из .NET: `string`, `DateTime`, `TimeSpan` — все неизменяемые!
+
+#!csharp
+
+// Полностью неизменяемый класс
+class ImmutablePoint
+{
+    public double X { get; }
+    public double Y { get; }
+
+    public ImmutablePoint(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    // Вместо изменения — создаём НОВЫЙ объект
+    public ImmutablePoint MoveTo(double newX, double newY)
+        => new ImmutablePoint(newX, newY);
+
+    public ImmutablePoint MoveBy(double dx, double dy)
+        => new ImmutablePoint(X + dx, Y + dy);
+
+    public double DistanceTo(ImmutablePoint other)
+        => Math.Sqrt(Math.Pow(X - other.X, 2) + Math.Pow(Y - other.Y, 2));
+
+    public override string ToString() => $"({X:F1}, {Y:F1})";
+}
+
+var p1 = new ImmutablePoint(0, 0);
+var p2 = p1.MoveBy(3, 4);    // p1 НЕ ИЗМЕНИЛСЯ! Создан новый p2
+var p3 = p2.MoveTo(10, 10);  // p2 НЕ ИЗМЕНИЛСЯ! Создан новый p3
+
+Console.WriteLine($"p1: {p1}");
+Console.WriteLine($"p2: {p2}");
+Console.WriteLine($"p3: {p3}");
+Console.WriteLine($"Расстояние p1->p2: {p1.DistanceTo(p2):F2}");
+
+#!csharp
+
+// Более сложный пример — неизменяемый класс для игры
+class PlayerState
+{
+    public string Name { get; }
+    public int Health { get; }
+    public int MaxHealth { get; }
+    public int Score { get; }
+    public IReadOnlyList<string> Inventory { get; } // Неизменяемый список!
+
+    public PlayerState(string name, int health, int maxHealth, int score, IEnumerable<string> inventory)
+    {
+        Name = name;
+        Health = Math.Clamp(health, 0, maxHealth);
+        MaxHealth = maxHealth;
+        Score = score;
+        Inventory = inventory.ToList().AsReadOnly(); // Копируем и делаем readonly
+    }
+
+    // Удобный конструктор для начала игры
+    public PlayerState(string name, int maxHealth)
+        : this(name, maxHealth, maxHealth, 0, Array.Empty<string>()) { }
+
+    // Каждый метод возвращает НОВОЕ состояние
+    public PlayerState WithDamage(int amount)
+        => new PlayerState(Name, Health - amount, MaxHealth, Score, Inventory);
+
+    public PlayerState WithHeal(int amount)
+        => new PlayerState(Name, Health + amount, MaxHealth, Score, Inventory);
+
+    public PlayerState WithScore(int points)
+        => new PlayerState(Name, Health, MaxHealth, Score + points, Inventory);
+
+    public PlayerState WithItem(string item)
+        => new PlayerState(Name, Health, MaxHealth, Score, Inventory.Append(item));
+
+    public override string ToString()
+        => $"{Name} HP:{Health}/{MaxHealth} Score:{Score} Items:[{string.Join(", ", Inventory)}]";
+}
+
+// История изменений — каждое действие создаёт НОВОЕ состояние
+var state0 = new PlayerState("Герой", 100);
+var state1 = state0.WithItem("Меч");
+var state2 = state1.WithItem("Зелье");
+var state3 = state2.WithDamage(30);
+var state4 = state3.WithHeal(10);
+var state5 = state4.WithScore(500);
+
+Console.WriteLine("=== История состояний ===");
+Console.WriteLine($"Начало:  {state0}");
+Console.WriteLine($"+Меч:    {state1}");
+Console.WriteLine($"+Зелье:  {state2}");
+Console.WriteLine($"-30 HP:  {state3}");
+Console.WriteLine($"+10 HP:  {state4}");
+Console.WriteLine($"+500 pts:{state5}");
+
+Console.WriteLine($"\nВсе состояния сохранены! state0 всё ещё: {state0}");
+
+#!csharp
+
+// record — самый простой способ создать неизменяемый тип!
+record Weapon(string Name, int Damage, string Element);
+
+var sword = new Weapon("Огненный меч", 50, "Огонь");
+Console.WriteLine(sword);
+
+// with — создаём копию с изменениями (record делает это автоматически!)
+var betterSword = sword with { Damage = 75 };
+Console.WriteLine(betterSword);
+
+Console.WriteLine($"\nОригинал не изменён: {sword}");
+Console.WriteLine("\nrecord = самый простой путь к immutable. Используй его!");
+
+#!markdown
+
+## 5. Итоговая таблица инкапсуляции
+
+| Инструмент | Что даёт |
+|------------|----------|
+| `private` поля | Данные спрятаны от внешнего мира |
+| Свойства с валидацией | Контроль при чтении/записи |
+| `private set` | Менять может только сам класс |
+| `init` | Задать только при создании |
+| `readonly` поля | Задать только в конструкторе |
+| `get` only свойства | Только чтение, задаётся в конструкторе |
+| `IReadOnlyList<T>` | Коллекция, которую нельзя изменить снаружи |
+| `record` + `with` | Неизменяемый тип с удобным копированием |
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай класс `Temperature` (инкапсулированная температура):
+- Приватное поле `_celsius`
+- Свойство `Celsius` с `set` — проверяй что не ниже -273.15 (абсолютный ноль)
+- Свойство `Fahrenheit` (только чтение) — вычисляется как `_celsius * 9/5 + 32`
+- Свойство `Kelvin` (только чтение) — вычисляется как `_celsius + 273.15`
+- Проверь: попробуй установить -300 и убедись что выбрасывается исключение
+
+### Упражнение 2 (🟢)
+Создай неизменяемый класс `GameScore`:
+- Свойства (get only): `PlayerName`, `Score`, `Level`, `DateTime PlayedAt`
+- Метод `WithAddedScore(int points)` — возвращает НОВЫЙ GameScore с увеличенным Score
+- Метод `WithNextLevel()` — возвращает НОВЫЙ GameScore с Level + 1
+- Создай цепочку: начни с 0 очков, добавь 100, повысь уровень, добавь 200, выведи все состояния
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Что такое инкапсуляция? Зачем прятать данные?
+2. Зачем нужна валидация в свойствах?
+3. Чем `private set` отличается от `init`?
+4. Что такое `readonly` поле? Чем оно отличается от `const`?
+5. Что такое неизменяемый (immutable) класс? Назови примеры из .NET.
+6. Как `record` помогает создавать неизменяемые типы?
+7. Зачем нужен `IReadOnlyList<T>`?
+
+---
+> **Предыдущий:** [Полиморфизм](../05_Полиморфизм/01_Полиморфизм.dib) | **Следующий:** [Основы интерфейсов](../07_Интерфейсы/01_Основы_интерфейсов.dib)

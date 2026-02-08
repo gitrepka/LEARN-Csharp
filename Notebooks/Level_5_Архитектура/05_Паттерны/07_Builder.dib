@@ -1,0 +1,132 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Builder — пошаговое создание сложных объектов
+> **Уровень:** 5 — Архитектура | **Тема:** Паттерны (7/8)
+> **Предыдущий:** [Command](06_Command.dib) | **Следующий:** [Decorator](08_Decorator.dib)
+---
+
+**Когда нужен:** Когда объект имеет много параметров, часть из которых необязательна.
+
+**Аналогия:** Конструктор бургера. Ты выбираешь булку, котлету, соус, овощи — шаг за шагом.
+
+#!csharp
+
+// === Builder Pattern ===
+
+public class Character
+{
+    public string Name { get; init; } = "";
+    public string Class { get; init; } = "";
+    public int Strength { get; init; }
+    public int Agility { get; init; }
+    public int Intelligence { get; init; }
+    public int Health { get; init; }
+    public string Weapon { get; init; } = "";
+    public string Armor { get; init; } = "";
+    public List<string> Skills { get; init; } = new();
+
+    public void Print()
+    {
+        Console.WriteLine($"--- {Name} ({Class}) ---");
+        Console.WriteLine($"  STR:{Strength} AGI:{Agility} INT:{Intelligence} HP:{Health}");
+        Console.WriteLine($"  Оружие: {Weapon}, Броня: {Armor}");
+        Console.WriteLine($"  Навыки: [{string.Join(", ", Skills)}]");
+    }
+}
+
+public class CharacterBuilder
+{
+    private string _name = "Герой";
+    private string _class = "Воин";
+    private int _str = 10, _agi = 10, _int = 10, _hp = 100;
+    private string _weapon = "Кулаки", _armor = "Нет";
+    private List<string> _skills = new();
+
+    public CharacterBuilder WithName(string name) { _name = name; return this; }
+    public CharacterBuilder WithClass(string cls) { _class = cls; return this; }
+    public CharacterBuilder WithStrength(int str) { _str = str; return this; }
+    public CharacterBuilder WithAgility(int agi) { _agi = agi; return this; }
+    public CharacterBuilder WithIntelligence(int intel) { _int = intel; return this; }
+    public CharacterBuilder WithHealth(int hp) { _hp = hp; return this; }
+    public CharacterBuilder WithWeapon(string weapon) { _weapon = weapon; return this; }
+    public CharacterBuilder WithArmor(string armor) { _armor = armor; return this; }
+    public CharacterBuilder WithSkill(string skill) { _skills.Add(skill); return this; }
+
+    public Character Build() => new Character
+    {
+        Name = _name, Class = _class,
+        Strength = _str, Agility = _agi, Intelligence = _int, Health = _hp,
+        Weapon = _weapon, Armor = _armor, Skills = _skills
+    };
+}
+
+// Использование — чистый, читаемый код
+Console.WriteLine("=== Builder Pattern ===\n");
+
+var warrior = new CharacterBuilder()
+    .WithName("Аратор")
+    .WithClass("Воин")
+    .WithStrength(20)
+    .WithAgility(12)
+    .WithHealth(150)
+    .WithWeapon("Двуручный меч")
+    .WithArmor("Латы")
+    .WithSkill("Удар щитом")
+    .WithSkill("Вихрь")
+    .Build();
+
+var mage = new CharacterBuilder()
+    .WithName("Элара")
+    .WithClass("Маг")
+    .WithIntelligence(25)
+    .WithHealth(80)
+    .WithWeapon("Посох")
+    .WithArmor("Мантия")
+    .WithSkill("Огненный шар")
+    .WithSkill("Телепортация")
+    .WithSkill("Ледяная стена")
+    .Build();
+
+warrior.Print();
+Console.WriteLine();
+mage.Print();
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Builder для уровня игры)
+
+Создай Builder для игрового уровня `GameLevel`:
+- Имя уровня
+- Размер карты (ширина, высота)
+- Список врагов (строки)
+- Список предметов
+- Тип окружения ("лес", "пещера", "город")
+- Сложность (1-10)
+- Есть ли босс (bool)
+
+Builder должен иметь fluent API. Создай минимум 3 разных уровня.
+
+#!csharp
+
+// Упражнение 1: Builder для GameLevel
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Когда Builder оправдан, а когда достаточно обычного конструктора?
+2. Чем Builder отличается от Factory?
+
+---
+> **Предыдущий:** [Command](06_Command.dib) | **Следующий:** [Decorator](08_Decorator.dib)

@@ -1,0 +1,323 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Generics (обобщения) — глубокое погружение
+> **Уровень:** 4 — Продвинутый | **Тема:** Типы данных (1/2)
+> **Предыдущий:** [Отладка](../../Level_3_ООП/10_Отладка/01_Отладка.dib) | **Следующий:** [Span и Memory](02_Span_и_Memory.dib)
+---
+
+## Что ты уже знаешь
+- Ты работал с `List<T>`, `Dictionary<TKey, TValue>` — это и есть generics
+- Ты знаешь базовые типы (int, string, object) и их иерархию
+- Ты понимаешь интерфейсы и наследование
+- Ты знаешь разницу между value types (struct) и reference types (class)
+
+Теперь пора понять, **как создавать свои обобщённые типы** и использовать продвинутые ограничения.
+
+---
+
+## Зачем это нужно?
+
+Без generics пришлось бы писать отдельный класс для каждого типа данных:
+`IntList`, `StringList`, `PlayerList`... Это дублирование кода.
+
+Generics позволяют написать **один раз** — и работать с **любым типом**.
+
+В **Godot** ты увидишь `Godot.Collections.Array<T>`, `Signal<T>`.
+В **Uno Platform** — `ObservableCollection<T>`, `ICommand<T>`.
+
+---
+
+## 1. Обобщённые классы (Generic Classes)
+
+#!csharp
+
+// Создаём свой обобщённый контейнер — "коробка" для любого типа
+public class Box<T>
+{
+    private T _content;
+    private bool _hasContent;
+
+    public void Put(T item)
+    {
+        _content = item;
+        _hasContent = true;
+        Console.WriteLine($"Положили в коробку: {item}");
+    }
+
+    public T Take()
+    {
+        if (!_hasContent)
+            throw new InvalidOperationException("Коробка пуста!");
+        _hasContent = false;
+        return _content;
+    }
+
+    public bool IsEmpty => !_hasContent;
+}
+
+// Используем с разными типами — компилятор следит за типобезопасностью
+var intBox = new Box<int>();
+intBox.Put(42);
+int number = intBox.Take(); // Не нужен каст!
+Console.WriteLine($"Достали: {number}");
+
+var stringBox = new Box<string>();
+stringBox.Put("Привет");
+string text = stringBox.Take();
+Console.WriteLine($"Достали: {text}");
+
+// intBox.Put("строка"); // Ошибка компиляции! Ожидается int
+
+#!markdown
+
+## 2. Обобщённые методы (Generic Methods)
+
+Можно делать обобщённым не весь класс, а **отдельный метод**.
+
+#!csharp
+
+// Обобщённый метод — тип определяется при вызове
+static T Max<T>(T a, T b) where T : IComparable<T>
+{
+    return a.CompareTo(b) > 0 ? a : b;
+}
+
+// C# сам выводит тип (type inference) — не надо писать <int>
+Console.WriteLine(Max(10, 20));       // 20
+Console.WriteLine(Max(3.14, 2.71));   // 3.14
+Console.WriteLine(Max("яблоко", "банан")); // яблоко (лексикографически)
+
+// Метод Swap — меняет два значения местами
+static void Swap<T>(ref T a, ref T b)
+{
+    T temp = a;
+    a = b;
+    b = temp;
+}
+
+int x = 1, y = 2;
+Console.WriteLine($"До: x={x}, y={y}");
+Swap(ref x, ref y);
+Console.WriteLine($"После: x={x}, y={y}");
+
+#!markdown
+
+## 3. Ограничения (Constraints) — ключевое слово `where`
+
+Ограничения сообщают компилятору, **что T умеет делать**. Без них T — это просто `object`, и ничего полезного с ним не сделаешь.
+
+| Ограничение | Что означает |
+|---|---|
+| `where T : class` | T — ссылочный тип (класс, интерфейс, делегат) |
+| `where T : struct` | T — значимый тип (int, double, свой struct) |
+| `where T : new()` | T имеет конструктор без параметров |
+| `where T : IInterface` | T реализует указанный интерфейс |
+| `where T : BaseClass` | T наследует от указанного класса |
+| `where T : notnull` | T не может быть null |
+| `where T : unmanaged` | T — примитивный тип без ссылок (int, byte, struct без ссылочных полей) |
+
+#!csharp
+
+// Пример: репозиторий, который работает с любыми сущностями
+public interface IEntity
+{
+    int Id { get; }
+    string Name { get; }
+}
+
+public class Player : IEntity
+{
+    public int Id { get; init; }
+    public string Name { get; init; }
+    public int Score { get; init; }
+}
+
+public class Enemy : IEntity
+{
+    public int Id { get; init; }
+    public string Name { get; init; }
+    public int Health { get; init; }
+}
+
+// T должен: реализовать IEntity, быть классом, иметь конструктор без параметров
+public class Repository<T> where T : class, IEntity, new()
+{
+    private readonly List<T> _items = new();
+
+    public void Add(T item) => _items.Add(item);
+
+    public T FindById(int id) => _items.FirstOrDefault(x => x.Id == id);
+
+    public IReadOnlyList<T> GetAll() => _items.AsReadOnly();
+
+    public T CreateDefault()
+    {
+        // Можно вызвать new T() благодаря ограничению new()
+        return new T();
+    }
+}
+
+var playerRepo = new Repository<Player>();
+playerRepo.Add(new Player { Id = 1, Name = "Герой", Score = 100 });
+playerRepo.Add(new Player { Id = 2, Name = "Маг", Score = 250 });
+
+var found = playerRepo.FindById(1);
+Console.WriteLine($"Найден: {found.Name}, Score: {found.Score}");
+
+// var intRepo = new Repository<int>(); // Ошибка! int — не class и не IEntity
+
+#!csharp
+
+// Несколько ограничений на разные параметры типа
+public class Mapper<TSource, TDest>
+    where TSource : class
+    where TDest : class, new()
+{
+    private readonly Func<TSource, TDest> _mapFunc;
+
+    public Mapper(Func<TSource, TDest> mapFunc)
+    {
+        _mapFunc = mapFunc;
+    }
+
+    public TDest Map(TSource source) => _mapFunc(source);
+
+    public List<TDest> MapAll(IEnumerable<TSource> sources)
+        => sources.Select(_mapFunc).ToList();
+}
+
+// Маппер из Player в анонимный объект? Нет, нужен конкретный класс.
+// Создадим DTO
+public class PlayerDto
+{
+    public string DisplayName { get; set; }
+}
+
+var mapper = new Mapper<Player, PlayerDto>(p => new PlayerDto
+{
+    DisplayName = $"{p.Name} [Score: {p.Score}]"
+});
+
+var dto = mapper.Map(new Player { Id = 1, Name = "Герой", Score = 100 });
+Console.WriteLine(dto.DisplayName);
+
+#!markdown
+
+## 4. Ковариантность (`out T`) и контравариантность (`in T`)
+
+**Аналогия:**
+- **Ковариантность (out)** — "Я только выдаю T наружу". Если кошка — это животное, то "выдавалка кошек" — это "выдавалка животных".
+- **Контравариантность (in)** — "Я только принимаю T внутрь". Если кошка — это животное, то "приниматель животных" — это "приниматель кошек".
+
+Эти модификаторы работают **только с интерфейсами и делегатами**.
+
+#!csharp
+
+// КОВАРИАНТНОСТЬ — out T (только возвращаем T, не принимаем)
+public interface IProducer<out T>
+{
+    T Produce();
+    // void Consume(T item); // Ошибка! out T нельзя использовать как параметр
+}
+
+public class AnimalProducer : IProducer<Animal>
+{
+    public Animal Produce() => new Animal { Name = "Животное" };
+}
+
+public class CatProducer : IProducer<Cat>
+{
+    public Cat Produce() => new Cat { Name = "Кошка Мурка" };
+}
+
+public class Animal { public string Name { get; set; } }
+public class Cat : Animal { public string Purr() => "Мррр!"; }
+
+// Ковариантность: IProducer<Cat> можно присвоить IProducer<Animal>
+IProducer<Cat> catProducer = new CatProducer();
+IProducer<Animal> animalProducer = catProducer; // OK! Cat : Animal, out T
+Animal animal = animalProducer.Produce();
+Console.WriteLine($"Произведён: {animal.Name}");
+
+#!csharp
+
+// КОНТРАВАРИАНТНОСТЬ — in T (только принимаем T, не возвращаем)
+public interface IConsumer<in T>
+{
+    void Consume(T item);
+    // T GetItem(); // Ошибка! in T нельзя возвращать
+}
+
+public class AnimalConsumer : IConsumer<Animal>
+{
+    public void Consume(Animal item)
+        => Console.WriteLine($"Кормлю животное: {item.Name}");
+}
+
+// Контравариантность: IConsumer<Animal> можно присвоить IConsumer<Cat>
+IConsumer<Animal> animalConsumer = new AnimalConsumer();
+IConsumer<Cat> catConsumer = animalConsumer; // OK! Animal <-- Cat, in T
+catConsumer.Consume(new Cat { Name = "Барсик" });
+
+// Реальные примеры из .NET:
+// IEnumerable<out T>     — ковариантный (только выдаёт элементы)
+// IComparable<in T>      — контравариантный (только принимает для сравнения)
+// Func<in T, out TResult> — T контравариантный, TResult ковариантный
+
+Console.WriteLine("\nIEnumerable<Cat> → IEnumerable<Animal>:");
+IEnumerable<Cat> cats = new List<Cat> { new Cat { Name = "Мурка" }, new Cat { Name = "Барсик" } };
+IEnumerable<Animal> animals = cats; // Работает! IEnumerable<out T>
+foreach (var a in animals)
+    Console.WriteLine($"  {a.Name}");
+
+#!markdown
+
+---
+
+## Упражнение 1: Обобщённый стек с ограничениями
+
+Создай обобщённый класс `LimitedStack<T>`:
+- Принимает максимальный размер в конструкторе
+- Методы: `Push(T item)`, `Pop()`, `Peek()`, `Count`, `IsFull`
+- Ограничение: `T` должен быть `notnull`
+- При переполнении — бросай `InvalidOperationException`
+- При Pop/Peek из пустого — тоже исключение
+
+Проверь его на `int` и `string`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Упражнение 2: Ковариантный и контравариантный интерфейсы
+
+1. Создай иерархию: `Shape` (базовый) -> `Circle` -> `ColoredCircle`
+2. Создай ковариантный интерфейс `IShapeFactory<out T>` с методом `T Create()`
+3. Создай контравариантный интерфейс `IShapeDrawer<in T>` с методом `void Draw(T shape)`
+4. Покажи, что `IShapeFactory<Circle>` можно присвоить `IShapeFactory<Shape>`
+5. Покажи, что `IShapeDrawer<Shape>` можно присвоить `IShapeDrawer<Circle>`
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем обобщённый класс лучше, чем класс, работающий с `object`?
+2. Для чего нужно ограничение `where T : new()`? Приведи пример.
+3. Объясни своими словами: что такое ковариантность (`out T`)? Почему нельзя принимать `T` как параметр?
+4. Можно ли указать одновременно `where T : class` и `where T : struct`?
+
+---
+
+> **Следующий:** [Span и Memory](02_Span_и_Memory.dib) — Span<T>, ReadOnlySpan, Memory<T>

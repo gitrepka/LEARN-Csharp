@@ -1,0 +1,232 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# DateTime — свойства, арифметика, TimeSpan
+> **Уровень:** 2 — Углубление | **Тема:** Дата и время (1/2)
+> **Предыдущий:** [Перечисления](../09_Перечисления/01_Перечисления.dib) | **Следующий:** [DateOnly и форматы](./02_DateOnly_и_форматы.dib)
+---
+
+### Что ты уже знаешь (Level 1)
+- Базовые типы данных
+- Форматирование строк
+- Структуры (DateTime — это struct!)
+
+---
+
+### Что нового в этом уроке?
+1. **DateTime** — дата и время, основные свойства
+2. **DateTime.Now vs DateTime.UtcNow** — локальное vs мировое время
+3. **Арифметика дат** — AddDays, TimeSpan, разница между датами
+
+В Godot: таймеры, cooldown-ы, время между кадрами.
+В Uno: отображение даты, планировщики, журналы.
+
+#!markdown
+
+## 1. DateTime — дата и время
+
+`DateTime` — структура, которая хранит дату и время с точностью до тиков (100 наносекунд).
+
+#!csharp
+
+// Создание DateTime
+DateTime сейчас = DateTime.Now;          // текущее локальное время
+DateTime utc = DateTime.UtcNow;          // UTC (мировое время)
+DateTime сегодня = DateTime.Today;       // сегодня, 00:00:00
+
+Console.WriteLine($"Сейчас:   {сейчас}");
+Console.WriteLine($"UTC:      {utc}");
+Console.WriteLine($"Сегодня:  {сегодня}");
+
+// Создание конкретной даты
+DateTime деньРождения = new DateTime(2000, 3, 15);  // 15 марта 2000
+DateTime точное = new DateTime(2025, 12, 31, 23, 59, 59); // 31.12.2025 23:59:59
+
+Console.WriteLine($"День рождения: {деньРождения:dd.MM.yyyy}");
+Console.WriteLine($"Точная дата:   {точное:dd.MM.yyyy HH:mm:ss}");
+
+#!csharp
+
+// Свойства DateTime — извлечение компонентов
+DateTime дт = DateTime.Now;
+
+Console.WriteLine($"Год:          {дт.Year}");
+Console.WriteLine($"Месяц:        {дт.Month}");
+Console.WriteLine($"День:          {дт.Day}");
+Console.WriteLine($"Час:           {дт.Hour}");
+Console.WriteLine($"Минута:        {дт.Minute}");
+Console.WriteLine($"Секунда:       {дт.Second}");
+Console.WriteLine($"Миллисекунда:  {дт.Millisecond}");
+Console.WriteLine($"День недели:   {дт.DayOfWeek}");
+Console.WriteLine($"День года:     {дт.DayOfYear}");
+Console.WriteLine($"Тики:          {дт.Ticks}");
+
+#!csharp
+
+// Форматирование дат
+DateTime дт = new DateTime(2025, 7, 4, 15, 30, 0);
+
+Console.WriteLine($"По умолчанию:    {дт}");
+Console.WriteLine($"dd.MM.yyyy:      {дт:dd.MM.yyyy}");          // 04.07.2025
+Console.WriteLine($"dd MMMM yyyy:    {дт:dd MMMM yyyy}");        // 04 июля 2025
+Console.WriteLine($"HH:mm:ss:        {дт:HH:mm:ss}");            // 15:30:00
+Console.WriteLine($"hh:mm tt:        {дт:hh:mm tt}");            // 03:30 PM
+Console.WriteLine($"Полное:          {дт:F}");                    // полное + время
+Console.WriteLine($"Короткое:        {дт:d}");                    // краткая дата
+Console.WriteLine($"ISO 8601:        {дт:yyyy-MM-ddTHH:mm:ss}"); // 2025-07-04T15:30:00
+
+// Своё форматирование
+Console.WriteLine($"Кастомное:       {дт:ddd, dd MMM yyyy}");
+
+#!markdown
+
+## 2. DateTime.Now vs DateTime.UtcNow
+
+- **DateTime.Now** — текущее время в твоём часовом поясе
+- **DateTime.UtcNow** — мировое время (UTC+0, Лондон без летнего времени)
+
+**Правило:** Для хранения и передачи данных используй **UTC**. Для отображения пользователю — **местное время**.
+
+#!csharp
+
+DateTime местное = DateTime.Now;
+DateTime мировое = DateTime.UtcNow;
+
+Console.WriteLine($"Местное время: {местное:HH:mm:ss}");
+Console.WriteLine($"UTC время:     {мировое:HH:mm:ss}");
+Console.WriteLine($"Разница:       {местное - мировое}"); // Твой часовой пояс
+
+// Преобразование
+DateTime utcДата = new DateTime(2025, 7, 4, 12, 0, 0, DateTimeKind.Utc);
+DateTime локальная = utcДата.ToLocalTime();
+Console.WriteLine($"\nUTC:      {utcДата:HH:mm}");
+Console.WriteLine($"Местное:  {локальная:HH:mm}");
+
+#!markdown
+
+## 3. Арифметика дат — AddDays, TimeSpan
+
+DateTime — неизменяемый (immutable). Методы Add... возвращают **новую** дату.
+
+#!csharp
+
+DateTime сейчас = DateTime.Now;
+
+// Добавление
+DateTime завтра = сейчас.AddDays(1);
+DateTime черезНеделю = сейчас.AddDays(7);
+DateTime черезМесяц = сейчас.AddMonths(1);
+DateTime черезГод = сейчас.AddYears(1);
+DateTime через2Часа = сейчас.AddHours(2);
+
+Console.WriteLine($"Сейчас:        {сейчас:dd.MM.yyyy HH:mm}");
+Console.WriteLine($"Завтра:        {завтра:dd.MM.yyyy}");
+Console.WriteLine($"Через неделю:  {черезНеделю:dd.MM.yyyy}");
+Console.WriteLine($"Через месяц:   {черезМесяц:dd.MM.yyyy}");
+Console.WriteLine($"Через год:     {черезГод:dd.MM.yyyy}");
+Console.WriteLine($"Через 2 часа:  {через2Часа:HH:mm}");
+
+// Вычитание (отрицательные значения)
+DateTime вчера = сейчас.AddDays(-1);
+DateTime месяцНазад = сейчас.AddMonths(-1);
+Console.WriteLine($"\nВчера:         {вчера:dd.MM.yyyy}");
+Console.WriteLine($"Месяц назад:   {месяцНазад:dd.MM.yyyy}");
+
+#!csharp
+
+// TimeSpan — промежуток времени (длительность)
+
+TimeSpan дваЧаса = TimeSpan.FromHours(2);
+TimeSpan полчаса = TimeSpan.FromMinutes(30);
+TimeSpan пятьДней = TimeSpan.FromDays(5);
+
+Console.WriteLine($"2 часа:   {дваЧаса}");     // 02:00:00
+Console.WriteLine($"30 минут: {полчаса}");      // 00:30:00
+Console.WriteLine($"5 дней:   {пятьДней}");     // 5.00:00:00
+
+// Создание вручную
+TimeSpan точный = new TimeSpan(1, 2, 30, 15); // 1 день, 2 часа, 30 мин, 15 сек
+Console.WriteLine($"Точный: {точный}");
+
+// Свойства TimeSpan
+Console.WriteLine($"\nДни:    {точный.Days}");
+Console.WriteLine($"Часы:   {точный.Hours}");
+Console.WriteLine($"Минуты: {точный.Minutes}");
+Console.WriteLine($"Секунды:{точный.Seconds}");
+Console.WriteLine($"Всего часов:  {точный.TotalHours:F2}");
+Console.WriteLine($"Всего минут:  {точный.TotalMinutes:F0}");
+
+#!csharp
+
+// Разница между датами — результат = TimeSpan
+DateTime рождение = new DateTime(2000, 3, 15);
+DateTime сейчас = DateTime.Now;
+
+TimeSpan возраст = сейчас - рождение;
+
+Console.WriteLine($"Родился:       {рождение:dd.MM.yyyy}");
+Console.WriteLine($"Сейчас:        {сейчас:dd.MM.yyyy}");
+Console.WriteLine($"Прошло дней:   {возраст.Days}");
+Console.WriteLine($"Это примерно:  {возраст.Days / 365} лет и {возраст.Days % 365} дней");
+Console.WriteLine($"Всего часов:   {возраст.TotalHours:N0}");
+
+// Практический пример: обратный отсчёт
+DateTime новыйГод = new DateTime(сейчас.Year + 1, 1, 1);
+TimeSpan доНовогоГода = новыйГод - сейчас;
+Console.WriteLine($"\nДо Нового года: {доНовогоГода.Days} дней, {доНовогоГода.Hours} часов");
+
+#!csharp
+
+// Сравнение дат
+DateTime дата1 = new DateTime(2025, 1, 1);
+DateTime дата2 = new DateTime(2025, 6, 15);
+DateTime дата3 = new DateTime(2025, 1, 1);
+
+Console.WriteLine($"дата1 < дата2:  {дата1 < дата2}");   // True
+Console.WriteLine($"дата1 > дата2:  {дата1 > дата2}");   // False
+Console.WriteLine($"дата1 == дата3: {дата1 == дата3}");   // True
+
+// Полезные проверки
+DateTime сейчас = DateTime.Now;
+bool выходной = сейчас.DayOfWeek == DayOfWeek.Saturday || сейчас.DayOfWeek == DayOfWeek.Sunday;
+Console.WriteLine($"Сегодня выходной? {выходной}");
+
+bool високосный = DateTime.IsLeapYear(сейчас.Year);
+Console.WriteLine($"{сейчас.Year} високосный? {високосный}");
+
+int днейВМесяце = DateTime.DaysInMonth(сейчас.Year, сейчас.Month);
+Console.WriteLine($"Дней в этом месяце: {днейВМесяце}");
+
+#!markdown
+
+---
+
+## Упражнения
+
+### 🟢 Упражнение 1: Калькулятор возраста
+Напиши программу, которая:
+1. Принимает дату рождения (создай как `new DateTime(...)`)
+2. Вычисляет полный возраст в годах (примерно: дни / 365)
+3. Вычисляет сколько дней до следующего дня рождения
+
+#!csharp
+
+// Упражнение 1 — напиши код здесь
+
+
+#!markdown
+
+---
+
+## ❓ Контрольные вопросы
+
+1. Чем `DateTime.Now` отличается от `DateTime.UtcNow`? Когда использовать каждый?
+2. Что возвращает вычитание двух `DateTime`? Какой тип результата?
+3. Что произойдёт, если вызвать `AddDays(-30)` на дате 15 января?
+
+---
+
+> **Следующий урок:** [DateOnly и форматы](./02_DateOnly_и_форматы.dib)

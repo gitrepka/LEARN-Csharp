@@ -1,0 +1,106 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Dictionary\<TKey, TValue\>
+> **Уровень:** 3 — ООП | **Тема:** Коллекции (2/4)
+> **Предыдущий:** [List](01_List.dib) | **Следующий:** [HashSet](03_HashSet.dib)
+---
+
+## Зачем это нужно?
+Хранит **пары ключ-значение**. Поиск по ключу — **мгновенный** (O(1)).
+
+Аналогия: **Телефонная книга**. Ищешь по имени (ключ) — получаешь номер (значение).
+
+#!csharp
+
+// Создание словаря
+var prices = new Dictionary<string, decimal>
+{
+    ["Меч"]   = 100m,
+    ["Щит"]   = 80m,
+    ["Зелье"] = 25m,
+};
+
+// Добавление
+prices["Лук"] = 120m;
+// или
+prices.Add("Посох", 150m); // Бросит исключение если ключ уже есть!
+
+// Доступ
+Console.WriteLine($"Цена меча: {prices["Меч"]}");
+
+// ВАЖНО: TryGetValue — безопасный доступ!
+if (prices.TryGetValue("Зелье", out decimal potionPrice))
+{
+    Console.WriteLine($"Цена зелья: {potionPrice}");
+}
+else
+{
+    Console.WriteLine("Зелье не найдено");
+}
+
+// ContainsKey
+Console.WriteLine($"Есть бомба? {prices.ContainsKey("Бомба")}");
+
+// Перебор
+Console.WriteLine("\n=== Магазин ===");
+foreach (var (item, price) in prices)
+{
+    Console.WriteLine($"  {item}: {price}g");
+}
+
+Console.WriteLine($"\nВсего товаров: {prices.Count}");
+
+#!csharp
+
+// Практический пример: подсчёт частоты слов
+string text = "кот кот собака кот собака рыба кот собака собака рыба";
+string[] words = text.Split(' ');
+
+var frequency = new Dictionary<string, int>();
+
+foreach (var word in words)
+{
+    // TryGetValue — правильный подход!
+    if (frequency.TryGetValue(word, out int count))
+        frequency[word] = count + 1;
+    else
+        frequency[word] = 1;
+
+    // Альтернатива (C# 10+):
+    // frequency[word] = frequency.GetValueOrDefault(word) + 1;
+}
+
+Console.WriteLine("=== Частота слов ===");
+foreach (var (word, count) in frequency.OrderByDescending(x => x.Value))
+{
+    var bar = new string('#', count);
+    Console.WriteLine($"  {word,8}: {bar} ({count})");
+}
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай систему инвентаря для RPG:
+- `Dictionary<string, int>` — предметы и их количество
+- Метод `AddItem(string name, int count)` — добавляет предмет (или увеличивает количество)
+- Метод `RemoveItem(string name, int count)` — удаляет предмет (используй TryGetValue!)
+- Метод `ShowInventory()` — красиво выводит все предметы
+- Добавь: 5 зелий, 3 стрелы, 1 меч. Убери 2 зелья. Выведи инвентарь.
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Почему `TryGetValue` предпочтительнее прямого обращения `dict[key]`?
+2. Какая сложность поиска по ключу в `Dictionary`?
+3. Что произойдёт при `dict.Add(key, value)` если ключ уже есть?
+4. Как перебрать все пары ключ-значение в Dictionary?
+
+---
+> **Предыдущий:** [List](01_List.dib) | **Следующий:** [HashSet](03_HashSet.dib)

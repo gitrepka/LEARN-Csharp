@@ -1,0 +1,460 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Оптимизация памяти
+> **Уровень:** 5 — Архитектура | **Тема:** Память (2/2)
+> **Предыдущий:** [Garbage Collector](01_Garbage_Collector.dib) | **Следующий:** [SOLID](../04_SOLID/01_SOLID.dib)
+---
+
+**Что это:** Инструменты для правильного освобождения ресурсов и минимизации аллокаций: IDisposable, ArrayPool, Span, stackalloc.
+
+**Зачем это нужно:**
+- Правильно освобождать ресурсы (файлы, соединения)
+- Эффективно обрабатывать большие массивы данных
+- Меньше мусора для GC = быстрее код
+
+---
+
+### Содержание:
+1. `IDisposable` и паттерн Dispose
+2. `using` / `await using`
+3. `ArrayPool<T>` — аренда массивов
+4. `Span<T>` и `ReadOnlySpan<T>`
+5. `stackalloc` — выделение на стеке
+6. Профилирование памяти
+
+#!markdown
+
+## 1. IDisposable и паттерн Dispose
+
+GC освобождает **управляемую** память. Но есть **неуправляемые ресурсы** — файлы, сетевые соединения, дескрипторы ОС — их GC не знает как освободить.
+
+`IDisposable` — это контракт: "Этот объект держит ресурсы, вызови `Dispose()` когда закончишь".
+
+#!csharp
+
+using System;
+using System.IO;
+
+// === Полный паттерн Dispose ===
+
+public class GameResource : IDisposable
+{
+    private FileStream? _logFile;
+    private bool _disposed = false;
+    public string Name { get; }
+
+    public GameResource(string name)
+    {
+        Name = name;
+        // Создаём неуправляемый ресурс (файл)
+        // В реальности: _logFile = File.Create($"{name}.log");
+        Console.WriteLine($"[{Name}] Ресурс создан");
+    }
+
+    public void DoWork()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        Console.WriteLine($"[{Name}] Работаю...");
+    }
+
+    // Публичный Dispose — вызывается пользователем
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this); // Говорим GC: финализатор не нужен
+    }
+
+    // Защищённый метод — реальная логика очистки
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // Освобождаем УПРАВЛЯЕМЫЕ ресурсы
+            _logFile?.Dispose();
+            Console.WriteLine($"[{Name}] Управляемые ресурсы освобождены");
+        }
+
+        // Освобождаем НЕУПРАВЛЯЕМЫЕ ресурсы (если есть)
+        // Например: NativeHandle.Close();
+        Console.WriteLine($"[{Name}] Неуправляемые ресурсы освобождены");
+
+        _disposed = true;
+    }
+
+    // Финализатор — страховка на случай, если забыли вызвать Dispose
+    ~GameResource()
+    {
+        Console.WriteLine($"[{Name}] Финализатор вызван (кто-то забыл Dispose!)");
+        Dispose(disposing: false);
+    }
+}
+
+// Правильное использование
+Console.WriteLine("=== Правильное использование ===");
+var resource = new GameResource("Текстура");
+resource.DoWork();
+resource.Dispose(); // Явно освобождаем
+
+Console.WriteLine();
+
+// Попытка использовать после Dispose
+try
+{
+    resource.DoWork();
+}
+catch (ObjectDisposedException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+## 2. using / await using
+
+`using` — синтаксический сахар для гарантированного вызова `Dispose()`. Даже если произойдёт исключение — `Dispose()` будет вызван.
+
+#!csharp
+
+// === using — старый синтаксис (блок) ===
+Console.WriteLine("=== using-блок ===");
+using (var res1 = new GameResource("Звук"))
+{
+    res1.DoWork();
+    Console.WriteLine("Внутри using-блока");
+} // Dispose вызывается здесь автоматически
+Console.WriteLine("После using-блока\n");
+
+// === using — новый синтаксис (C# 8+, declaration) ===
+Console.WriteLine("=== using-объявление ===");
+void ProcessLevel()
+{
+    using var res2 = new GameResource("Уровень");
+    res2.DoWork();
+    Console.WriteLine("Ещё работаем...");
+    // Dispose вызывается при выходе из метода
+}
+ProcessLevel();
+Console.WriteLine("После метода\n");
+
+// === Несколько using подряд ===
+Console.WriteLine("=== Несколько ресурсов ===");
+using var a = new GameResource("Карта");
+using var b = new GameResource("Персонаж");
+a.DoWork();
+b.DoWork();
+// Оба будут освобождены в обратном порядке при выходе из области видимости
+
+#!csharp
+
+using System.Threading.Tasks;
+
+// === await using — для асинхронного IAsyncDisposable ===
+
+public class AsyncResource : IAsyncDisposable
+{
+    public string Name { get; }
+
+    public AsyncResource(string name)
+    {
+        Name = name;
+        Console.WriteLine($"[{Name}] Async ресурс создан");
+    }
+
+    public async Task DoWorkAsync()
+    {
+        Console.WriteLine($"[{Name}] Работаю асинхронно...");
+        await Task.Delay(100);
+        Console.WriteLine($"[{Name}] Работа завершена");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Console.WriteLine($"[{Name}] Асинхронная очистка...");
+        await Task.Delay(50); // Имитация асинхронной очистки
+        Console.WriteLine($"[{Name}] Очищено!");
+    }
+}
+
+// await using — для асинхронных ресурсов
+await using var asyncRes = new AsyncResource("HTTP-соединение");
+await asyncRes.DoWorkAsync();
+// DisposeAsync вызывается автоматически
+
+#!markdown
+
+## 3. ArrayPool\<T\>, Span\<T\>, stackalloc
+
+Эти инструменты помогают **избежать лишних аллокаций** — меньше мусора для GC, быстрее код.
+
+#!csharp
+
+using System.Buffers;
+using System.Diagnostics;
+
+// === ArrayPool<T> — аренда массивов вместо создания новых ===
+// Вместо new byte[1024] каждый раз — берём из пула и возвращаем
+
+Console.WriteLine("=== ArrayPool<T> ===");
+
+var pool = ArrayPool<byte>.Shared;
+
+// Арендуем массив (может быть больше запрошенного!)
+byte[] buffer = pool.Rent(1000);
+Console.WriteLine($"Запросили 1000, получили: {buffer.Length}"); // может быть 1024
+
+// Используем
+for (int i = 0; i < 1000; i++)
+    buffer[i] = (byte)(i % 256);
+
+Console.WriteLine($"Заполнили буфер, первые 5: [{string.Join(", ", buffer.Take(5))}]");
+
+// ОБЯЗАТЕЛЬНО возвращаем!
+pool.Return(buffer, clearArray: true); // clearArray обнуляет данные
+Console.WriteLine("Буфер возвращён в пул\n");
+
+// === Сравнение скорости: new vs ArrayPool ===
+var sw = Stopwatch.StartNew();
+for (int i = 0; i < 10_000; i++)
+{
+    byte[] arr = new byte[4096]; // каждый раз новый массив
+    arr[0] = 1;
+}
+sw.Stop();
+Console.WriteLine($"new byte[4096] x 10000: {sw.ElapsedMilliseconds}ms");
+
+sw.Restart();
+for (int i = 0; i < 10_000; i++)
+{
+    byte[] arr = pool.Rent(4096);
+    arr[0] = 1;
+    pool.Return(arr);
+}
+sw.Stop();
+Console.WriteLine($"ArrayPool x 10000: {sw.ElapsedMilliseconds}ms");
+
+#!csharp
+
+using System;
+
+// === Span<T> — окно в память без копирования ===
+// Span<T> может указывать на: массив, строку, stackalloc, неуправляемую память
+
+Console.WriteLine("=== Span<T> — работа без копирования ===");
+
+int[] numbers = { 10, 20, 30, 40, 50, 60, 70, 80 };
+
+// Span — это "окно" в массив
+Span<int> allSpan = numbers.AsSpan();
+Span<int> middle = numbers.AsSpan(2, 4); // элементы [30, 40, 50, 60]
+
+Console.WriteLine($"Исходный массив: [{string.Join(", ", numbers)}]");
+Console.WriteLine($"Span middle: [{string.Join(", ", middle.ToArray())}]");
+
+// Изменяем через Span — меняется оригинальный массив!
+middle[0] = 999;
+Console.WriteLine($"После middle[0] = 999: [{string.Join(", ", numbers)}]");
+
+// Slice — ещё одно окно без копирования
+Span<int> first3 = allSpan.Slice(0, 3);
+Console.WriteLine($"First 3: [{string.Join(", ", first3.ToArray())}]");
+
+// === ReadOnlySpan<char> для строк ===
+Console.WriteLine("\n=== ReadOnlySpan<char> ===");
+
+string text = "Hello, World! Привет, Мир!";
+ReadOnlySpan<char> span = text.AsSpan();
+ReadOnlySpan<char> hello = span.Slice(0, 5);
+ReadOnlySpan<char> privet = span.Slice(14, 6);
+
+Console.WriteLine($"hello: {hello.ToString()}");
+Console.WriteLine($"privet: {privet.ToString()}");
+// Никаких аллокаций строк! Всё на стеке
+
+#!csharp
+
+using System;
+
+// === stackalloc — выделение на стеке ===
+// Стек быстрее кучи, и память освобождается мгновенно при выходе из метода
+// Но размер ограничен (~1MB)
+
+Console.WriteLine("=== stackalloc ===");
+
+void ProcessOnStack()
+{
+    // Выделяем массив на стеке — GC не участвует!
+    Span<int> stackArray = stackalloc int[10];
+
+    for (int i = 0; i < stackArray.Length; i++)
+        stackArray[i] = i * i;
+
+    Console.WriteLine($"Массив на стеке: [{string.Join(", ", stackArray.ToArray())}]");
+
+    // stackalloc для char — эффективный буфер для строк
+    Span<char> buffer = stackalloc char[50];
+    "Привет".AsSpan().CopyTo(buffer);
+    ", мир!".AsSpan().CopyTo(buffer.Slice(6));
+
+    ReadOnlySpan<char> result = buffer.Slice(0, 12);
+    Console.WriteLine($"Строка на стеке: {result.ToString()}");
+}
+
+ProcessOnStack();
+
+// Практический пример: парсинг без аллокаций
+void ParseCoordinate(ReadOnlySpan<char> input)
+{
+    int commaIndex = input.IndexOf(',');
+    if (commaIndex >= 0)
+    {
+        ReadOnlySpan<char> xPart = input.Slice(0, commaIndex);
+        ReadOnlySpan<char> yPart = input.Slice(commaIndex + 1);
+
+        if (int.TryParse(xPart, out int x) && int.TryParse(yPart, out int y))
+        {
+            Console.WriteLine($"Координаты: X={x}, Y={y}");
+        }
+    }
+}
+
+Console.WriteLine();
+ParseCoordinate("42,17");
+ParseCoordinate("100,200");
+
+#!markdown
+
+## 4. Профилирование памяти
+
+Профилирование — это анализ того, как приложение использует память.
+
+Инструменты:
+- **Visual Studio Diagnostic Tools** — встроенный профайлер
+- **JetBrains dotMemory** — мощный профайлер памяти
+- **dotnet-counters** — CLI-инструмент для мониторинга
+- **dotnet-dump** — снимки памяти
+- **BenchmarkDotNet** — бенчмарки с анализом аллокаций
+
+#!csharp
+
+using System;
+using System.Diagnostics;
+
+// === Простой самодельный профайлер памяти ===
+
+public static class MemoryProfiler
+{
+    public static void Measure(string label, Action action, int iterations = 1)
+    {
+        // Чистим перед замером
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+
+        long memBefore = GC.GetTotalMemory(true);
+        int gen0Before = GC.CollectionCount(0);
+        int gen1Before = GC.CollectionCount(1);
+        int gen2Before = GC.CollectionCount(2);
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < iterations; i++)
+            action();
+
+        sw.Stop();
+        long memAfter = GC.GetTotalMemory(false);
+
+        Console.WriteLine($"=== {label} ===");
+        Console.WriteLine($"  Время: {sw.ElapsedMilliseconds}ms");
+        Console.WriteLine($"  Память: +{(memAfter - memBefore) / 1024}KB");
+        Console.WriteLine($"  Сборки GC: Gen0={GC.CollectionCount(0) - gen0Before}, " +
+                          $"Gen1={GC.CollectionCount(1) - gen1Before}, " +
+                          $"Gen2={GC.CollectionCount(2) - gen2Before}");
+    }
+}
+
+// Сравниваем: конкатенация строк vs StringBuilder
+
+MemoryProfiler.Measure("String concatenation (1000 итераций)", () =>
+{
+    string result = "";
+    for (int i = 0; i < 1000; i++)
+        result += i.ToString(); // каждый раз новый объект!
+});
+
+Console.WriteLine();
+
+MemoryProfiler.Measure("StringBuilder (1000 итераций)", () =>
+{
+    var sb = new System.Text.StringBuilder();
+    for (int i = 0; i < 1000; i++)
+        sb.Append(i);
+    string result = sb.ToString();
+});
+
+Console.WriteLine();
+
+// Сравниваем: List<int> vs stackalloc
+MemoryProfiler.Measure("List<int> x10000", () =>
+{
+    for (int i = 0; i < 10_000; i++)
+    {
+        var list = new List<int>(100);
+        for (int j = 0; j < 100; j++) list.Add(j);
+    }
+});
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (ResourceManager с IDisposable)
+
+Создай класс `ResourceManager`, который:
+- Реализует `IDisposable` (полный паттерн с финализатором)
+- Хранит список "загруженных ресурсов" (просто строки-имена)
+- Метод `LoadResource(string name)` — добавляет ресурс
+- Метод `UnloadResource(string name)` — убирает ресурс
+- При `Dispose()` — выгружает все ресурсы и выводит сообщение
+- После `Dispose()` — любой метод бросает `ObjectDisposedException`
+
+Протестируй с `using` блоком.
+
+#!csharp
+
+// Упражнение 1: ResourceManager с IDisposable
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (ArrayPool vs new — замер производительности)
+
+Напиши два метода:
+1. `ProcessWithNew(int count, int bufferSize)` — в цикле `count` раз создаёт `new byte[bufferSize]` и записывает туда данные
+2. `ProcessWithPool(int count, int bufferSize)` — то же самое, но с `ArrayPool<byte>.Shared`
+
+Используй `MemoryProfiler.Measure()` из примера выше (или напиши свой) для сравнения. Попробуй с разными `count` (1000, 10000) и `bufferSize` (1024, 8192, 65536).
+
+#!csharp
+
+// Упражнение 2: ArrayPool vs new
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Зачем нужен `IDisposable`, если GC и так собирает мусор?
+2. Что произойдёт, если забыть вызвать `Dispose()` у объекта, который держит файловый дескриптор?
+3. В чём разница между `Span<T>` и массивом? Когда использовать `Span<T>`?
+
+---
+> **Предыдущий:** [Garbage Collector](01_Garbage_Collector.dib) | **Следующий:** [SOLID](../04_SOLID/01_SOLID.dib)

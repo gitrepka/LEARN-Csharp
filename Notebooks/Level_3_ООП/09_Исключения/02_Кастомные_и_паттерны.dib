@@ -1,0 +1,312 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Кастомные исключения и паттерны
+> **Уровень:** 3 — ООП | **Тема:** Исключения (2/2)
+> **Предыдущий:** [Try/Catch](01_Try_Catch.dib) | **Следующий:** [Отладка](../10_Отладка/01_Отладка.dib)
+---
+
+#!markdown
+
+## 1. Пользовательские исключения
+
+### Когда создавать?
+Когда стандартные исключения **не описывают** твою ошибку достаточно точно.
+
+#!csharp
+
+// Пользовательское исключение
+class InsufficientFundsException : Exception
+{
+    public decimal Balance { get; }
+    public decimal Amount { get; }
+
+    public InsufficientFundsException(decimal balance, decimal amount)
+        : base($"Недостаточно средств. Баланс: {balance:C}, запрошено: {amount:C}")
+    {
+        Balance = balance;
+        Amount = amount;
+    }
+}
+
+class InvalidLevelException : Exception
+{
+    public int Level { get; }
+    public int MaxLevel { get; }
+
+    public InvalidLevelException(int level, int maxLevel)
+        : base($"Уровень {level} недопустим. Максимум: {maxLevel}")
+    {
+        Level = level;
+        MaxLevel = maxLevel;
+    }
+}
+
+class GameAccount
+{
+    public string Player { get; }
+    public decimal Gold { get; private set; }
+    public int Level { get; private set; }
+    private const int MaxLevel = 50;
+
+    public GameAccount(string player, decimal gold)
+    {
+        Player = player;
+        Gold = gold;
+        Level = 1;
+    }
+
+    public void SpendGold(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), "Сумма должна быть положительной");
+        if (amount > Gold)
+            throw new InsufficientFundsException(Gold, amount);
+
+        Gold -= amount;
+        Console.WriteLine($"  {Player} потратил {amount:C}. Осталось: {Gold:C}");
+    }
+
+    public void SetLevel(int level)
+    {
+        if (level < 1 || level > MaxLevel)
+            throw new InvalidLevelException(level, MaxLevel);
+
+        Level = level;
+        Console.WriteLine($"  {Player} теперь уровень {Level}");
+    }
+}
+
+var account = new GameAccount("Герой", 100m);
+
+try
+{
+    account.SpendGold(50m);
+    account.SpendGold(200m); // Ошибка!
+}
+catch (InsufficientFundsException ex)
+{
+    Console.WriteLine($"  Ошибка: {ex.Message}");
+    Console.WriteLine($"  Не хватает: {ex.Amount - ex.Balance:C}");
+}
+
+try
+{
+    account.SetLevel(99); // Ошибка!
+}
+catch (InvalidLevelException ex)
+{
+    Console.WriteLine($"  Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+## 2. throw vs throw ex
+
+**Критически важная** разница!
+
+#!csharp
+
+void MethodA()
+{
+    throw new InvalidOperationException("Ошибка в MethodA");
+}
+
+// ПРАВИЛЬНО: throw — сохраняет полный стек вызовов
+void CorrectRethrow()
+{
+    try
+    {
+        MethodA();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Логируем ошибку...");
+        throw; // Пробрасываем дальше С СОХРАНЕНИЕМ стека!
+    }
+}
+
+// НЕПРАВИЛЬНО: throw ex — ТЕРЯЕТ стек вызовов
+void WrongRethrow()
+{
+    try
+    {
+        MethodA();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Логируем ошибку...");
+        throw ex; // ПЛОХО! Стек обрезается. Будет казаться что ошибка тут.
+    }
+}
+
+// Демонстрация
+Console.WriteLine("=== throw (правильно) ===");
+try
+{
+    CorrectRethrow();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Стек: {ex.StackTrace}");
+    Console.WriteLine("^ Видно что ошибка из MethodA!");
+}
+
+Console.WriteLine("\n=== throw ex (неправильно) ===");
+try
+{
+    WrongRethrow();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Стек: {ex.StackTrace}");
+    Console.WriteLine("^ Стек обрезан — MethodA не видно!");
+}
+
+#!markdown
+
+## 3. Guard Clauses — проверки на входе
+
+Современный подход: проверяй аргументы **в начале метода**, до основной логики. Это называется **guard clause** (защитное условие).
+
+#!csharp
+
+// Современные guard-методы (.NET 6+)
+
+void CreatePlayer(string name, int health, string[] items)
+{
+    // Guard clauses — проверки в самом начале
+    ArgumentNullException.ThrowIfNull(name);           // Выбросит если null
+    ArgumentNullException.ThrowIfNull(items);
+
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя не может быть пустым", nameof(name));
+
+    ArgumentOutOfRangeException.ThrowIfNegativeOrZero(health); // .NET 8+
+
+    // Если дошли сюда — все аргументы валидны
+    Console.WriteLine($"Создан игрок: {name}, HP: {health}, предметов: {items.Length}");
+}
+
+// Тестируем guard clauses
+var tests = new (string Name, int Health, string[] Items)[]
+{
+    (null, 100, new[] { "Меч" }),
+    ("Герой", -5, new[] { "Щит" }),
+    ("", 100, new[] { "Зелье" }),
+    ("Герой", 100, new[] { "Меч", "Щит" }),
+};
+
+foreach (var (name, health, items) in tests)
+{
+    try
+    {
+        CreatePlayer(name, health, items);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Ошибка: [{ex.GetType().Name}] {ex.Message}");
+    }
+}
+
+#!markdown
+
+## 4. Паттерн Try... — не бросает исключение
+
+Вместо исключения — возвращаем `bool` (success/failure). Для **ожидаемых** ошибок (парсинг, поиск).
+
+#!csharp
+
+// Паттерн: метод Try... — не бросает исключение, возвращает bool
+class SafeParser
+{
+    // Вместо исключения — возвращаем success/failure
+    public static bool TryParseAge(string input, out int age)
+    {
+        age = 0;
+
+        if (!int.TryParse(input, out age))
+            return false;
+
+        if (age < 0 || age > 150)
+        {
+            age = 0;
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool TryParseEmail(string input, out string email)
+    {
+        email = "";
+
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        if (!input.Contains('@') || !input.Contains('.'))
+            return false;
+
+        email = input.Trim().ToLower();
+        return true;
+    }
+}
+
+var inputs = new[] { "25", "abc", "-5", "200", "30" };
+foreach (var input in inputs)
+{
+    if (SafeParser.TryParseAge(input, out int age))
+        Console.WriteLine($"  '{input}' -> возраст: {age}");
+    else
+        Console.WriteLine($"  '{input}' -> неверный возраст");
+}
+
+Console.WriteLine();
+var emails = new[] { "user@mail.com", "bad-email", "test@example.org", "" };
+foreach (var input in emails)
+{
+    if (SafeParser.TryParseEmail(input, out string email))
+        Console.WriteLine($"  '{input}' -> email: {email}");
+    else
+        Console.WriteLine($"  '{input}' -> неверный email");
+}
+
+#!markdown
+
+## Правила работы с исключениями
+
+| Правило | Пояснение |
+|---------|----------|
+| Не ловить всё подряд | `catch (Exception)` — только на верхнем уровне |
+| Не глушить ошибки | `catch { }` — **никогда** так не делай! |
+| `throw`, не `throw ex` | Сохраняй стек вызовов |
+| Guard clauses | Проверяй аргументы в начале метода |
+| Try-паттерн | Для ожидаемых ошибок (парсинг, поиск) |
+| Пользовательские исключения | Когда стандартные не подходят |
+| finally для ресурсов | Или лучше `using` |
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай класс `BankAccount` с:
+- Свойства: `string Owner`, `decimal Balance`
+- Метод `Deposit(decimal amount)` — guard clause: ArgumentOutOfRangeException если amount <= 0
+- Метод `Withdraw(decimal amount)` — пользовательское исключение `InsufficientFundsException` если не хватает средств
+- Используй try/catch для тестирования: сделай несколько операций, поймай ошибки, выведи баланс в finally
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Чем `throw` отличается от `throw ex`?
+2. Что такое guard clause? Приведи пример.
+3. Когда стоит создавать пользовательское исключение?
+4. Что такое Try-паттерн (TryParse, TryGetValue)? Когда его использовать?
+
+---
+> **Предыдущий:** [Try/Catch](01_Try_Catch.dib) | **Следующий:** [Отладка](../10_Отладка/01_Отладка.dib)

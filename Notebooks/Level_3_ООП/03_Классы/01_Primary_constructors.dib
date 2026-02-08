@@ -1,0 +1,173 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Primary Constructors, required и init
+> **Уровень:** 3 — ООП | **Тема:** Классы (1/2)
+> **Предыдущий:** [Локальные функции и рекурсия](../02_Методы/02_Локальные_и_рекурсия.dib) | **Следующий:** [Цепочки конструкторов и static](02_Цепочки_и_static.dib)
+---
+
+## Что ты уже знаешь
+На уровне 2 мы создавали классы с полями, свойствами, конструкторами и методами. Теперь углубляемся: **primary constructors**, **required свойства**, **init-only**.
+
+---
+
+## Зачем это нужно?
+Современный C# развивается в сторону **меньше кода — больше смысла**. Новые фичи позволяют писать классы компактнее и безопаснее, не жертвуя читаемостью.
+
+#!markdown
+
+## 1. Primary Constructors (C# 12)
+
+### Что это?
+Параметры прямо в объявлении класса. **Не нужно** отдельно писать конструктор и поля.
+
+Аналогия: раньше ты заполнял анкету на 3 страницы. Теперь — одна строка с основными данными.
+
+#!csharp
+
+// БЫЛО (классический подход)
+class OldPlayer
+{
+    private readonly string _name;
+    private readonly int _health;
+
+    public OldPlayer(string name, int health)
+    {
+        _name = name;
+        _health = health;
+    }
+
+    public override string ToString() => $"{_name} (HP: {_health})";
+}
+
+// СТАЛО (primary constructor, C# 12)
+class Player(string name, int health)
+{
+    // name и health доступны во всём классе как параметры
+    public override string ToString() => $"{name} (HP: {health})";
+
+    public string Name => name;       // можно сделать свойство
+    public bool IsAlive => health > 0;
+}
+
+var p = new Player("Герой", 100);
+Console.WriteLine(p);
+Console.WriteLine($"Жив? {p.IsAlive}");
+
+#!csharp
+
+// Primary constructor с дополнительной логикой
+class BankAccount(string owner, decimal initialBalance)
+{
+    // Параметр primary constructor можно использовать для инициализации поля
+    private decimal _balance = initialBalance >= 0
+        ? initialBalance
+        : throw new ArgumentException("Баланс не может быть отрицательным");
+
+    public string Owner => owner;
+    public decimal Balance => _balance;
+
+    public void Deposit(decimal amount)
+    {
+        if (amount <= 0) throw new ArgumentException("Сумма должна быть положительной");
+        _balance += amount;
+    }
+
+    public void Withdraw(decimal amount)
+    {
+        if (amount > _balance) throw new InvalidOperationException("Недостаточно средств");
+        _balance -= amount;
+    }
+
+    public override string ToString() => $"Счёт {owner}: {_balance:C}";
+}
+
+var account = new BankAccount("Иван", 1000m);
+account.Deposit(500m);
+account.Withdraw(200m);
+Console.WriteLine(account);
+
+#!markdown
+
+## 2. Required свойства (C# 11) и Init-only сеттеры
+
+### Зачем?
+- `init` — свойство можно установить **только при создании** объекта
+- `required` — компилятор **заставляет** указать свойство при создании
+
+Аналогия: `init` — как **печать на договоре**: поставил один раз, изменить нельзя. `required` — как **обязательное поле в форме**: не заполнил — не отправишь.
+
+#!csharp
+
+// init-only свойства — установка только при создании
+class Config
+{
+    public string AppName { get; init; }      // только при инициализации
+    public int MaxRetries { get; init; }
+    public string Version { get; set; }        // а это можно менять
+
+    public override string ToString() => $"{AppName} v{Version}, retries: {MaxRetries}";
+}
+
+var config = new Config
+{
+    AppName = "MyApp",
+    MaxRetries = 3,
+    Version = "1.0"
+};
+
+Console.WriteLine(config);
+
+config.Version = "1.1";  // OK — обычный set
+// config.AppName = "Other"; // ОШИБКА — init-only!
+Console.WriteLine(config);
+
+#!csharp
+
+// required — обязательные свойства (C# 11)
+class UserProfile
+{
+    public required string Username { get; init; }   // ОБЯЗАТЕЛЬНО
+    public required string Email { get; init; }      // ОБЯЗАТЕЛЬНО
+    public string? Bio { get; set; }                 // необязательно
+    public int Age { get; init; }                    // не required, будет 0
+}
+
+// Компилятор заставляет указать required свойства
+var user = new UserProfile
+{
+    Username = "player42",
+    Email = "player@game.com"
+    // Bio и Age можно не указывать
+};
+
+Console.WriteLine($"User: {user.Username}, Email: {user.Email}, Bio: {user.Bio ?? "не указано"}");
+
+// Это бы не скомпилировалось:
+// var bad = new UserProfile { Username = "test" }; // ОШИБКА — Email не указан!
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай класс `Product` с primary constructor `(string name, decimal price)`. Добавь:
+- `required string Category { get; init; }`
+- Свойство `string PriceTag` которое возвращает цену в формате "999.99 руб."
+- Переопредели `ToString()`
+- Создай 3 продукта и выведи их
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Что такое primary constructor и в какой версии C# он появился для классов?
+2. Чем `init` отличается от `set`?
+3. Что делает `required` и зачем он нужен?
+4. Можно ли комбинировать primary constructor с `required` свойствами?
+
+---
+> **Предыдущий:** [Локальные функции и рекурсия](../02_Методы/02_Локальные_и_рекурсия.dib) | **Следующий:** [Цепочки конструкторов и static](02_Цепочки_и_static.dib)

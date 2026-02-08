@@ -1,0 +1,175 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Command — действие как объект
+> **Уровень:** 5 — Архитектура | **Тема:** Паттерны (6/8)
+> **Предыдущий:** [State](05_State.dib) | **Следующий:** [Builder](07_Builder.dib)
+---
+
+**Когда нужен:** Undo/Redo, очередь команд, запись макросов, привязка клавиш.
+
+**Аналогия:** Заказ в ресторане. Официант записывает заказ (команда), отдаёт на кухню. Заказ можно отменить, изменить, повторить.
+
+#!csharp
+
+// === Command Pattern с Undo ===
+
+public interface ICommand
+{
+    string Description { get; }
+    void Execute();
+    void Undo();
+}
+
+public class GameWorld
+{
+    public int PlayerX { get; set; }
+    public int PlayerY { get; set; }
+    public int PlayerHealth { get; set; } = 100;
+    public List<string> Inventory { get; } = new();
+
+    public void Print() =>
+        Console.WriteLine($"  Позиция: ({PlayerX},{PlayerY}), HP: {PlayerHealth}, " +
+                          $"Инвентарь: [{string.Join(", ", Inventory)}]");
+}
+
+public class MoveCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly int _dx, _dy;
+    public string Description => $"Движение ({_dx},{_dy})";
+
+    public MoveCommand(GameWorld world, int dx, int dy)
+    {
+        _world = world; _dx = dx; _dy = dy;
+    }
+
+    public void Execute() { _world.PlayerX += _dx; _world.PlayerY += _dy; }
+    public void Undo() { _world.PlayerX -= _dx; _world.PlayerY -= _dy; }
+}
+
+public class PickupCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly string _item;
+    public string Description => $"Подобрать {_item}";
+
+    public PickupCommand(GameWorld world, string item)
+    {
+        _world = world; _item = item;
+    }
+
+    public void Execute() => _world.Inventory.Add(_item);
+    public void Undo() => _world.Inventory.Remove(_item);
+}
+
+public class HealCommand : ICommand
+{
+    private readonly GameWorld _world;
+    private readonly int _amount;
+    private int _actualHeal;
+    public string Description => $"Лечение +{_amount}";
+
+    public HealCommand(GameWorld world, int amount)
+    {
+        _world = world; _amount = amount;
+    }
+
+    public void Execute()
+    {
+        _actualHeal = Math.Min(_amount, 100 - _world.PlayerHealth);
+        _world.PlayerHealth += _actualHeal;
+    }
+    public void Undo() => _world.PlayerHealth -= _actualHeal;
+}
+
+// Менеджер команд с историей
+public class CommandManager
+{
+    private readonly Stack<ICommand> _history = new();
+    private readonly Stack<ICommand> _redoStack = new();
+
+    public void Execute(ICommand command)
+    {
+        command.Execute();
+        _history.Push(command);
+        _redoStack.Clear(); // После нового действия redo сбрасывается
+        Console.WriteLine($"  > {command.Description}");
+    }
+
+    public void Undo()
+    {
+        if (_history.Count == 0) { Console.WriteLine("  Нечего отменять!"); return; }
+        var command = _history.Pop();
+        command.Undo();
+        _redoStack.Push(command);
+        Console.WriteLine($"  < Отменено: {command.Description}");
+    }
+
+    public void Redo()
+    {
+        if (_redoStack.Count == 0) { Console.WriteLine("  Нечего повторять!"); return; }
+        var command = _redoStack.Pop();
+        command.Execute();
+        _history.Push(command);
+        Console.WriteLine($"  >> Повторено: {command.Description}");
+    }
+}
+
+// Демонстрация
+var world = new GameWorld();
+var commands = new CommandManager();
+
+Console.WriteLine("=== Command Pattern с Undo/Redo ===\n");
+
+commands.Execute(new MoveCommand(world, 1, 0));
+commands.Execute(new MoveCommand(world, 0, 1));
+commands.Execute(new PickupCommand(world, "Меч"));
+commands.Execute(new PickupCommand(world, "Зелье"));
+world.PlayerHealth = 60;
+commands.Execute(new HealCommand(world, 30));
+world.Print();
+
+Console.WriteLine("\nОтменяем 2 действия:");
+commands.Undo();
+commands.Undo();
+world.Print();
+
+Console.WriteLine("\nПовторяем 1 действие:");
+commands.Redo();
+world.Print();
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Текстовый редактор с Undo)
+
+Создай простой текстовый редактор с командами:
+- `TypeCommand` — добавляет текст
+- `DeleteCommand` — удаляет последние N символов
+- `ReplaceCommand` — заменяет подстроку
+
+Все команды должны поддерживать Undo. Продемонстрируй несколько операций и отмен.
+
+#!csharp
+
+// Упражнение 1: Текстовый редактор с Undo
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. В каких ситуациях Command + Undo незаменим?
+2. Чем Command отличается от простого вызова метода?
+
+---
+> **Предыдущий:** [State](05_State.dib) | **Следующий:** [Builder](07_Builder.dib)

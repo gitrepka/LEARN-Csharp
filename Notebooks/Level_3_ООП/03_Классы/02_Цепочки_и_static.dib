@@ -1,0 +1,223 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Цепочки конструкторов, static и file class
+> **Уровень:** 3 — ООП | **Тема:** Классы (2/2)
+> **Предыдущий:** [Primary constructors](01_Primary_constructors.dib) | **Следующий:** [Наследование](../04_Наследование/01_Наследование.dib)
+---
+
+## Зачем это нужно?
+Цепочки конструкторов убирают дублирование кода. Статический конструктор инициализирует общие ресурсы. File-scoped класс прячет вспомогательный код.
+
+#!markdown
+
+## 1. Цепочка конструкторов — this()
+
+### Зачем?
+Когда у класса несколько конструкторов, они часто дублируют код. `this()` позволяет **вызвать один конструктор из другого**.
+
+Аналогия: как **расширенная и базовая комплектация авто** — расширенная включает всё из базовой плюс дополнения.
+
+#!csharp
+
+class Enemy
+{
+    public string Name { get; }
+    public int Health { get; }
+    public int Damage { get; }
+    public string Type { get; }
+
+    // Главный конструктор — содержит всю логику
+    public Enemy(string name, int health, int damage, string type)
+    {
+        Name = name;
+        Health = health > 0 ? health : 1;
+        Damage = damage > 0 ? damage : 1;
+        Type = type;
+        Console.WriteLine($"  [Создан враг: {Name}]");
+    }
+
+    // Цепочка: вызывает главный с типом по умолчанию
+    public Enemy(string name, int health, int damage)
+        : this(name, health, damage, "Обычный") { }
+
+    // Цепочка: вызывает предыдущий с дефолтным уроном
+    public Enemy(string name, int health)
+        : this(name, health, 10) { }
+
+    // Цепочка: минимальный конструктор
+    public Enemy(string name)
+        : this(name, 50) { }
+
+    public override string ToString()
+        => $"{Name} [{Type}] HP:{Health} DMG:{Damage}";
+}
+
+Console.WriteLine("--- Создаём врагов ---");
+var boss = new Enemy("Дракон", 500, 50, "Босс");
+var elite = new Enemy("Рыцарь", 200, 30);
+var regular = new Enemy("Гоблин", 80);
+var basic = new Enemy("Слайм");
+
+Console.WriteLine();
+Console.WriteLine(boss);
+Console.WriteLine(elite);
+Console.WriteLine(regular);
+Console.WriteLine(basic);
+
+#!markdown
+
+## 2. Статический конструктор
+
+### Зачем?
+Обычный конструктор вызывается при создании **каждого** объекта. Статический — **один раз**, при первом обращении к классу. Идеально для **инициализации общих ресурсов**.
+
+Аналогия: обычный конструктор — это **регистрация каждого гостя** на входе. Статический конструктор — это **подготовка зала** перед приходом первого гостя.
+
+#!csharp
+
+class GameSettings
+{
+    // Статические поля — общие для всех экземпляров
+    public static readonly string GameVersion;
+    public static readonly DateTime StartTime;
+    private static int _instanceCount;
+
+    // Статический конструктор — вызывается ОДИН раз
+    static GameSettings()
+    {
+        GameVersion = "2.5.1";
+        StartTime = DateTime.Now;
+        _instanceCount = 0;
+        Console.WriteLine("[Статический конструктор вызван — настройки загружены]");
+    }
+
+    // Обычный конструктор — вызывается при каждом new
+    public string PlayerName { get; }
+
+    public GameSettings(string playerName)
+    {
+        PlayerName = playerName;
+        _instanceCount++;
+        Console.WriteLine($"[Создан экземпляр #{_instanceCount} для {playerName}]");
+    }
+
+    public static int InstanceCount => _instanceCount;
+
+    public override string ToString()
+        => $"Player: {PlayerName}, Version: {GameVersion}, Started: {StartTime:HH:mm:ss}";
+}
+
+// Статический конструктор вызовется при первом обращении
+Console.WriteLine($"Версия: {GameSettings.GameVersion}");
+Console.WriteLine();
+
+var s1 = new GameSettings("Алиса");
+var s2 = new GameSettings("Борис");
+Console.WriteLine($"Всего экземпляров: {GameSettings.InstanceCount}");
+Console.WriteLine(s1);
+Console.WriteLine(s2);
+
+#!markdown
+
+## 3. File-scoped классы (file modifier)
+
+### Зачем?
+Модификатор `file` делает класс **видимым только в текущем файле**. Это ещё строже, чем `internal` (видимый в проекте) или `private` (видимый в содержащем классе).
+
+Полезно для вспомогательных классов, которые нужны **только в одном файле**.
+
+#!csharp
+
+// В .dib мы не можем показать file-scoped в действии между файлами,
+// но вот как это выглядит в .cs файле:
+
+// file class Helper  <-- виден ТОЛЬКО в этом файле
+// {
+//     public static void DoSomething() { ... }
+// }
+
+// В другом файле:
+// Helper.DoSomething();  <-- ОШИБКА! Helper не виден
+
+// Пример — когда это полезно:
+// Файл: Validators.cs
+// file class EmailValidator { ... }  -- вспомогательный, только для этого файла
+// public class UserValidator { ... } -- основной, виден всем
+
+Console.WriteLine("file class — модификатор доступа на уровне файла.");
+Console.WriteLine("Виден ТОЛЬКО в файле, где объявлен.");
+Console.WriteLine("Строже чем internal (весь проект) или private (в классе).");
+Console.WriteLine("Полезен для вспомогательных классов, не засоряющих API.");
+
+#!csharp
+
+// Комбинируем все концепции в одном примере
+class Inventory(int maxSlots)
+{
+    // required + init — обязательное имя, задаётся при создании
+    public required string OwnerName { get; init; }
+
+    // Приватное поле, инициализированное через primary constructor
+    private readonly List<string> _items = new();
+
+    public int MaxSlots => maxSlots;
+    public int UsedSlots => _items.Count;
+    public int FreeSlots => maxSlots - _items.Count;
+
+    public bool TryAddItem(string item)
+    {
+        if (_items.Count >= maxSlots)
+        {
+            Console.WriteLine($"  Инвентарь полон! ({_items.Count}/{maxSlots})");
+            return false;
+        }
+        _items.Add(item);
+        return true;
+    }
+
+    public void ShowInventory()
+    {
+        Console.WriteLine($"=== Инвентарь {OwnerName} ({UsedSlots}/{MaxSlots}) ===");
+        for (int i = 0; i < _items.Count; i++)
+            Console.WriteLine($"  [{i + 1}] {_items[i]}");
+        if (_items.Count == 0)
+            Console.WriteLine("  (пусто)");
+    }
+}
+
+var inv = new Inventory(3) { OwnerName = "Герой" };
+inv.ShowInventory();
+
+inv.TryAddItem("Меч");
+inv.TryAddItem("Зелье");
+inv.TryAddItem("Щит");
+inv.TryAddItem("Лук");  // Не поместится!
+
+inv.ShowInventory();
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай класс `Character` с цепочкой конструкторов:
+- Полный: `(string name, string className, int hp, int mp, int level)`
+- Средний: `(string name, string className, int hp)` — mp=50, level=1
+- Минимальный: `(string name)` — className="Воин", hp=100
+- Добавь статический конструктор, который выводит "Игра загружена"
+- Создай 3 персонажа разными конструкторами
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Как работает цепочка конструкторов через `this()`?
+2. Когда вызывается статический конструктор? Сколько раз?
+3. Чем модификатор `file` отличается от `internal`?
+
+---
+> **Предыдущий:** [Primary constructors](01_Primary_constructors.dib) | **Следующий:** [Наследование](../04_Наследование/01_Наследование.dib)

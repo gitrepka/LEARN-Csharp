@@ -1,0 +1,271 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Локальные функции и рекурсия
+> **Уровень:** 3 — ООП | **Тема:** Методы (2/2)
+> **Предыдущий:** [Extension-методы](01_Extension_methods.dib) | **Следующий:** [Primary constructors](../03_Классы/01_Primary_constructors.dib)
+---
+
+## Зачем это нужно?
+- **Локальные функции** — метод внутри метода. Помогают **организовать код** и спрятать вспомогательную логику.
+- **Рекурсия** — когда метод вызывает сам себя. Мощный инструмент для **деревьев, поиска, разделяй-и-властвуй**.
+
+#!markdown
+
+## 1. Локальные функции (Local Functions)
+
+### Зачем?
+Иногда внутри метода нужна вспомогательная логика, которая **нигде больше не используется**. Локальная функция — метод внутри метода.
+
+Аналогия: это как **заметка на полях книги** — видна только когда читаешь эту страницу.
+
+#!csharp
+
+// Локальная функция — объявляется внутри другого метода
+void ProcessStudents()
+{
+    var students = new[] { ("Алиса", 85), ("Борис", 42), ("Вера", 91), ("Глеб", 67) };
+
+    // Локальная функция — видна только внутри ProcessStudents
+    string GetGrade(int score) => score switch
+    {
+        >= 90 => "Отлично",
+        >= 70 => "Хорошо",
+        >= 50 => "Удовл.",
+        _     => "Неуд."
+    };
+
+    foreach (var (name, score) in students)
+    {
+        Console.WriteLine($"{name}: {score} баллов — {GetGrade(score)}");
+    }
+}
+
+ProcessStudents();
+
+#!csharp
+
+// Локальные функции имеют доступ к переменным внешнего метода
+void PrintReport(string title)
+{
+    int totalProcessed = 0;
+
+    void ProcessItem(string item)
+    {
+        Console.WriteLine($"  [{title}] Обработка: {item}");
+        totalProcessed++; // Доступ к переменной внешнего метода!
+    }
+
+    ProcessItem("Элемент A");
+    ProcessItem("Элемент B");
+    ProcessItem("Элемент C");
+
+    Console.WriteLine($"Итого обработано: {totalProcessed}");
+}
+
+PrintReport("Отчёт за февраль");
+
+#!csharp
+
+// static local function — НЕ может захватывать внешние переменные
+// Это безопаснее и быстрее — компилятор гарантирует отсутствие замыканий
+void Calculate()
+{
+    int[] data = { 10, 20, 30, 40, 50 };
+
+    // static — не может обращаться к внешним переменным
+    static double Average(int[] numbers)
+    {
+        double sum = 0;
+        foreach (var n in numbers)
+            sum += n;
+        return sum / numbers.Length;
+    }
+
+    // static — принимает всё через параметры
+    static (int min, int max) MinMax(int[] numbers)
+    {
+        int min = numbers[0], max = numbers[0];
+        foreach (var n in numbers)
+        {
+            if (n < min) min = n;
+            if (n > max) max = n;
+        }
+        return (min, max);
+    }
+
+    Console.WriteLine($"Среднее: {Average(data)}");
+    var (min, max) = MinMax(data);
+    Console.WriteLine($"Мин: {min}, Макс: {max}");
+}
+
+Calculate();
+
+#!markdown
+
+### Когда что использовать?
+| Вариант | Когда |
+|---------|-------|
+| Локальная функция | Вспомогательная логика, нужен доступ к внешним переменным |
+| `static` локальная функция | Чистая функция без побочных эффектов, лучше производительность |
+| Обычный `private` метод | Логика используется в нескольких методах класса |
+| Extension-метод | Логика полезна для типа в целом, может использоваться везде |
+
+#!markdown
+
+## 2. Рекурсия — глубже
+
+### Напоминание
+Рекурсия — это когда **функция вызывает сама себя**. У каждой рекурсии должен быть **базовый случай** (когда останавливаемся) и **рекурсивный шаг** (когда вызываем себя с меньшей задачей).
+
+Аналогия: Матрёшка. Открываешь одну — внутри другая. Открываешь другую — внутри третья. Самая маленькая — базовый случай.
+
+#!csharp
+
+// Числа Фибоначчи: 0, 1, 1, 2, 3, 5, 8, 13, 21...
+// Каждое число = сумма двух предыдущих
+
+// Наивная рекурсия (МЕДЛЕННО для больших n!)
+long FibNaive(int n)
+{
+    if (n <= 0) return 0;  // базовый случай
+    if (n == 1) return 1;  // базовый случай
+    return FibNaive(n - 1) + FibNaive(n - 2); // рекурсивный шаг
+}
+
+// Рекурсия с мемоизацией (БЫСТРО!)
+long FibMemo(int n, Dictionary<int, long> cache = null)
+{
+    cache ??= new Dictionary<int, long>();
+
+    if (n <= 0) return 0;
+    if (n == 1) return 1;
+
+    if (cache.ContainsKey(n))
+        return cache[n];
+
+    long result = FibMemo(n - 1, cache) + FibMemo(n - 2, cache);
+    cache[n] = result;
+    return result;
+}
+
+// Сравним
+var sw = System.Diagnostics.Stopwatch.StartNew();
+Console.WriteLine($"Fib(35) наивная: {FibNaive(35)}");
+Console.WriteLine($"  Время: {sw.ElapsedMilliseconds} мс");
+
+sw.Restart();
+Console.WriteLine($"Fib(35) мемоизация: {FibMemo(35)}");
+Console.WriteLine($"  Время: {sw.ElapsedMilliseconds} мс");
+
+// Мемоизация справляется даже с большими числами
+Console.WriteLine($"Fib(80) мемоизация: {FibMemo(80)}");
+
+#!csharp
+
+// Бинарный поиск — рекурсивная версия
+// Ищем элемент в ОТСОРТИРОВАННОМ массиве
+// Каждый шаг отбрасывает половину — O(log n)
+
+int BinarySearch(int[] sorted, int target, int left, int right)
+{
+    // Базовый случай: не нашли
+    if (left > right) return -1;
+
+    int mid = left + (right - left) / 2; // защита от переполнения
+
+    if (sorted[mid] == target)
+        return mid;                                    // Нашли!
+    else if (sorted[mid] < target)
+        return BinarySearch(sorted, target, mid + 1, right);  // Ищем справа
+    else
+        return BinarySearch(sorted, target, left, mid - 1);   // Ищем слева
+}
+
+int[] data = { 2, 5, 8, 12, 16, 23, 38, 56, 72, 91 };
+Console.WriteLine($"Массив: {string.Join(", ", data)}");
+
+int idx = BinarySearch(data, 23, 0, data.Length - 1);
+Console.WriteLine($"Ищем 23 — найден на индексе: {idx}");
+
+idx = BinarySearch(data, 50, 0, data.Length - 1);
+Console.WriteLine($"Ищем 50 — результат: {idx} (не найден)");
+
+#!csharp
+
+// Практический пример: обход дерева папок (рекурсивная структура)
+// Дерево — идеальная задача для рекурсии
+
+class TreeNode
+{
+    public string Name { get; init; }
+    public List<TreeNode> Children { get; init; } = new();
+}
+
+void PrintTree(TreeNode node, string indent = "")
+{
+    Console.WriteLine($"{indent}{node.Name}");
+    foreach (var child in node.Children)
+    {
+        PrintTree(child, indent + "  "); // рекурсивный вызов
+    }
+}
+
+// Создаём дерево
+var root = new TreeNode
+{
+    Name = "Проект",
+    Children =
+    {
+        new TreeNode
+        {
+            Name = "src",
+            Children =
+            {
+                new TreeNode { Name = "Program.cs" },
+                new TreeNode
+                {
+                    Name = "Models",
+                    Children =
+                    {
+                        new TreeNode { Name = "Player.cs" },
+                        new TreeNode { Name = "Enemy.cs" }
+                    }
+                }
+            }
+        },
+        new TreeNode
+        {
+            Name = "tests",
+            Children =
+            {
+                new TreeNode { Name = "PlayerTests.cs" }
+            }
+        }
+    }
+};
+
+PrintTree(root);
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Напиши рекурсивную функцию `int Power(int base, int exponent)` которая вычисляет степень числа. Используй локальную static-функцию. Базовые случаи: exponent == 0 -> 1, exponent == 1 -> base. Рекурсивный шаг: base * Power(base, exponent - 1). Протестируй: Power(2, 10) должно быть 1024.
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Чем локальная функция отличается от `private` метода класса?
+2. Зачем делать локальную функцию `static`?
+3. Что такое базовый случай в рекурсии и почему он обязателен?
+4. Почему наивная рекурсия Фибоначчи медленная? Как мемоизация это решает?
+5. Какая сложность (Big O) у бинарного поиска и почему?
+
+---
+> **Предыдущий:** [Extension-методы](01_Extension_methods.dib) | **Следующий:** [Primary constructors](../03_Классы/01_Primary_constructors.dib)

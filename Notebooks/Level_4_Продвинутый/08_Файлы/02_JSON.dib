@@ -1,0 +1,254 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# JSON-сериализация с System.Text.Json
+> **Уровень:** 4 — Продвинутый | **Тема:** Файлы (2/2)
+> **Предыдущий:** [Файловый ввод/вывод](01_Файловый_ввод_вывод.dib) | **Следующий:** [Функциональное программирование](../09_Функциональное/01_Функциональное.dib)
+---
+
+## Зачем это нужно?
+
+JSON — самый популярный формат для хранения и обмена данных. Встроен в .NET (пакет `System.Text.Json`).
+
+- **Godot:** сохранение/загрузка игры, настройки, уровни в JSON
+- **Uno Platform:** кэширование данных, обмен с API
+- **Общее:** конфиги, REST API, настройки
+
+---
+
+## 1. Базовая сериализация
+
+#!csharp
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+// --- Базовая сериализация ---
+public class GameCharacter
+{
+    public string Name { get; set; }
+    public string Class { get; set; }
+    public int Level { get; set; }
+    public double Health { get; set; }
+    public List<string> Inventory { get; set; } = new();
+}
+
+var hero = new GameCharacter
+{
+    Name = "Артас",
+    Class = "Паладин",
+    Level = 42,
+    Health = 850.5,
+    Inventory = new() { "Фростморн", "Зелье маны", "Свиток телепортации" }
+};
+
+// Сериализация (объект -> JSON строка)
+string json = JsonSerializer.Serialize(hero);
+Console.WriteLine("Сырой JSON:");
+Console.WriteLine(json);
+
+// Красивый JSON (с отступами)
+var options = new JsonSerializerOptions { WriteIndented = true };
+string prettyJson = JsonSerializer.Serialize(hero, options);
+Console.WriteLine($"\nКрасивый JSON:\n{prettyJson}");
+
+// Десериализация (JSON строка -> объект)
+var loaded = JsonSerializer.Deserialize<GameCharacter>(prettyJson);
+Console.WriteLine($"\nЗагружено: {loaded.Name}, Ур.{loaded.Level}");
+Console.WriteLine($"Инвентарь: {string.Join(", ", loaded.Inventory)}");
+
+#!markdown
+
+## 2. Атрибуты: `[JsonPropertyName]`, `[JsonIgnore]`, `[JsonInclude]`
+
+#!csharp
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+public class PlayerProfile
+{
+    // Переименовать поле в JSON
+    [JsonPropertyName("player_name")]
+    public string Name { get; set; }
+
+    [JsonPropertyName("xp")]
+    public int ExperiencePoints { get; set; }
+
+    // Не включать в JSON
+    [JsonIgnore]
+    public string PasswordHash { get; set; }
+
+    // Не сериализовать если значение null
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Guild { get; set; }
+
+    // Не сериализовать если значение по умолчанию (0 для int)
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public int Deaths { get; set; }
+
+    public DateTime LastLogin { get; set; }
+}
+
+var profile = new PlayerProfile
+{
+    Name = "Джайна",
+    ExperiencePoints = 85000,
+    PasswordHash = "secret123hash", // Не попадёт в JSON!
+    Guild = null,                   // Не попадёт в JSON (null)
+    Deaths = 0,                     // Не попадёт в JSON (default)
+    LastLogin = DateTime.Now
+};
+
+var opts = new JsonSerializerOptions { WriteIndented = true };
+string json = JsonSerializer.Serialize(profile, opts);
+Console.WriteLine(json);
+
+// Десериализация — пароль будет null (его нет в JSON)
+var loaded = JsonSerializer.Deserialize<PlayerProfile>(json);
+Console.WriteLine($"\nЗагружен: {loaded.Name}, XP: {loaded.ExperiencePoints}");
+Console.WriteLine($"Пароль (должен быть null): {loaded.PasswordHash ?? "(null)"}");
+
+#!markdown
+
+## 3. Настройки сериализации
+
+#!csharp
+
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+// Глобальные настройки
+var options = new JsonSerializerOptions
+{
+    WriteIndented = true,                    // Красивый вывод
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // camelCase
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, // Пропускать null
+    PropertyNameCaseInsensitive = true,      // Игнорировать регистр при чтении
+    Converters = { new JsonStringEnumConverter() } // Enum как строки
+};
+
+public enum Rarity { Common, Rare, Epic, Legendary }
+
+public class Item
+{
+    public string Name { get; set; }
+    public int Damage { get; set; }
+    public Rarity Rarity { get; set; }
+    public string? Description { get; set; }
+}
+
+var items = new List<Item>
+{
+    new() { Name = "Железный меч", Damage = 15, Rarity = Rarity.Common },
+    new() { Name = "Ледяной посох", Damage = 45, Rarity = Rarity.Epic, Description = "Заморозка врагов" },
+    new() { Name = "Фростморн", Damage = 100, Rarity = Rarity.Legendary },
+};
+
+string json = JsonSerializer.Serialize(items, options);
+Console.WriteLine(json);
+
+// Без JsonStringEnumConverter: "rarity": 3 (число)
+// С JsonStringEnumConverter: "rarity": "Legendary" (строка) — читаемо!
+
+#!markdown
+
+## 4. Полный пример: система сохранения игры
+
+#!csharp
+
+using System.Text.Json;
+
+// Полный пример: система сохранения игры
+public class GameSave
+{
+    public string PlayerName { get; set; }
+    public int Level { get; set; }
+    public (double X, double Y) Position { get; set; }
+    public Dictionary<string, int> Stats { get; set; } = new();
+    public List<string> CompletedQuests { get; set; } = new();
+    public DateTime SaveDate { get; set; }
+}
+
+// Сохранение
+async Task SaveGame(GameSave save, string path)
+{
+    var options = new JsonSerializerOptions { WriteIndented = true };
+    string json = JsonSerializer.Serialize(save, options);
+    await File.WriteAllTextAsync(path, json);
+    Console.WriteLine($"Игра сохранена в {Path.GetFileName(path)}");
+}
+
+// Загрузка
+async Task<GameSave> LoadGame(string path)
+{
+    if (!File.Exists(path))
+        throw new FileNotFoundException($"Файл сохранения не найден: {path}");
+
+    string json = await File.ReadAllTextAsync(path);
+    return JsonSerializer.Deserialize<GameSave>(json);
+}
+
+// Тест
+string savePath = Path.Combine(Path.GetTempPath(), "save_01.json");
+
+var save = new GameSave
+{
+    PlayerName = "Тралл",
+    Level = 35,
+    Position = (150.5, -30.2),
+    Stats = new() { ["Сила"] = 80, ["Интеллект"] = 60, ["Ловкость"] = 45 },
+    CompletedQuests = new() { "Начало пути", "Спасение деревни", "Древний артефакт" },
+    SaveDate = DateTime.Now
+};
+
+await SaveGame(save, savePath);
+
+var loaded = await LoadGame(savePath);
+Console.WriteLine($"\nЗагружено: {loaded.PlayerName}, Ур.{loaded.Level}");
+Console.WriteLine($"Позиция: ({loaded.Position.X}, {loaded.Position.Y})");
+Console.WriteLine($"Квесты: {string.Join(", ", loaded.CompletedQuests)}");
+Console.WriteLine($"Характеристики:");
+foreach (var stat in loaded.Stats)
+    Console.WriteLine($"  {stat.Key}: {stat.Value}");
+
+#!markdown
+
+---
+
+## Упражнение: Менеджер заметок
+
+Создай консольное приложение "Заметки":
+- Класс `Note` с полями: `Id`, `Title`, `Content`, `CreatedAt`, `Tags` (список строк)
+- Класс `NoteManager`:
+  - `AddNote(Note note)` — добавить заметку
+  - `RemoveNote(int id)` — удалить по id
+  - `FindByTag(string tag)` — найти заметки по тегу
+  - `SaveToFile(string path)` — сохранить все заметки в JSON
+  - `LoadFromFile(string path)` — загрузить из JSON
+  - Используй `System.Text.Json` с красивым форматированием
+
+Создай несколько заметок, сохрани, загрузи и проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Чем `JsonPropertyName` полезен при работе с внешними API?
+2. Как с помощью `System.Text.Json` сериализовать `enum` как строку, а не число?
+3. Зачем нужен `[JsonIgnore]`? Приведи пример, когда это критически важно.
+4. Чем `JsonSerializerOptions` полезен при работе с несколькими классами?
+5. Как сохранить и загрузить объект из JSON-файла асинхронно?
+
+---
+
+> **Следующий:** [Функциональное программирование](../09_Функциональное/01_Функциональное.dib) — ФП в C#

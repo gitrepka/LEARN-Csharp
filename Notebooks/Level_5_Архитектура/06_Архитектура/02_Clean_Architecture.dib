@@ -1,0 +1,443 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Clean Architecture, Repository, CQRS
+> **Уровень:** 5 — Архитектура | **Тема:** Архитектура (2/2)
+> **Предыдущий:** [MVVM](01_MVVM.dib) | **Следующий:** [DI](../07_DI/01_DI.dib)
+---
+
+**Что это:** Clean Architecture (Чистая архитектура Роберта Мартина) делит код на слои, где **зависимости направлены внутрь**. Repository Pattern абстрагирует доступ к данным. CQRS разделяет операции чтения и записи.
+
+---
+
+### Содержание:
+1. Clean Architecture — слоистая архитектура
+2. Repository Pattern
+3. CQRS — Command Query Responsibility Segregation
+
+#!markdown
+
+## 1. Clean Architecture — слоистая архитектура
+
+```
++-----------------------------+
+|   Presentation (UI, API)    |  <- Зависит от Application
+|   +---------------------+   |
+|   |   Infrastructure    |   |  <- Зависит от Application
+|   |   +-------------+   |   |
+|   |   | Application  |   |   |  <- Зависит только от Domain
+|   |   | +---------+ |   |   |
+|   |   | | Domain  | |   |   |  <- Не зависит ни от кого!
+|   |   | +---------+ |   |   |
+|   |   +-------------+   |   |
+|   +---------------------+   |
++-----------------------------+
+```
+
+#!csharp
+
+// === Clean Architecture — пример структуры ===
+
+// === DOMAIN (ядро) === — Сущности и интерфейсы
+
+// Сущность (Entity) — чистая бизнес-логика
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+
+    public bool IsInStock => Stock > 0;
+    public bool CanApplyDiscount(decimal percent) => percent >= 0 && percent <= 50;
+}
+
+// Интерфейс репозитория (определён в Domain, реализован в Infrastructure)
+public interface IProductRepository
+{
+    Task<Product?> GetByIdAsync(int id);
+    Task<IEnumerable<Product>> GetAllAsync();
+    Task AddAsync(Product product);
+    Task UpdateAsync(Product product);
+    Task DeleteAsync(int id);
+}
+
+// Интерфейс для уведомлений
+public interface INotificationService
+{
+    Task NotifyAsync(string message);
+}
+
+Console.WriteLine("Domain слой: сущности и интерфейсы (без зависимостей)");
+
+#!csharp
+
+// === APPLICATION (логика) === — Use Cases, зависит только от Domain
+
+// Use Case — конкретный сценарий использования
+public class CreateProductUseCase
+{
+    private readonly IProductRepository _repository;
+    private readonly INotificationService _notifications;
+
+    public CreateProductUseCase(IProductRepository repository, INotificationService notifications)
+    {
+        _repository = repository;
+        _notifications = notifications;
+    }
+
+    public async Task<Product> ExecuteAsync(string name, decimal price, int stock)
+    {
+        // Валидация
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Имя продукта не может быть пустым");
+        if (price <= 0)
+            throw new ArgumentException("Цена должна быть положительной");
+
+        var product = new Product { Name = name, Price = price, Stock = stock };
+        await _repository.AddAsync(product);
+        await _notifications.NotifyAsync($"Новый продукт: {name}");
+
+        return product;
+    }
+}
+
+public class GetAllProductsUseCase
+{
+    private readonly IProductRepository _repository;
+
+    public GetAllProductsUseCase(IProductRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<IEnumerable<Product>> ExecuteAsync()
+    {
+        return await _repository.GetAllAsync();
+    }
+}
+
+Console.WriteLine("Application слой: Use Cases (бизнес-логика, зависит от Domain)");
+
+#!csharp
+
+// === INFRASTRUCTURE (внешнее) === — Реализации интерфейсов из Domain
+
+// In-Memory реализация репозитория (в реальности — база данных)
+public class InMemoryProductRepository : IProductRepository
+{
+    private readonly List<Product> _products = new();
+    private int _nextId = 1;
+
+    public Task<Product?> GetByIdAsync(int id) =>
+        Task.FromResult(_products.FirstOrDefault(p => p.Id == id));
+
+    public Task<IEnumerable<Product>> GetAllAsync() =>
+        Task.FromResult<IEnumerable<Product>>(_products.ToList());
+
+    public Task AddAsync(Product product)
+    {
+        product.Id = _nextId++;
+        _products.Add(product);
+        Console.WriteLine($"  [DB] Сохранён: {product.Name}");
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(Product product)
+    {
+        Console.WriteLine($"  [DB] Обновлён: {product.Name}");
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(int id)
+    {
+        _products.RemoveAll(p => p.Id == id);
+        Console.WriteLine($"  [DB] Удалён: #{id}");
+        return Task.CompletedTask;
+    }
+}
+
+public class ConsoleNotificationService : INotificationService
+{
+    public Task NotifyAsync(string message)
+    {
+        Console.WriteLine($"  [Уведомление] {message}");
+        return Task.CompletedTask;
+    }
+}
+
+// === PRESENTATION (UI/API) === — Собирает всё вместе
+
+Console.WriteLine("=== Clean Architecture в действии ===\n");
+
+// Composition Root — здесь создаём все зависимости
+IProductRepository repository = new InMemoryProductRepository();
+INotificationService notifications = new ConsoleNotificationService();
+
+var createProduct = new CreateProductUseCase(repository, notifications);
+var getAllProducts = new GetAllProductsUseCase(repository);
+
+// Используем Use Cases
+await createProduct.ExecuteAsync("Ноутбук", 1200, 10);
+await createProduct.ExecuteAsync("Мышка", 50, 100);
+await createProduct.ExecuteAsync("Клавиатура", 80, 50);
+
+Console.WriteLine("\nВсе продукты:");
+foreach (var p in await getAllProducts.ExecuteAsync())
+{
+    Console.WriteLine($"  #{p.Id} {p.Name}: {p.Price:C} (в наличии: {p.Stock})");
+}
+
+#!markdown
+
+## 2. Repository Pattern
+
+Паттерн **Repository** — это абстракция доступа к данным. Приложение не знает, откуда приходят данные (база, файл, API) — оно работает через интерфейс.
+
+#!csharp
+
+// === Generic Repository ===
+
+public interface IRepository<T> where T : class
+{
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<IEnumerable<T>> FindAsync(Func<T, bool> predicate);
+    Task AddAsync(T entity);
+    Task UpdateAsync(T entity);
+    Task DeleteAsync(int id);
+    Task<int> CountAsync();
+}
+
+// In-Memory реализация (базовая)
+public class InMemoryRepository<T> : IRepository<T> where T : class
+{
+    protected readonly List<T> _items = new();
+    private readonly Func<T, int> _getId;
+    private readonly Action<T, int> _setId;
+    private int _nextId = 1;
+
+    public InMemoryRepository(Func<T, int> getId, Action<T, int> setId)
+    {
+        _getId = getId;
+        _setId = setId;
+    }
+
+    public Task<T?> GetByIdAsync(int id) =>
+        Task.FromResult(_items.FirstOrDefault(i => _getId(i) == id));
+
+    public Task<IEnumerable<T>> GetAllAsync() =>
+        Task.FromResult<IEnumerable<T>>(_items.ToList());
+
+    public Task<IEnumerable<T>> FindAsync(Func<T, bool> predicate) =>
+        Task.FromResult(_items.Where(predicate));
+
+    public Task AddAsync(T entity)
+    {
+        _setId(entity, _nextId++);
+        _items.Add(entity);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(T entity) => Task.CompletedTask;
+
+    public Task DeleteAsync(int id)
+    {
+        _items.RemoveAll(i => _getId(i) == id);
+        return Task.CompletedTask;
+    }
+
+    public Task<int> CountAsync() => Task.FromResult(_items.Count);
+}
+
+// Использование
+public class GameScore
+{
+    public int Id { get; set; }
+    public string PlayerName { get; set; } = "";
+    public int Score { get; set; }
+    public DateTime Date { get; set; } = DateTime.Now;
+}
+
+var scoreRepo = new InMemoryRepository<GameScore>(
+    getId: s => s.Id,
+    setId: (s, id) => s.Id = id
+);
+
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Алексей", Score = 1500 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Мария", Score = 2200 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Алексей", Score = 1800 });
+await scoreRepo.AddAsync(new GameScore { PlayerName = "Иван", Score = 900 });
+
+Console.WriteLine("=== Generic Repository ===\n");
+Console.WriteLine($"Всего записей: {await scoreRepo.CountAsync()}");
+
+Console.WriteLine("\nТоп результаты Алексея:");
+var alexScores = await scoreRepo.FindAsync(s => s.PlayerName == "Алексей");
+foreach (var s in alexScores.OrderByDescending(s => s.Score))
+    Console.WriteLine($"  {s.PlayerName}: {s.Score}");
+
+Console.WriteLine("\nВсе результаты:");
+foreach (var s in (await scoreRepo.GetAllAsync()).OrderByDescending(s => s.Score))
+    Console.WriteLine($"  {s.PlayerName}: {s.Score} ({s.Date:HH:mm:ss})");
+
+#!markdown
+
+## 3. CQRS — Command Query Responsibility Segregation
+
+**CQRS** разделяет операции **чтения** (Query) и **записи** (Command) в разные модели. Это не паттерн для каждого проекта, но полезно знать концепцию.
+
+**Аналогия:** В банке есть отдельные окна: "Приём документов" (команды) и "Справки/выписки" (запросы). Каждое окно оптимизировано под свою задачу.
+
+#!csharp
+
+// === Простой пример CQRS ===
+
+// Команды (записи) — меняют состояние
+public interface ICommandHandler<TCommand>
+{
+    Task HandleAsync(TCommand command);
+}
+
+// Запросы (чтения) — не меняют состояние, возвращают данные
+public interface IQueryHandler<TQuery, TResult>
+{
+    Task<TResult> HandleAsync(TQuery query);
+}
+
+// --- Команды ---
+public record CreatePlayerCommand(string Name, string Class);
+public record UpdateHealthCommand(int PlayerId, int NewHealth);
+
+// --- Запросы ---
+public record GetPlayerQuery(int Id);
+public record GetLeaderboardQuery(int Top);
+
+// --- Модель данных ---
+public class PlayerRecord
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Class { get; set; } = "";
+    public int Health { get; set; } = 100;
+}
+
+// --- Общее хранилище (упрощённо) ---
+public static class PlayerStore
+{
+    public static List<PlayerRecord> Players { get; } = new();
+    public static int NextId { get; set; } = 1;
+}
+
+// --- Обработчики команд ---
+public class CreatePlayerHandler : ICommandHandler<CreatePlayerCommand>
+{
+    public Task HandleAsync(CreatePlayerCommand cmd)
+    {
+        var player = new PlayerRecord
+        {
+            Id = PlayerStore.NextId++,
+            Name = cmd.Name,
+            Class = cmd.Class
+        };
+        PlayerStore.Players.Add(player);
+        Console.WriteLine($"  [CMD] Создан игрок: {player.Name} ({player.Class})");
+        return Task.CompletedTask;
+    }
+}
+
+public class UpdateHealthHandler : ICommandHandler<UpdateHealthCommand>
+{
+    public Task HandleAsync(UpdateHealthCommand cmd)
+    {
+        var player = PlayerStore.Players.FirstOrDefault(p => p.Id == cmd.PlayerId);
+        if (player != null)
+        {
+            player.Health = cmd.NewHealth;
+            Console.WriteLine($"  [CMD] Здоровье {player.Name}: {player.Health}");
+        }
+        return Task.CompletedTask;
+    }
+}
+
+// --- Обработчики запросов ---
+public class GetPlayerHandler : IQueryHandler<GetPlayerQuery, PlayerRecord?>
+{
+    public Task<PlayerRecord?> HandleAsync(GetPlayerQuery query)
+    {
+        return Task.FromResult(PlayerStore.Players.FirstOrDefault(p => p.Id == query.Id));
+    }
+}
+
+public class GetLeaderboardHandler : IQueryHandler<GetLeaderboardQuery, List<PlayerRecord>>
+{
+    public Task<List<PlayerRecord>> HandleAsync(GetLeaderboardQuery query)
+    {
+        var result = PlayerStore.Players
+            .OrderByDescending(p => p.Health)
+            .Take(query.Top)
+            .ToList();
+        return Task.FromResult(result);
+    }
+}
+
+// === Использование ===
+Console.WriteLine("=== CQRS — разделение команд и запросов ===\n");
+
+var createHandler = new CreatePlayerHandler();
+var healthHandler = new UpdateHealthHandler();
+var getPlayer = new GetPlayerHandler();
+var leaderboard = new GetLeaderboardHandler();
+
+// Команды (изменяют состояние)
+await createHandler.HandleAsync(new CreatePlayerCommand("Аратор", "Воин"));
+await createHandler.HandleAsync(new CreatePlayerCommand("Элара", "Маг"));
+await createHandler.HandleAsync(new CreatePlayerCommand("Торин", "Гном"));
+
+await healthHandler.HandleAsync(new UpdateHealthCommand(1, 85));
+await healthHandler.HandleAsync(new UpdateHealthCommand(2, 60));
+
+// Запросы (читают состояние)
+Console.WriteLine("\nЗапрос конкретного игрока:");
+var player = await getPlayer.HandleAsync(new GetPlayerQuery(1));
+Console.WriteLine($"  {player?.Name} ({player?.Class}), HP: {player?.Health}");
+
+Console.WriteLine("\nТаблица лидеров:");
+var leaders = await leaderboard.HandleAsync(new GetLeaderboardQuery(3));
+foreach (var p in leaders)
+    Console.WriteLine($"  {p.Name}: HP {p.Health}");
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Clean Architecture: система заметок)
+
+Спроектируй систему заметок по Clean Architecture:
+- **Domain:** сущность `Note` (Id, Title, Content, CreatedAt, Tags), интерфейс `INoteRepository`
+- **Application:** Use Case-ы: `CreateNote`, `GetAllNotes`, `SearchByTag`
+- **Infrastructure:** `InMemoryNoteRepository`
+- Продемонстрируй работу: создай 5 заметок с тегами, найди все по тегу "csharp"
+
+#!csharp
+
+// Упражнение 1: Система заметок по Clean Architecture
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Нарисуй (или опиши словами) направление зависимостей в Clean Architecture. Что от чего зависит?
+2. Зачем нужен Repository Pattern? Почему не обращаться к базе данных напрямую?
+3. Когда CQRS оправдан, а когда это излишнее усложнение?
+
+---
+> **Предыдущий:** [MVVM](01_MVVM.dib) | **Следующий:** [DI](../07_DI/01_DI.dib)

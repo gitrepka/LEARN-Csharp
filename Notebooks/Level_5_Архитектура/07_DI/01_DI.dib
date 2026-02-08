@@ -1,0 +1,724 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Dependency Injection (DI)
+> **Уровень:** 5 — Архитектура | **Тема:** DI (1/1)
+> **Предыдущий:** [Clean Architecture](../06_Архитектура/02_Clean_Architecture.dib) | **Следующий:** [Логирование](../08_Логирование/01_Логирование.dib)
+---
+
+**Что это:** Dependency Injection (внедрение зависимостей) — это техника, при которой объект **не создаёт свои зависимости сам**, а получает их извне (через конструктор, метод или свойство).
+
+**Зачем это нужно:**
+- Классы не привязаны к конкретным реализациям (легко менять)
+- Можно подставлять mock-объекты для тестов
+- Единое место конфигурации зависимостей
+- Управление временем жизни объектов (Singleton, Scoped, Transient)
+- В Uno: DI — стандарт, встроен в шаблон приложения
+- В Godot: можно организовать через Autoload или свой DI-контейнер
+
+**Аналогия:** Ресторан. Повар не ходит в магазин за продуктами (не создаёт зависимости) — ему **привозят** ингредиенты (DI). Он только готовит. Если нужно заменить поставщика мяса — повар даже не узнает, он работает с тем, что привезли.
+
+---
+
+### Содержание:
+1. Что такое DI и зачем
+2. Constructor Injection
+3. Microsoft.Extensions.DependencyInjection
+4. AddTransient, AddScoped, AddSingleton
+5. IServiceProvider — получение сервисов
+6. DI в реальных приложениях
+
+#!markdown
+
+## 1. Что такое DI и зачем — проблема без DI
+
+#!csharp
+
+// === БЕЗ DI — жёсткие зависимости ===
+
+public class EmailSenderHardcoded
+{
+    public void Send(string to, string message) =>
+        Console.WriteLine($"  [EMAIL] -> {to}: {message}");
+}
+
+public class SqlDatabaseHardcoded
+{
+    public void Save(string data) =>
+        Console.WriteLine($"  [SQL] Сохранено: {data}");
+}
+
+// Этот класс НАМЕРТВО привязан к EmailSender и SqlDatabase
+public class UserServiceHardcoded
+{
+    private readonly EmailSenderHardcoded _email = new(); // Жёсткая зависимость!
+    private readonly SqlDatabaseHardcoded _db = new();     // Жёсткая зависимость!
+
+    public void RegisterUser(string name)
+    {
+        _db.Save($"User: {name}");
+        _email.Send(name, "Добро пожаловать!");
+        Console.WriteLine($"  Пользователь {name} зарегистрирован");
+    }
+}
+
+Console.WriteLine("=== Без DI (жёсткие зависимости) ===");
+var service = new UserServiceHardcoded();
+service.RegisterUser("Алексей");
+
+Console.WriteLine();
+Console.WriteLine("Проблемы:");
+Console.WriteLine("  1. Хотим заменить EmailSender на PushSender? Менять код UserService!");
+Console.WriteLine("  2. Хотим тестировать без реальной БД? Невозможно!");
+Console.WriteLine("  3. Хотим другую БД? Менять код UserService!");
+
+#!csharp
+
+// === С DI — зависимости через интерфейсы и конструктор ===
+
+public interface IMessageSender
+{
+    void Send(string to, string message);
+}
+
+public interface IUserDatabase
+{
+    void Save(string data);
+}
+
+// Реализации
+public class EmailSender : IMessageSender
+{
+    public void Send(string to, string message) =>
+        Console.WriteLine($"  [EMAIL] -> {to}: {message}");
+}
+
+public class PushSender : IMessageSender
+{
+    public void Send(string to, string message) =>
+        Console.WriteLine($"  [PUSH] -> {to}: {message}");
+}
+
+public class SqlDatabase : IUserDatabase
+{
+    public void Save(string data) =>
+        Console.WriteLine($"  [SQL] Сохранено: {data}");
+}
+
+public class MongoDatabase : IUserDatabase
+{
+    public void Save(string data) =>
+        Console.WriteLine($"  [MONGO] Сохранено: {data}");
+}
+
+// UserService зависит от АБСТРАКЦИЙ, а не конкретных классов
+public class UserService
+{
+    private readonly IMessageSender _sender;
+    private readonly IUserDatabase _db;
+
+    // Constructor Injection — зависимости передаются через конструктор
+    public UserService(IMessageSender sender, IUserDatabase db)
+    {
+        _sender = sender;
+        _db = db;
+    }
+
+    public void RegisterUser(string name)
+    {
+        _db.Save($"User: {name}");
+        _sender.Send(name, "Добро пожаловать!");
+        Console.WriteLine($"  Пользователь {name} зарегистрирован");
+    }
+}
+
+Console.WriteLine("=== С DI (через интерфейсы) ===\n");
+
+// Вариант 1: Email + SQL
+Console.WriteLine("Конфигурация 1: Email + SQL");
+var service1 = new UserService(new EmailSender(), new SqlDatabase());
+service1.RegisterUser("Алексей");
+
+// Вариант 2: Push + Mongo — меняем без изменения UserService!
+Console.WriteLine("\nКонфигурация 2: Push + Mongo");
+var service2 = new UserService(new PushSender(), new MongoDatabase());
+service2.RegisterUser("Мария");
+
+#!markdown
+
+## 2. Constructor Injection — основной способ
+
+Constructor Injection — это когда зависимости передаются через конструктор. Это самый чистый и рекомендуемый способ.
+
+**Правила:**
+- Все обязательные зависимости — через конструктор
+- Только интерфейсы, не конкретные классы
+- Не создавай объекты через `new` внутри класса (для зависимостей)
+
+#!csharp
+
+// === Пример: Игровой движок с DI ===
+
+public interface IRenderer
+{
+    void Render(string scene);
+}
+
+public interface IAudioPlayer
+{
+    void Play(string sound);
+}
+
+public interface IInputHandler
+{
+    string GetInput();
+}
+
+public interface IGameLogger
+{
+    void Log(string message);
+}
+
+// Реализации
+public class OpenGLRenderer : IRenderer
+{
+    public void Render(string scene) => Console.WriteLine($"  [OpenGL] Рендер: {scene}");
+}
+
+public class VulkanRenderer : IRenderer
+{
+    public void Render(string scene) => Console.WriteLine($"  [Vulkan] Рендер: {scene}");
+}
+
+public class FmodAudio : IAudioPlayer
+{
+    public void Play(string sound) => Console.WriteLine($"  [FMOD] Звук: {sound}");
+}
+
+public class KeyboardInput : IInputHandler
+{
+    public string GetInput() => "пробел";
+}
+
+public class FileLogger : IGameLogger
+{
+    public void Log(string message) => Console.WriteLine($"  [LOG] {message}");
+}
+
+// Игровой движок — получает ВСЕ зависимости через конструктор
+public class GameEngine
+{
+    private readonly IRenderer _renderer;
+    private readonly IAudioPlayer _audio;
+    private readonly IInputHandler _input;
+    private readonly IGameLogger _logger;
+
+    public GameEngine(IRenderer renderer, IAudioPlayer audio,
+                      IInputHandler input, IGameLogger logger)
+    {
+        _renderer = renderer;
+        _audio = audio;
+        _input = input;
+        _logger = logger;
+    }
+
+    public void RunFrame()
+    {
+        _logger.Log("Новый кадр");
+        string input = _input.GetInput();
+        _logger.Log($"Ввод: {input}");
+        _renderer.Render("Лес с драконом");
+        _audio.Play("ambient_forest.ogg");
+    }
+}
+
+Console.WriteLine("=== Constructor Injection ===\n");
+
+var engine = new GameEngine(
+    new VulkanRenderer(),
+    new FmodAudio(),
+    new KeyboardInput(),
+    new FileLogger()
+);
+
+engine.RunFrame();
+
+#!markdown
+
+## 3. Microsoft.Extensions.DependencyInjection
+
+Вручную создавать все зависимости утомительно. **DI-контейнер** делает это автоматически. В .NET стандартный контейнер — `Microsoft.Extensions.DependencyInjection`.
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.DependencyInjection;
+
+// === Настройка DI-контейнера ===
+
+// Шаг 1: Создаём коллекцию сервисов
+var services = new ServiceCollection();
+
+// Шаг 2: Регистрируем зависимости (интерфейс -> реализация)
+services.AddTransient<IRenderer, OpenGLRenderer>();
+services.AddTransient<IAudioPlayer, FmodAudio>();
+services.AddTransient<IInputHandler, KeyboardInput>();
+services.AddSingleton<IGameLogger, FileLogger>();
+services.AddTransient<GameEngine>();
+
+// Шаг 3: Строим провайдер сервисов
+ServiceProvider provider = services.BuildServiceProvider();
+
+// Шаг 4: Получаем объект — контейнер сам создаст все зависимости!
+var engine = provider.GetRequiredService<GameEngine>();
+
+Console.WriteLine("=== Microsoft DI Container ===\n");
+Console.WriteLine("Контейнер автоматически создал GameEngine со всеми зависимостями!");
+engine.RunFrame();
+
+// Можно получить отдельные сервисы
+var logger = provider.GetRequiredService<IGameLogger>();
+logger.Log("Прямой доступ к логгеру через контейнер");
+
+provider.Dispose();
+
+#!markdown
+
+## 4. AddTransient, AddScoped, AddSingleton — время жизни
+
+Контейнер управляет тем, **как часто** создаются объекты:
+
+| Метод | Время жизни | Аналогия |
+|---|---|---|
+| `AddTransient` | Каждый раз **новый** объект | Одноразовая посуда |
+| `AddScoped` | Один объект **на scope** (запрос) | Тарелка на один обед |
+| `AddSingleton` | Один объект **на всё приложение** | Фамильный сервиз |
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.DependencyInjection;
+
+// === Демонстрация времени жизни ===
+
+public class TransientService
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public TransientService() => Console.WriteLine($"  [Transient] Создан: {Id.ToString()[..8]}");
+}
+
+public class ScopedService
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public ScopedService() => Console.WriteLine($"  [Scoped] Создан: {Id.ToString()[..8]}");
+}
+
+public class SingletonService
+{
+    public Guid Id { get; } = Guid.NewGuid();
+    public SingletonService() => Console.WriteLine($"  [Singleton] Создан: {Id.ToString()[..8]}");
+}
+
+// Регистрация
+var services = new ServiceCollection();
+services.AddTransient<TransientService>();
+services.AddScoped<ScopedService>();
+services.AddSingleton<SingletonService>();
+
+var provider = services.BuildServiceProvider();
+
+Console.WriteLine("=== Время жизни сервисов ===\n");
+
+Console.WriteLine("--- Запрос 1 ---");
+using (var scope1 = provider.CreateScope())
+{
+    var t1 = scope1.ServiceProvider.GetRequiredService<TransientService>();
+    var t2 = scope1.ServiceProvider.GetRequiredService<TransientService>();
+    var sc1 = scope1.ServiceProvider.GetRequiredService<ScopedService>();
+    var sc2 = scope1.ServiceProvider.GetRequiredService<ScopedService>();
+    var si1 = scope1.ServiceProvider.GetRequiredService<SingletonService>();
+
+    Console.WriteLine($"  Transient: {t1.Id == t2.Id} (одинаковые? Нет!)");
+    Console.WriteLine($"  Scoped: {sc1.Id == sc2.Id} (одинаковые? Да, в одном scope)");
+}
+
+Console.WriteLine("\n--- Запрос 2 ---");
+using (var scope2 = provider.CreateScope())
+{
+    var t = scope2.ServiceProvider.GetRequiredService<TransientService>();
+    var sc = scope2.ServiceProvider.GetRequiredService<ScopedService>();
+    var si = scope2.ServiceProvider.GetRequiredService<SingletonService>();
+
+    Console.WriteLine($"  Scoped — новый в новом scope");
+    Console.WriteLine($"  Singleton — тот же самый!");
+}
+
+provider.Dispose();
+
+#!markdown
+
+## 5. IServiceProvider — получение и разрешение сервисов
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.DependencyInjection;
+
+// === Разные способы получения сервисов ===
+
+public interface IWeaponService
+{
+    string GetWeapon();
+}
+
+public class SwordService : IWeaponService
+{
+    public string GetWeapon() => "Меч";
+}
+
+public class BowService : IWeaponService
+{
+    public string GetWeapon() => "Лук";
+}
+
+public interface IArmorService
+{
+    string GetArmor();
+}
+
+var services = new ServiceCollection();
+services.AddTransient<IWeaponService, SwordService>();
+// IArmorService НЕ зарегистрирован!
+
+var provider = services.BuildServiceProvider();
+
+Console.WriteLine("=== Получение сервисов ===\n");
+
+// GetRequiredService — бросает исключение, если сервис не найден
+var weapon = provider.GetRequiredService<IWeaponService>();
+Console.WriteLine($"GetRequiredService: {weapon.GetWeapon()}");
+
+// GetService — возвращает null, если не найден (безопаснее)
+var armor = provider.GetService<IArmorService>();
+Console.WriteLine($"GetService (не зарегистрирован): {armor?.GetArmor() ?? "null"}");
+
+// Проверка без исключения
+try
+{
+    var missing = provider.GetRequiredService<IArmorService>();
+}
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"\nОшибка: {ex.Message.Substring(0, 60)}...");
+}
+
+Console.WriteLine("\n=== Регистрация нескольких реализаций ===");
+var services2 = new ServiceCollection();
+services2.AddTransient<IWeaponService, SwordService>();
+services2.AddTransient<IWeaponService, BowService>(); // Вторая регистрация!
+
+var provider2 = services2.BuildServiceProvider();
+
+// GetRequiredService вернёт ПОСЛЕДНЮЮ регистрацию
+var lastWeapon = provider2.GetRequiredService<IWeaponService>();
+Console.WriteLine($"Последняя регистрация: {lastWeapon.GetWeapon()}");
+
+// GetServices вернёт ВСЕ регистрации
+var allWeapons = provider2.GetServices<IWeaponService>();
+foreach (var w in allWeapons)
+    Console.WriteLine($"  - {w.GetWeapon()}");
+
+provider.Dispose();
+provider2.Dispose();
+
+#!markdown
+
+## 6. DI в реальных приложениях
+
+Давай соберём полноценный пример: система для RPG-игры с DI.
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.DependencyInjection;
+
+// === Полноценный пример: RPG система на DI ===
+
+// --- Интерфейсы ---
+public interface IGameLog
+{
+    void Info(string message);
+    void Warning(string message);
+}
+
+public interface IRandomService
+{
+    int Roll(int min, int max);
+}
+
+public interface IInventoryService
+{
+    void AddItem(string item);
+    IReadOnlyList<string> GetItems();
+}
+
+public interface ICombatService
+{
+    (string result, int damage) Attack(string attacker, string target);
+}
+
+// --- Реализации ---
+public class ConsoleGameLog : IGameLog
+{
+    public void Info(string msg) => Console.WriteLine($"  [INFO] {msg}");
+    public void Warning(string msg) => Console.WriteLine($"  [WARN] {msg}");
+}
+
+public class RandomService : IRandomService
+{
+    private readonly Random _rng = new();
+    public int Roll(int min, int max) => _rng.Next(min, max + 1);
+}
+
+public class InventoryService : IInventoryService
+{
+    private readonly List<string> _items = new();
+    private readonly IGameLog _log;
+
+    public InventoryService(IGameLog log)
+    {
+        _log = log;
+    }
+
+    public void AddItem(string item)
+    {
+        _items.Add(item);
+        _log.Info($"В инвентарь добавлено: {item}");
+    }
+
+    public IReadOnlyList<string> GetItems() => _items.AsReadOnly();
+}
+
+public class CombatService : ICombatService
+{
+    private readonly IRandomService _random;
+    private readonly IGameLog _log;
+
+    public CombatService(IRandomService random, IGameLog log)
+    {
+        _random = random;
+        _log = log;
+    }
+
+    public (string result, int damage) Attack(string attacker, string target)
+    {
+        int roll = _random.Roll(1, 20);
+        _log.Info($"{attacker} бросает кубик: {roll}");
+
+        if (roll >= 15)
+        {
+            int damage = _random.Roll(10, 25);
+            _log.Info($"Критический удар! {damage} урона по {target}!");
+            return ("критический удар", damage);
+        }
+        else if (roll >= 5)
+        {
+            int damage = _random.Roll(3, 10);
+            _log.Info($"Попадание! {damage} урона по {target}");
+            return ("попадание", damage);
+        }
+        else
+        {
+            _log.Warning($"{attacker} промахнулся!");
+            return ("промах", 0);
+        }
+    }
+}
+
+// Главный игровой менеджер
+public class GameManager
+{
+    private readonly ICombatService _combat;
+    private readonly IInventoryService _inventory;
+    private readonly IGameLog _log;
+
+    public GameManager(ICombatService combat, IInventoryService inventory, IGameLog log)
+    {
+        _combat = combat;
+        _inventory = inventory;
+        _log = log;
+    }
+
+    public void PlayTurn()
+    {
+        _log.Info("=== Новый ход ===");
+
+        var (result, damage) = _combat.Attack("Герой", "Гоблин");
+        if (damage > 0)
+        {
+            _inventory.AddItem(result == "критический удар" ? "Редкий камень" : "Монета");
+        }
+
+        _log.Info($"Инвентарь: [{string.Join(", ", _inventory.GetItems())}]");
+    }
+}
+
+// === Настройка DI ===
+var services = new ServiceCollection();
+
+// Singleton — один логгер на всё приложение
+services.AddSingleton<IGameLog, ConsoleGameLog>();
+
+// Singleton — один генератор случайных чисел
+services.AddSingleton<IRandomService, RandomService>();
+
+// Scoped — инвентарь один на игровую сессию
+services.AddScoped<IInventoryService, InventoryService>();
+
+// Transient — каждый бой новый (без состояния)
+services.AddTransient<ICombatService, CombatService>();
+
+// GameManager
+services.AddScoped<GameManager>();
+
+Console.WriteLine("=== RPG на DI ===\n");
+
+using var provider = services.BuildServiceProvider();
+
+using (var session = provider.CreateScope())
+{
+    var game = session.ServiceProvider.GetRequiredService<GameManager>();
+
+    for (int i = 0; i < 3; i++)
+    {
+        game.PlayTurn();
+        Console.WriteLine();
+    }
+}
+
+#!csharp
+
+#r "nuget: Microsoft.Extensions.DependencyInjection, 9.0.0"
+
+using Microsoft.Extensions.DependencyInjection;
+
+// === Фабрика через DI — когда нужно создавать объекты динамически ===
+
+public interface IEnemyFactory
+{
+    string CreateEnemy(string type);
+}
+
+public class EnemyFactory : IEnemyFactory
+{
+    private readonly IGameLog _log;
+
+    public EnemyFactory(IGameLog log) => _log = log;
+
+    public string CreateEnemy(string type)
+    {
+        _log.Info($"Создаём врага: {type}");
+        return type switch
+        {
+            "goblin" => "Гоблин (HP: 30)",
+            "skeleton" => "Скелет (HP: 50)",
+            "dragon" => "Дракон (HP: 200)",
+            _ => "Неизвестный враг"
+        };
+    }
+}
+
+// Класс, который создаёт врагов через фабрику
+public class DungeonGenerator
+{
+    private readonly IEnemyFactory _factory;
+    private readonly IGameLog _log;
+
+    public DungeonGenerator(IEnemyFactory factory, IGameLog log)
+    {
+        _factory = factory;
+        _log = log;
+    }
+
+    public void Generate()
+    {
+        _log.Info("Генерируем подземелье...");
+        string[] types = { "goblin", "goblin", "skeleton", "dragon" };
+        foreach (var type in types)
+        {
+            string enemy = _factory.CreateEnemy(type);
+            Console.WriteLine($"    Враг: {enemy}");
+        }
+    }
+}
+
+var services = new ServiceCollection();
+services.AddSingleton<IGameLog, ConsoleGameLog>();
+services.AddTransient<IEnemyFactory, EnemyFactory>();
+services.AddTransient<DungeonGenerator>();
+
+using var provider = services.BuildServiceProvider();
+
+Console.WriteLine("=== Фабрика через DI ===\n");
+var dungeon = provider.GetRequiredService<DungeonGenerator>();
+dungeon.Generate();
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (DI для системы уведомлений)
+
+Создай систему уведомлений с DI:
+1. Интерфейс `INotifier` с методом `Notify(string message)`
+2. Реализации: `ConsoleNotifier`, `LogNotifier` (записывает в список строк)
+3. Интерфейс `IUserRepository` с методами `Add(string name)`, `GetAll()`
+4. Класс `RegistrationService`, который при регистрации:
+   - Сохраняет пользователя через `IUserRepository`
+   - Отправляет уведомление через `INotifier`
+5. Настрой DI-контейнер, зарегистрируй всё, протестируй
+
+#!csharp
+
+// Упражнение 1: DI для системы уведомлений
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (Смена конфигурации через DI)
+
+Создай две "конфигурации" DI:
+1. **Development:** `ConsoleLogger` + `InMemoryDatabase` + `FakeEmailSender`
+2. **Production:** `FileLogger` + `SqlDatabase` + `SmtpEmailSender`
+
+Создай интерфейсы `IAppLogger`, `IDatabase`, `IEmailSender`. Создай класс `AppService`, который использует все три. Покажи, как переключение конфигурации (одна строка!) меняет поведение всего приложения.
+
+#!csharp
+
+// Упражнение 2: Dev/Prod конфигурации через DI
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Что такое DI и какую проблему он решает? Объясни без технических терминов.
+2. Чем `AddTransient` отличается от `AddSingleton`? Когда что использовать?
+3. Что будет, если зарегистрировать Scoped-сервис, но попытаться получить его без создания scope?
+4. Почему Constructor Injection лучше, чем создание зависимостей через `new` внутри класса?
+5. Как DI помогает при написании unit-тестов?
+6. Что такое Composition Root и почему важно настраивать DI в одном месте?
+
+---
+> **Предыдущий:** [Clean Architecture](../06_Архитектура/02_Clean_Architecture.dib) | **Следующий:** [Логирование](../08_Логирование/01_Логирование.dib)

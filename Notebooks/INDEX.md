@@ -6,10 +6,10 @@
 ## Как работать
 
 1. Проходи уровни по порядку: Level 1 → 2 → 3 → 4 → 5
-2. Внутри уровня — иди по номерам файлов (01, 02, 03...)
-3. ★ NEW = тема появляется впервые на этом уровне
-4. Темы без ★ — возврат к теме с прошлого уровня, но глубже (спиральное обучение)
-5. `_docs/` в каждом уровне — справочные markdown-файлы для дополнительного чтения
+2. Внутри уровня — иди по папкам (01, 02, 03...), внутри папки — по файлам (01, 02, 03...)
+3. Каждый `.dib` файл = один мини-урок (15-30 мин): мотивация → теория → примеры → упражнение → вопросы
+4. ★ NEW = тема появляется впервые на этом уровне
+5. Темы без ★ — возврат к теме с прошлого уровня, но глубже (спиральное обучение)
 6. Godot/ и Uno/ — отдельные платформенные треки, начинай после Level 2
 7. `_Будущее/` — модули 12-20 (БД, сеть, тесты и др.), будут оформлены когда дойдёшь
 
@@ -25,85 +25,104 @@
 
 > **Цель:** Научиться писать простые программы на C#
 > **Предварительные знания:** Нет
-> **Файл:** `Level_1_Основы/*.dib`
+> **Путь:** `Level_1_Основы/`
 
-## 01_Синтаксис.dib
-- ⬜ Top-level statements (программа без class/Main)
-- ⬜ Точка с запятой `;` и блоки кода `{ }`
-- ⬜ Комментарии: `//`, `/* */`, `///`
-- ⬜ Пространства имён `namespace`
-- ⬜ File-scoped namespaces (`namespace MyApp;`)
-- ⬜ Директива `using`
-- ⬜ Implicit usings (.NET 6+)
+## 01_Синтаксис/
+- ⬜ **01_Первая_программа.dib**
+  - ⬜ Top-level statements (программа без class/Main)
+  - ⬜ Комментарии: `//`, `/* */`, `///`
+  - ⬜ Пространства имён `namespace`, file-scoped namespaces
+  - ⬜ Директива `using`, implicit usings
+  - ⬜ Точка с запятой `;` и блоки кода `{ }`
 
-## 02_Типы_данных.dib
-- ⬜ Целочисленные: `int`, `long`
-- ⬜ С плавающей точкой: `float`, `double`, `decimal`
-- ⬜ Разница float vs double vs decimal (точность, когда что)
-- ⬜ Логический: `bool`
-- ⬜ Символ: `char`
-- ⬜ Строка: `string`
-- ⬜ Значения по умолчанию: `default(T)`
-- ⬜ Значимые vs ссылочные типы (обзор)
+## 02_Типы_данных/
+- ⬜ **01_Числа.dib**
+  - ⬜ Целочисленные: `int`
+  - ⬜ С плавающей точкой: `float`, `double`
+  - ⬜ Точные деньги: `decimal`
+- ⬜ **02_Текст_и_логика.dib**
+  - ⬜ Строка: `string`
+  - ⬜ Символ: `char`
+  - ⬜ Логический: `bool`
+- ⬜ **03_Default_и_категории.dib**
+  - ⬜ Значения по умолчанию: `default(T)`
+  - ⬜ Значимые vs ссылочные типы (обзор)
 
-## 03_Переменные.dib
-- ⬜ Объявление и инициализация переменных
-- ⬜ Ключевое слово `var` (вывод типа)
-- ⬜ Множественное присваивание
-- ⬜ Правила именования (camelCase)
-- ⬜ Вывод в консоль: `Console.WriteLine()`
-- ⬜ Строковая интерполяция: `$"Привет, {name}!"`
+## 03_Переменные/
+- ⬜ **01_Переменные.dib**
+  - ⬜ Объявление и инициализация переменных
+  - ⬜ Ключевое слово `var` (вывод типа)
+  - ⬜ Множественное присваивание
+  - ⬜ Правила именования (camelCase)
+  - ⬜ Вывод в консоль: `Console.WriteLine()`
+  - ⬜ Строковая интерполяция: `$"Привет, {name}!"`
 
-## 04_Операторы.dib
-- ⬜ Арифметические: `+`, `-`, `*`, `/`, `%`
-- ⬜ Целочисленное деление vs деление с плавающей точкой
-- ⬜ Операторы сравнения: `==`, `!=`, `<`, `>`, `<=`, `>=`
-- ⬜ Логические: `&&` (И), `||` (ИЛИ), `!` (НЕ)
-- ⬜ Инкремент / декремент: `++`, `--`
-- ⬜ Разница `i++` vs `++i`
-- ⬜ Составное присваивание: `+=`, `-=`, `*=`, `/=`
+## 04_Операторы/
+- ⬜ **01_Арифметика.dib**
+  - ⬜ Арифметические: `+`, `-`, `*`, `/`, `%`
+  - ⬜ Целочисленное деление vs дробное
+  - ⬜ Остаток от деления (модуло)
+- ⬜ **02_Сравнение_и_логика.dib**
+  - ⬜ Операторы сравнения: `==`, `!=`, `<`, `>`, `<=`, `>=`
+  - ⬜ Логические: `&&` (И), `||` (ИЛИ), `!` (НЕ)
+  - ⬜ Комбинирование логических операторов
+- ⬜ **03_Инкремент_и_присваивание.dib**
+  - ⬜ Инкремент / декремент: `++`, `--`, разница `i++` vs `++i`
+  - ⬜ Составное присваивание: `+=`, `-=`, `*=`, `/=`
 
-## 05_Условия.dib
-- ⬜ `if` / `else if` / `else`
-- ⬜ Вложенные условия
-- ⬜ `switch` (классический, по значению)
-- ⬜ `switch` по строкам и enum
-- ⬜ `break` в switch
+## 05_Условия/
+- ⬜ **01_If_Else.dib**
+  - ⬜ `if` / `else if` / `else`
+  - ⬜ Вложенные условия
+- ⬜ **02_Switch.dib**
+  - ⬜ `switch` (классический, по значению)
+  - ⬜ `switch` по строкам
+  - ⬜ `break` в switch, `default`
 
-## 06_Циклы.dib
-- ⬜ `for` — цикл со счётчиком
-- ⬜ `while` — цикл с условием
-- ⬜ `do...while` — цикл с постусловием
-- ⬜ `foreach` — перебор коллекций
-- ⬜ `break` — выход из цикла
-- ⬜ `continue` — пропуск итерации
+## 06_Циклы/
+- ⬜ **01_For.dib**
+  - ⬜ `for` — цикл со счётчиком
+  - ⬜ Суммирование и подсчёт
+- ⬜ **02_While.dib**
+  - ⬜ `while` — цикл с предусловием
+  - ⬜ `do...while` — цикл с постусловием
+- ⬜ **03_Foreach_и_управление.dib**
+  - ⬜ `foreach` — перебор коллекций
+  - ⬜ `break` — выход из цикла
+  - ⬜ `continue` — пропуск итерации
 
-## 07_Методы.dib
-- ⬜ Объявление метода: возвращаемый тип, имя, параметры
-- ⬜ `void` — метод без возвращаемого значения
-- ⬜ `return` — возврат результата
-- ⬜ Вызов методов
-- ⬜ Методы с несколькими параметрами
-- ⬜ Когда `void` vs когда `return`
+## 07_Методы/
+- ⬜ **01_Void_методы.dib**
+  - ⬜ `void` — метод без возвращаемого значения
+  - ⬜ Методы с параметрами
+  - ⬜ Вызов методов
+- ⬜ **02_Параметры_и_return.dib**
+  - ⬜ `return` — возврат результата
+  - ⬜ Методы с несколькими параметрами
+  - ⬜ Когда `void` vs когда `return`
+  - ⬜ Методы вызывают другие методы
 
-## 08_Массивы.dib
-- ⬜ Объявление и инициализация: `int[] arr = {1, 2, 3}`
-- ⬜ Доступ по индексу (от 0)
-- ⬜ Свойство `Length`
-- ⬜ Перебор `for` и `foreach`
-- ⬜ Изменение элементов
-- ⬜ Выход за границы массива (IndexOutOfRangeException)
+## 08_Массивы/
+- ⬜ **01_Массивы.dib**
+  - ⬜ Объявление и инициализация: `int[] arr = {1, 2, 3}`
+  - ⬜ Доступ по индексу (от 0)
+  - ⬜ Свойство `Length`
+  - ⬜ Перебор `for` и `foreach`
+  - ⬜ Изменение элементов
+  - ⬜ Выход за границы массива (IndexOutOfRangeException)
 
-## 09_Строки.dib
-- ⬜ Создание строк
-- ⬜ Конкатенация `+` vs интерполяция `$""`
-- ⬜ `Length` — длина строки
-- ⬜ `ToUpper()`, `ToLower()`
-- ⬜ `Trim()`, `TrimStart()`, `TrimEnd()`
-- ⬜ `Contains()`, `StartsWith()`, `EndsWith()`
-- ⬜ `Replace()`, `Remove()`
-- ⬜ `Split()` и `string.Join()`
-- ⬜ `IndexOf()`, `Substring()`
+## 09_Строки/
+- ⬜ **01_Основы_строк.dib**
+  - ⬜ Создание строк
+  - ⬜ Конкатенация `+` vs интерполяция `$""`
+  - ⬜ `Length` — длина строки
+- ⬜ **02_Методы_строк.dib**
+  - ⬜ `ToUpper()`, `ToLower()`
+  - ⬜ `Trim()`, `TrimStart()`, `TrimEnd()`
+  - ⬜ `Contains()`
+- ⬜ **03_Replace_и_Split.dib**
+  - ⬜ `Replace()`
+  - ⬜ `Split()` и `string.Join()`
 
 ---
 
@@ -111,344 +130,310 @@
 
 > **Цель:** Углубить основы + войти в ООП
 > **Предварительные знания:** Level 1 пройден
-> **Файл:** `Level_2_Углубление/*.dib`
+> **Путь:** `Level_2_Углубление/`
 
-## 01_Типы_данных.dib
-- ⬜ Nullable типы: `int?`, `bool?`, `string?`
-- ⬜ `HasValue` и `Value`
-- ⬜ Оператор `??` (null-coalescing)
-- ⬜ Оператор `?.` (null-conditional)
-- ⬜ Оператор `??=` (null-coalescing assignment)
-- ⬜ `const` — константы времени компиляции
-- ⬜ `readonly` — только чтение
-- ⬜ `const` vs `readonly` — когда что
-- ⬜ `var` глубже — когда использовать, когда нет
-- ⬜ Приведение типов: `(int)`, `(double)`, `Convert.ToInt32()`
+## 01_Типы_данных/
+- ⬜ **01_Nullable_и_null.dib**
+  - ⬜ Nullable типы: `int?`, `bool?`
+  - ⬜ `HasValue` и `Value`
+  - ⬜ Оператор `??` (null-coalescing)
+  - ⬜ Оператор `?.` (null-conditional)
+  - ⬜ Оператор `??=` (null-coalescing assignment)
+- ⬜ **02_Const_и_readonly.dib**
+  - ⬜ `const` — константы времени компиляции
+  - ⬜ `readonly` — только чтение
+  - ⬜ `const` vs `readonly` — когда что
+  - ⬜ `var` глубже — когда использовать, когда нет
+- ⬜ **03_Приведение_типов.dib**
+  - ⬜ Приведение типов: `(int)`, `(double)`
+  - ⬜ `Convert.ToInt32()`, `int.Parse()`, `int.TryParse()`
 
-## 02_Операторы.dib
-- ⬜ Тернарный оператор: `условие ? да : нет`
-- ⬜ Null-операторы: `??`, `?.`, `??=`, `!`
-- ⬜ Побитовые: `&`, `|`, `^`, `~`, `<<`, `>>`
-- ⬜ Практическое применение побитовых (флаги, маски)
-- ⬜ `checked` / `unchecked` (переполнение)
-- ⬜ Приоритет операторов (таблица)
+## 02_Операторы/
+- ⬜ **01_Тернарный_и_null.dib**
+  - ⬜ Тернарный оператор: `условие ? да : нет`
+  - ⬜ Null-операторы: `??`, `?.`, `??=`, `!`
+- ⬜ **02_Побитовые_и_приоритет.dib**
+  - ⬜ Побитовые: `&`, `|`, `^`, `~`, `<<`, `>>`
+  - ⬜ Практическое применение (флаги, маски)
+  - ⬜ `checked` / `unchecked` (переполнение)
+  - ⬜ Приоритет операторов (таблица)
 
-## 03_Условия.dib
-- ⬜ Switch expressions (C# 8+): `var result = x switch { ... }`
-- ⬜ Паттерны в switch: relational (`> 0`), logical (`and`, `or`)
-- ⬜ Когда `if` vs `switch` vs switch expression
-- ⬜ Guard clauses — ранний выход вместо вложенности
+## 03_Условия/
+- ⬜ **01_Switch_expressions.dib**
+  - ⬜ Switch expressions (C# 8+): `var result = x switch { ... }`
+  - ⬜ Паттерны: relational (`> 0`), logical (`and`, `or`)
+  - ⬜ Когда `if` vs `switch` vs switch expression
+  - ⬜ Guard clauses — ранний выход вместо вложенности
 
-## 04_Методы.dib
-- ⬜ Перегрузка методов (одинаковое имя, разные параметры)
-- ⬜ Параметры по ссылке: `ref`
-- ⬜ Выходные параметры: `out`
-- ⬜ Входные параметры: `in` (readonly ref)
-- ⬜ `params` — массив параметров переменной длины
-- ⬜ Значения по умолчанию: `void Foo(int x = 10)`
-- ⬜ Именованные аргументы: `Foo(name: "test", age: 25)`
+## 04_Методы/
+- ⬜ **01_Перегрузка.dib**
+  - ⬜ Перегрузка методов (одинаковое имя, разные параметры)
+- ⬜ **02_Ref_out_params.dib**
+  - ⬜ Параметры по ссылке: `ref`
+  - ⬜ Выходные параметры: `out`
+  - ⬜ Входные параметры: `in` (readonly ref)
+  - ⬜ `params` — массив параметров переменной длины
+  - ⬜ Значения по умолчанию, именованные аргументы
 
-## 05_Массивы.dib
-- ⬜ Многомерные массивы: `int[,]`
-- ⬜ Зубчатые массивы (jagged): `int[][]`
-- ⬜ Методы Array: `Sort()`, `Reverse()`, `IndexOf()`
-- ⬜ `Array.Find()`, `Array.FindAll()`, `Array.Exists()`
-- ⬜ `Array.Copy()`, `Array.Resize()`
-- ⬜ Index с конца: `arr[^1]`, `arr[^2]`
-- ⬜ Range (срезы): `arr[1..3]`, `arr[..3]`, `arr[2..]`
+## 05_Массивы/
+- ⬜ **01_Многомерные.dib**
+  - ⬜ Многомерные массивы: `int[,]`
+  - ⬜ Зубчатые массивы (jagged): `int[][]`
+- ⬜ **02_Методы_и_диапазоны.dib**
+  - ⬜ Методы Array: `Sort()`, `Reverse()`, `IndexOf()`, `Find()`
+  - ⬜ Index с конца: `arr[^1]`
+  - ⬜ Range (срезы): `arr[1..3]`, `arr[..3]`, `arr[2..]`
 
-## 06_Строки.dib
-- ⬜ `StringBuilder` — зачем и когда (правило ~10 конкатенаций)
-- ⬜ `Append()`, `Insert()`, `Remove()`, `Replace()`, `ToString()`
-- ⬜ Форматирование чисел: N, F, C, P, D, X
-- ⬜ Кастомные форматы: `#,##0.00`
-- ⬜ Verbatim-строки: `@"C:\path\file"`
-- ⬜ Raw string literals: `"""..."""` (C# 11)
-- ⬜ Сравнение строк: `==`, `Equals()`, `string.Compare()`
-- ⬜ `StringComparison` (Ordinal, OrdinalIgnoreCase, CurrentCulture)
+## 06_Строки/
+- ⬜ **01_StringBuilder.dib**
+  - ⬜ `StringBuilder` — зачем и когда
+  - ⬜ `Append()`, `Insert()`, `Remove()`, `Replace()`, `ToString()`
+- ⬜ **02_Форматирование.dib**
+  - ⬜ Форматирование чисел: N, F, C, P, D, X
+  - ⬜ Verbatim-строки: `@"C:\path\file"`
+  - ⬜ Raw string literals: `"""..."""` (C# 11)
+  - ⬜ Сравнение строк: `==`, `Equals()`, `StringComparison`
 
-## 07_Классы.dib ★ NEW
-- ⬜ Что такое класс и объект (аналогия: чертёж → дом)
-- ⬜ Поля (fields)
-- ⬜ Свойства (properties): `get`, `set`
-- ⬜ Auto-properties: `public string Name { get; set; }`
-- ⬜ Конструктор по умолчанию
-- ⬜ Параметризованный конструктор
-- ⬜ Ключевое слово `this`
-- ⬜ Модификаторы доступа: `public`, `private`, `internal`
-- ⬜ `static` члены и `static` классы
-- ⬜ Expression-bodied members: `=>`
+## 07_Классы/ ★ NEW
+- ⬜ **01_Класс_и_объект.dib**
+  - ⬜ Что такое класс и объект
+  - ⬜ Поля (fields)
+  - ⬜ Свойства (properties): `get`, `set`, auto-properties
+- ⬜ **02_Конструкторы.dib**
+  - ⬜ Конструктор по умолчанию
+  - ⬜ Параметризованный конструктор
+  - ⬜ Ключевое слово `this`
+- ⬜ **03_Доступ_и_static.dib**
+  - ⬜ Модификаторы доступа: `public`, `private`, `internal`
+  - ⬜ `static` члены и `static` классы
+  - ⬜ Expression-bodied members: `=>`
 
-## 08_Структуры.dib ★ NEW
-- ⬜ `struct` — что это и зачем
-- ⬜ Значимый тип vs ссылочный тип (стек vs куча)
-- ⬜ Копирование struct vs копирование class
-- ⬜ `readonly struct`
-- ⬜ Когда struct, когда class (правила выбора)
+## 08_Структуры/ ★ NEW
+- ⬜ **01_Структуры.dib**
+  - ⬜ `struct` — что это и зачем
+  - ⬜ Значимый тип vs ссылочный тип
+  - ⬜ `readonly struct`
+  - ⬜ Когда struct, когда class
 
-## 09_Перечисления.dib ★ NEW
-- ⬜ Объявление `enum`
-- ⬜ Базовый тип enum (int по умолчанию)
-- ⬜ Явное задание значений
-- ⬜ `[Flags]` — побитовые флаги
-- ⬜ `Enum.Parse()`, `Enum.TryParse()`
-- ⬜ `Enum.GetValues()`, `Enum.GetNames()`
-- ⬜ `HasFlag()` — проверка флагов
+## 09_Перечисления/ ★ NEW
+- ⬜ **01_Перечисления.dib**
+  - ⬜ Объявление `enum`
+  - ⬜ `[Flags]` — побитовые флаги
+  - ⬜ `Enum.Parse()`, `Enum.TryParse()`
+  - ⬜ `HasFlag()` — проверка флагов
 
-## 10_Дата_и_время.dib ★ NEW
-- ⬜ `DateTime.Now`, `DateTime.UtcNow`, `DateTime.Today`
-- ⬜ Свойства: Year, Month, Day, Hour, Minute, Second
-- ⬜ Создание конкретной даты: `new DateTime(2026, 2, 8)`
-- ⬜ Арифметика: `AddDays()`, `AddHours()`, разница дат
-- ⬜ `TimeSpan` — промежуток времени
-- ⬜ `DateOnly` и `TimeOnly` (.NET 6+)
-- ⬜ Форматирование дат
-- ⬜ `Stopwatch` — измерение производительности
+## 10_Дата_и_время/ ★ NEW
+- ⬜ **01_DateTime.dib**
+  - ⬜ `DateTime.Now`, `DateTime.UtcNow`, `DateTime.Today`
+  - ⬜ Свойства: Year, Month, Day, Hour, Minute, Second
+  - ⬜ Арифметика: `AddDays()`, `AddHours()`, разница дат
+  - ⬜ `TimeSpan` — промежуток времени
+- ⬜ **02_DateOnly_и_форматы.dib**
+  - ⬜ `DateOnly` и `TimeOnly` (.NET 6+)
+  - ⬜ Форматирование дат
+  - ⬜ `Stopwatch` — измерение производительности
 
-## 11_Regex.dib ★ NEW
-- ⬜ `Regex.IsMatch()` — проверка соответствия
-- ⬜ `Regex.Match()` — поиск первого совпадения
-- ⬜ `Regex.Matches()` — все совпадения
-- ⬜ `Regex.Replace()` — замена
-- ⬜ Метасимволы: `.`, `\d`, `\w`, `\s`, `\b`
-- ⬜ Квантификаторы: `*`, `+`, `?`, `{n}`, `{n,m}`
-- ⬜ Классы символов: `[a-z]`, `[^0-9]`
-- ⬜ Якоря: `^`, `$`
-- ⬜ Группы: `()`, именованные `(?<name>...)`
+## 11_Regex/ ★ NEW
+- ⬜ **01_Основы_Regex.dib**
+  - ⬜ `Regex.IsMatch()`, `Regex.Match()`, `Regex.Matches()`
+  - ⬜ Метасимволы: `.`, `\d`, `\w`, `\s`, `\b`
+  - ⬜ Якоря: `^`, `$`
+- ⬜ **02_Продвинутый_Regex.dib**
+  - ⬜ Квантификаторы: `*`, `+`, `?`, `{n}`, `{n,m}`
+  - ⬜ Классы символов: `[a-z]`, `[^0-9]`
+  - ⬜ Группы: `()`, именованные `(?<name>...)`
+  - ⬜ `Regex.Replace()`
 
 ---
 
 # LEVEL 3 — ООП И КОЛЛЕКЦИИ
 
 > **Цель:** Освоить объектно-ориентированное программирование и основные структуры данных
-> **Предварительные знания:** Level 1-2 пройдены (знаешь классы, struct, enum)
-> **Файл:** `Level_3_ООП/*.dib`
+> **Предварительные знания:** Level 1-2 пройдены
+> **Путь:** `Level_3_ООП/`
 
-## 01_Типы_данных.dib
-- ⬜ `record class` — что это и зачем
-  - ⬜ Позиционный синтаксис: `record Person(string Name, int Age)`
-  - ⬜ Value equality (сравнение по значению)
+## 01_Типы_данных/
+- ⬜ **01_Records.dib**
+  - ⬜ `record class` — позиционный синтаксис, value equality
   - ⬜ `with` — создание копии с изменениями
-  - ⬜ Деконструкция: `var (name, age) = person`
-- ⬜ `record struct` (C# 10)
-- ⬜ Кортежи (ValueTuple)
-  - ⬜ `(int x, string name)` — именованные элементы
-  - ⬜ Возврат нескольких значений из метода
-  - ⬜ Деконструкция кортежей
-- ⬜ Collection expressions (C# 12)
-  - ⬜ `int[] arr = [1, 2, 3]`
-  - ⬜ `List<int> list = [1, 2, 3]`
-  - ⬜ Spread operator: `[..first, ..second]`
-- ⬜ Анонимные типы: `var obj = new { Name = "Test" }`
+  - ⬜ Деконструкция
+  - ⬜ `record struct` (C# 10)
+- ⬜ **02_Кортежи_и_новинки.dib**
+  - ⬜ Кортежи (ValueTuple): именованные элементы, деконструкция
+  - ⬜ Collection expressions (C# 12): `[1, 2, 3]`, spread `[..first, ..second]`
+  - ⬜ Анонимные типы
 
-## 02_Методы.dib
-- ⬜ Extension methods
+## 02_Методы/
+- ⬜ **01_Extension_methods.dib**
   - ⬜ Синтаксис `this` в первом параметре
-  - ⬜ Создание своих расширений для string, int, коллекций
-- ⬜ Локальные функции (вложенные методы)
-- ⬜ `static` локальные функции
-- ⬜ Рекурсия углублённо
-  - ⬜ Fibonacci (наивный vs мемоизированный)
-  - ⬜ Бинарный поиск
+  - ⬜ Создание расширений для string, int, коллекций
+- ⬜ **02_Локальные_и_рекурсия.dib**
+  - ⬜ Локальные функции, `static` локальные функции
+  - ⬜ Рекурсия: Fibonacci, бинарный поиск
 
-## 03_Классы.dib
-- ⬜ Primary constructors (C# 12): `class Person(string name, int age)`
-  - ⬜ Захват параметров (НЕ становятся полями автоматически!)
-- ⬜ `required` свойства (C# 11) — обязательная инициализация
-- ⬜ `init`-only сеттеры (C# 9)
-- ⬜ Цепочка конструкторов: `this()`
-- ⬜ Статические конструкторы
-- ⬜ `file class` (C# 11) — видимость только в файле
+## 03_Классы/
+- ⬜ **01_Primary_constructors.dib**
+  - ⬜ Primary constructors (C# 12)
+  - ⬜ `required` свойства (C# 11)
+  - ⬜ `init`-only сеттеры (C# 9)
+- ⬜ **02_Цепочки_и_static.dib**
+  - ⬜ Цепочка конструкторов: `this()`
+  - ⬜ Статические конструкторы
+  - ⬜ `file class` (C# 11)
 
-## 04_Наследование.dib ★ NEW
-- ⬜ Базовый и производный класс: `: BaseClass`
-- ⬜ Ключевое слово `base` (вызов конструктора/метода родителя)
-- ⬜ Виртуальные методы: `virtual` и `override`
-- ⬜ Сокрытие метода: `new` (и почему лучше не использовать)
-- ⬜ `sealed` — запрет наследования/переопределения
-- ⬜ Абстрактные классы: `abstract class`
-- ⬜ Абстрактные методы: `abstract void Method()`
-- ⬜ Переопределение `ToString()`, `Equals()`, `GetHashCode()`
+## 04_Наследование/ ★ NEW
+- ⬜ **01_Наследование.dib**
+  - ⬜ Базовый и производный класс, `base`
+  - ⬜ `virtual` и `override`
+  - ⬜ `sealed`, `abstract class`, `abstract` методы
+  - ⬜ Переопределение `ToString()`, `Equals()`, `GetHashCode()`
 
-## 05_Полиморфизм.dib ★ NEW
-- ⬜ Полиморфизм через наследование (массив базового типа)
-- ⬜ Полиморфизм через интерфейсы
-- ⬜ Проверка типа: `is` (с pattern matching)
-- ⬜ Приведение: `as` (безопасное, возвращает null)
-- ⬜ Приведение: `(Type)obj` (жёсткое, бросает exception)
-- ⬜ `typeof()` и `GetType()`
+## 05_Полиморфизм/ ★ NEW
+- ⬜ **01_Полиморфизм.dib**
+  - ⬜ Полиморфизм через наследование и интерфейсы
+  - ⬜ `is`, `as`, `(Type)obj`
+  - ⬜ `typeof()` и `GetType()`
 
-## 06_Инкапсуляция.dib ★ NEW
-- ⬜ Приватные поля + публичные свойства с валидацией
-- ⬜ Сравнение: `init` vs `set` vs `private set`
-- ⬜ `readonly` поля
-- ⬜ Построение иммутабельных классов
-- ⬜ record как простейший иммутабельный тип
+## 06_Инкапсуляция/ ★ NEW
+- ⬜ **01_Инкапсуляция.dib**
+  - ⬜ Приватные поля + публичные свойства с валидацией
+  - ⬜ `init` vs `set` vs `private set`
+  - ⬜ Иммутабельные классы, record
 
-## 07_Интерфейсы.dib ★ NEW
-- ⬜ Определение интерфейса: методы, свойства
-- ⬜ Реализация интерфейса классом
-- ⬜ Множественная реализация (класс : IFoo, IBar)
-- ⬜ Явная реализация (explicit): `void IFoo.Method()`
-- ⬜ Default interface methods (C# 8+)
-- ⬜ Стандартные интерфейсы .NET:
+## 07_Интерфейсы/ ★ NEW
+- ⬜ **01_Основы_интерфейсов.dib**
+  - ⬜ Определение и реализация интерфейса
+  - ⬜ Множественная реализация
+  - ⬜ Явная реализация (explicit)
+  - ⬜ Default interface methods (C# 8+)
+- ⬜ **02_Стандартные_интерфейсы.dib**
   - ⬜ `IComparable<T>` — сравнение/сортировка
   - ⬜ `IEquatable<T>` — равенство
   - ⬜ `IEnumerable<T>` — перебор foreach
   - ⬜ `IDisposable` — освобождение ресурсов + `using`
 
-## 08_Коллекции.dib ★ NEW
-- ⬜ `List<T>`
-  - ⬜ Add, Remove, RemoveAt, Insert, Contains, IndexOf
-  - ⬜ Count vs Capacity
-  - ⬜ Sort, Reverse, FindAll
-- ⬜ `Dictionary<TKey, TValue>`
-  - ⬜ Add, Remove, ContainsKey
-  - ⬜ `TryGetValue()` — безопасный доступ (!)
-  - ⬜ Перебор KeyValuePair
-- ⬜ `HashSet<T>`
-  - ⬜ Уникальные элементы
+## 08_Коллекции/ ★ NEW
+- ⬜ **01_List.dib**
+  - ⬜ `List<T>`: Add, Remove, Insert, Contains, IndexOf
+  - ⬜ Count vs Capacity, Sort, Reverse, FindAll
+- ⬜ **02_Dictionary.dib**
+  - ⬜ `Dictionary<TKey, TValue>`: Add, Remove, ContainsKey
+  - ⬜ `TryGetValue()`, перебор KeyValuePair
+- ⬜ **03_HashSet.dib**
+  - ⬜ `HashSet<T>`: уникальные элементы
   - ⬜ Операции множеств: UnionWith, IntersectWith, ExceptWith
-- ⬜ `Queue<T>` — FIFO (Enqueue, Dequeue, Peek)
-- ⬜ `Stack<T>` — LIFO (Push, Pop, Peek)
-- ⬜ `PriorityQueue<TElement, TPriority>` (.NET 6+)
-- ⬜ Выбор коллекции: когда что использовать (таблица Big O)
+- ⬜ **04_Queue_Stack.dib**
+  - ⬜ `Queue<T>` — FIFO, `Stack<T>` — LIFO
+  - ⬜ `PriorityQueue<TElement, TPriority>`
+  - ⬜ Выбор коллекции (таблица Big O)
 
-## 09_Исключения.dib ★ NEW
-- ⬜ `try` / `catch` / `finally`
-- ⬜ Множественные `catch` (от конкретного к общему)
-- ⬜ Фильтры `when`: `catch (Exception ex) when (ex.Message.Contains(...))`
-- ⬜ Иерархия исключений: NullReferenceException, ArgumentException...
-- ⬜ Кастомные исключения: `class MyException : Exception`
-- ⬜ `throw;` vs `throw ex;` (сохранение stack trace)
-- ⬜ Guard clauses: `ArgumentNullException.ThrowIfNull()` (.NET 6+)
-- ⬜ Try-паттерн: `TryParse`, `TryGetValue`
+## 09_Исключения/ ★ NEW
+- ⬜ **01_Try_Catch.dib**
+  - ⬜ `try` / `catch` / `finally`
+  - ⬜ Множественные `catch`
+  - ⬜ Фильтры `when`
+  - ⬜ Иерархия исключений
+- ⬜ **02_Кастомные_и_паттерны.dib**
+  - ⬜ Кастомные исключения
+  - ⬜ `throw;` vs `throw ex;`
+  - ⬜ Guard clauses, Try-паттерн
 
-## 10_Отладка.dib ★ NEW
-- ⬜ Типы breakpoints
-  - ⬜ Обычный breakpoint
-  - ⬜ Conditional breakpoint (условие)
-  - ⬜ Tracepoint / Logpoint (без остановки)
-- ⬜ Окна отладки: Watch, Locals, Immediate Window
-- ⬜ Навигация: Step Over (F10), Step Into (F11), Step Out (Shift+F11)
-- ⬜ Call Stack — стек вызовов
-- ⬜ Debug vs Release конфигурация
-- ⬜ `#if DEBUG`, `Debug.Assert()`
-- ⬜ `Stopwatch` для профилирования
+## 10_Отладка/ ★ NEW
+- ⬜ **01_Отладка.dib**
+  - ⬜ Breakpoints: обычный, conditional, tracepoint
+  - ⬜ Окна отладки: Watch, Locals, Immediate Window
+  - ⬜ Step Over, Step Into, Step Out, Call Stack
+  - ⬜ Debug vs Release, `#if DEBUG`, `Debug.Assert()`
 
 ---
 
 # LEVEL 4 — ПРОДВИНУТЫЙ C#
 
 > **Цель:** Освоить мощные возможности языка
-> **Предварительные знания:** Level 1-3 пройдены (ООП, коллекции, исключения)
-> **Файл:** `Level_4_Продвинутый/*.dib`
+> **Предварительные знания:** Level 1-3 пройдены
+> **Путь:** `Level_4_Продвинутый/`
 
-## 01_Типы_данных.dib
-- ⬜ Generics — обобщения
+## 01_Типы_данных/
+- ⬜ **01_Generics.dib**
   - ⬜ Обобщённые классы: `class Box<T>`
   - ⬜ Обобщённые методы: `T Max<T>(T a, T b)`
-  - ⬜ Ограничения (constraints):
-    - ⬜ `where T : class` / `struct` / `new()`
-    - ⬜ `where T : IInterface` / `BaseClass`
-    - ⬜ `where T : notnull`
-  - ⬜ Ковариантность: `out T` (IEnumerable<Dog> → IEnumerable<Animal>)
-  - ⬜ Контравариантность: `in T`
-- ⬜ `Span<T>` — срез без копирования
-- ⬜ `ReadOnlySpan<T>`
-- ⬜ `Memory<T>` — когда Span не подходит (async)
+  - ⬜ Ограничения (constraints): `where T : class/struct/new()/IInterface`
+  - ⬜ Ковариантность `out T`, контравариантность `in T`
+- ⬜ **02_Span_и_Memory.dib**
+  - ⬜ `Span<T>` — срез без копирования
+  - ⬜ `ReadOnlySpan<T>`
+  - ⬜ `Memory<T>` — когда Span не подходит (async)
 
-## 02_Операторы.dib
-- ⬜ Перегрузка операторов: `+`, `-`, `*`, `==`, `!=`
-- ⬜ Индексаторы: `this[int index]`
-- ⬜ Индексаторы с разными ключами: `this[string key]`
-- ⬜ Неявное приведение: `implicit operator`
-- ⬜ Явное приведение: `explicit operator`
+## 02_Операторы/
+- ⬜ **01_Перегрузка.dib**
+  - ⬜ Перегрузка операторов: `+`, `-`, `==`, `!=`
+  - ⬜ Индексаторы: `this[int index]`
+  - ⬜ `implicit` / `explicit` operator
 
-## 03_Методы.dib
-- ⬜ Делегаты
-  - ⬜ Объявление: `delegate int MathOp(int a, int b)`
-  - ⬜ Многоадресные делегаты (цепочка вызовов)
-- ⬜ Встроенные делегаты:
-  - ⬜ `Action` / `Action<T>` — без возвращаемого значения
-  - ⬜ `Func<T, TResult>` — с возвращаемым значением
-  - ⬜ `Predicate<T>` — возвращает bool
-- ⬜ Лямбда-выражения
-  - ⬜ `x => x * 2` (expression lambda)
-  - ⬜ `x => { ... }` (statement lambda)
-  - ⬜ Замыкания (closures) — захват переменных
+## 03_Методы/
+- ⬜ **01_Делегаты.dib**
+  - ⬜ Делегаты: объявление, многоадресные
+  - ⬜ `Action`, `Func<T>`, `Predicate<T>`
+- ⬜ **02_Лямбды.dib**
+  - ⬜ Лямбда-выражения: expression и statement
+  - ⬜ Замыкания (closures)
   - ⬜ Ловушка замыканий в цикле
-- ⬜ События (Events)
+- ⬜ **03_События.dib**
   - ⬜ `event EventHandler<T>`
   - ⬜ Publisher / Subscriber
-  - ⬜ Кастомные EventArgs
-  - ⬜ Отписка (предотвращение утечек памяти)
+  - ⬜ Кастомные EventArgs, отписка
 
-## 04_Коллекции.dib
-- ⬜ `ImmutableList<T>`, `ImmutableDictionary`, `ImmutableArray`
-- ⬜ `FrozenSet<T>`, `FrozenDictionary` (.NET 8+)
-- ⬜ `ConcurrentDictionary`, `ConcurrentQueue`, `ConcurrentBag`
-- ⬜ `ObservableCollection<T>` — привязка к UI
-- ⬜ Таблица сравнения всех коллекций
+## 04_Коллекции/
+- ⬜ **01_Продвинутые_коллекции.dib**
+  - ⬜ `ImmutableList<T>`, `ImmutableDictionary`
+  - ⬜ `FrozenSet<T>`, `FrozenDictionary`
+  - ⬜ `ConcurrentDictionary`, `ConcurrentQueue`
+  - ⬜ `ObservableCollection<T>`
 
-## 05_LINQ.dib ★ NEW
-- ⬜ Query syntax: `from x in list where ... select ...`
-- ⬜ Method syntax: `.Where().Select().OrderBy()`
-- ⬜ Фильтрация: `Where`
-- ⬜ Проекция: `Select`, `SelectMany`
-- ⬜ Сортировка: `OrderBy`, `ThenBy`, `OrderByDescending`
-- ⬜ Группировка: `GroupBy`
-- ⬜ Объединение: `Join`
-- ⬜ Агрегация: `Count`, `Sum`, `Average`, `Min`, `Max`, `Aggregate`
-- ⬜ Элементы: `First`, `FirstOrDefault`, `Single`, `Any`, `All`
-- ⬜ Разбиение: `Take`, `Skip`, `Distinct`, `Chunk`
-- ⬜ Материализация: `ToList()`, `ToArray()`, `ToDictionary()`
-- ⬜ Отложенное выполнение (deferred execution)
+## 05_LINQ/ ★ NEW
+- ⬜ **01_Основы_LINQ.dib**
+  - ⬜ Query syntax vs Method syntax
+  - ⬜ `Where`, `Select`, `OrderBy`, `ThenBy`
+  - ⬜ `First`, `FirstOrDefault`, `Any`, `All`
+- ⬜ **02_Продвинутый_LINQ.dib**
+  - ⬜ `GroupBy`, `Join`
+  - ⬜ Агрегация: `Count`, `Sum`, `Average`, `Min`, `Max`
+  - ⬜ `Take`, `Skip`, `Distinct`, `Chunk`
+  - ⬜ Отложенное выполнение (deferred execution)
 
-## 06_Async.dib ★ NEW
-- ⬜ `async` / `await` — основы
-- ⬜ `Task` и `Task<T>`
-- ⬜ `ValueTask<T>` — когда использовать
-- ⬜ Параллельное выполнение: `Task.WhenAll()`
-- ⬜ Гонка задач: `Task.WhenAny()`
-- ⬜ Фоновая работа: `Task.Run()`
-- ⬜ Отмена: `CancellationToken` / `CancellationTokenSource`
-- ⬜ `IAsyncEnumerable<T>` и `await foreach`
-- ⬜ Проблемы:
-  - ⬜ `async void` — почему плохо
-  - ⬜ Deadlock через `.Result`
-  - ⬜ Забытый `await`
+## 06_Async/ ★ NEW
+- ⬜ **01_Async_Await.dib**
+  - ⬜ `async` / `await` — основы
+  - ⬜ `Task` и `Task<T>`
+  - ⬜ `ValueTask<T>`
+- ⬜ **02_Параллельность.dib**
+  - ⬜ `Task.WhenAll()`, `Task.WhenAny()`
+  - ⬜ `CancellationToken`
+  - ⬜ Проблемы: `async void`, deadlock, забытый `await`
 
-## 07_Pattern_Matching.dib ★ NEW
-- ⬜ Типовой: `is Type variable`
-- ⬜ Константный: `is null`, `is 42`
-- ⬜ Реляционный: `is > 0`, `is >= -30 and < 0`
-- ⬜ Логический: `and`, `or`, `not`
-- ⬜ Свойств: `is { Age: >= 18, Name.Length: > 0 }`
-- ⬜ Позиционный (деконструкция)
-- ⬜ Списков: `is [1, 2, .., var last]` (C# 11)
-- ⬜ Switch expressions с паттернами + `when`
+## 07_Pattern_Matching/ ★ NEW
+- ⬜ **01_Pattern_Matching.dib**
+  - ⬜ Типовой, константный, реляционный, логический паттерны
+  - ⬜ Паттерн свойств, позиционный, списков
+  - ⬜ Switch expressions с паттернами + `when`
 
-## 08_Файлы.dib ★ NEW
-- ⬜ Простое чтение/запись:
+## 08_Файлы/ ★ NEW
+- ⬜ **01_Файловый_ввод_вывод.dib**
   - ⬜ `File.ReadAllText()`, `File.WriteAllText()`
-  - ⬜ `File.ReadAllLines()`, `File.AppendAllText()`
-- ⬜ Потоковое: `StreamReader`, `StreamWriter`
-- ⬜ Бинарное: `FileStream`
-- ⬜ `using` / `await using` и `IDisposable`
-- ⬜ Класс `Path`: `Combine`, `GetFileName`, `GetExtension`
-- ⬜ JSON сериализация (`System.Text.Json`):
-  - ⬜ `JsonSerializer.Serialize()` / `Deserialize()`
+  - ⬜ `StreamReader`, `StreamWriter`
+  - ⬜ `Path`: Combine, GetFileName, GetExtension
+  - ⬜ `using` / `await using`
+- ⬜ **02_JSON.dib**
+  - ⬜ `System.Text.Json`: Serialize / Deserialize
   - ⬜ `[JsonPropertyName]`, `[JsonIgnore]`
   - ⬜ `JsonSerializerOptions`
 
-## 09_Функциональное.dib ★ NEW
-- ⬜ Функции высшего порядка (функция как параметр / результат)
-- ⬜ Замыкания глубже: состояние, мемоизация
-- ⬜ Каррирование: `f(a, b, c)` → `f(a)(b)(c)`
-- ⬜ Частичное применение
-- ⬜ Композиция функций
-- ⬜ Пайплайн (цепочка преобразований)
+## 09_Функциональное/ ★ NEW
+- ⬜ **01_Функциональное.dib**
+  - ⬜ Функции высшего порядка
+  - ⬜ Замыкания, мемоизация
+  - ⬜ Каррирование, частичное применение
+  - ⬜ Композиция функций, пайплайн
 
 ---
 
@@ -456,102 +441,81 @@
 
 > **Цель:** Проектирование, паттерны, профессиональные инструменты
 > **Предварительные знания:** Level 1-4 пройдены
-> **Файл:** `Level_5_Архитектура/*.dib`
+> **Путь:** `Level_5_Архитектура/`
 
-## 01_Рефлексия.dib ★ NEW
-- ⬜ `typeof()` и `GetType()` — получение типа
-- ⬜ Класс `Type`: Name, Namespace, BaseType, IsAbstract...
-- ⬜ `GetMethods()`, `GetProperties()`, `GetFields()`
-- ⬜ `GetCustomAttributes()` — чтение атрибутов
-- ⬜ `Activator.CreateInstance()` — динамическое создание объекта
-- ⬜ `MethodInfo.Invoke()` — динамический вызов метода
-- ⬜ Стандартные атрибуты: `[Obsolete]`, `[Conditional]`
-- ⬜ Создание своих атрибутов
-- ⬜ Generic attributes (C# 11): `[MyAttribute<string>]`
+## 01_Рефлексия/ ★ NEW
+- ⬜ **01_Рефлексия.dib**
+  - ⬜ `typeof()` и `GetType()`, класс `Type`
+  - ⬜ `GetMethods()`, `GetProperties()`, `GetFields()`
+  - ⬜ `Activator.CreateInstance()`, `MethodInfo.Invoke()`
+- ⬜ **02_Атрибуты.dib**
+  - ⬜ Стандартные атрибуты: `[Obsolete]`, `[Conditional]`
+  - ⬜ Создание своих атрибутов
+  - ⬜ Generic attributes (C# 11)
 
-## 02_Многопоточность.dib ★ NEW
-- ⬜ `Thread` — создание потоков
-- ⬜ `Thread.Sleep()`, `Thread.Join()`
-- ⬜ Race condition — гонка потоков (проблема)
-- ⬜ `lock` — синхронизация (решение)
-- ⬜ `Monitor`, `Mutex`
-- ⬜ `SemaphoreSlim` — ограничение параллелизма
-- ⬜ `Interlocked` — атомарные операции
-- ⬜ `Task.Run()` vs `Thread` — когда что
-- ⬜ `Channel<T>` — producer/consumer
+## 02_Многопоточность/ ★ NEW
+- ⬜ **01_Потоки.dib**
+  - ⬜ `Thread` — создание потоков
+  - ⬜ `Thread.Sleep()`, `Thread.Join()`
+  - ⬜ Race condition — гонка потоков
+- ⬜ **02_Синхронизация.dib**
+  - ⬜ `lock`, `Monitor`, `Mutex`
+  - ⬜ `SemaphoreSlim`, `Interlocked`
+  - ⬜ `Channel<T>` — producer/consumer
 
-## 03_Память.dib ★ NEW
-- ⬜ Garbage Collector
+## 03_Память/ ★ NEW
+- ⬜ **01_Garbage_Collector.dib**
   - ⬜ Поколения: 0, 1, 2
   - ⬜ Large Object Heap (LOH)
   - ⬜ Как GC решает что собирать
-- ⬜ `IDisposable` и Dispose pattern
-  - ⬜ Полный паттерн с финализатором
-  - ⬜ `using` / `await using`
-- ⬜ `ArrayPool<T>` — переиспользование массивов
-- ⬜ `Span<T>` углублённо
-- ⬜ `stackalloc` — аллокация на стеке
-- ⬜ `WeakReference<T>` — слабые ссылки
+- ⬜ **02_Оптимизация_памяти.dib**
+  - ⬜ `IDisposable` и Dispose pattern
+  - ⬜ `ArrayPool<T>`, `Span<T>` углублённо
+  - ⬜ `stackalloc`, `WeakReference<T>`
 
-## 04_SOLID.dib ★ NEW
-- ⬜ **S** — Single Responsibility (одна причина для изменения)
-- ⬜ **O** — Open/Closed (открыт для расширения, закрыт для изменения)
-- ⬜ **L** — Liskov Substitution (подтип заменяет базовый тип)
-- ⬜ **I** — Interface Segregation (маленькие интерфейсы лучше)
-- ⬜ **D** — Dependency Inversion (зависимость от абстракций)
-- ⬜ Каждый принцип: пример нарушения → рефакторинг → правильный код
+## 04_SOLID/ ★ NEW
+- ⬜ **01_SOLID.dib**
+  - ⬜ **S** — Single Responsibility
+  - ⬜ **O** — Open/Closed
+  - ⬜ **L** — Liskov Substitution
+  - ⬜ **I** — Interface Segregation
+  - ⬜ **D** — Dependency Inversion
 
-## 05_Паттерны.dib ★ NEW
-- ⬜ **Singleton** — единственный экземпляр (thread-safe с `Lazy<T>`)
-- ⬜ **Factory Method** — создание через метод, не `new`
-- ⬜ **Strategy** — семейство алгоритмов через интерфейс
-- ⬜ **Observer** — подписка на события
-- ⬜ **State** — конечный автомат (FSM) для состояний
-- ⬜ **Command** — действие как объект (undo/redo)
-- ⬜ **Builder** — пошаговое построение сложного объекта
-- ⬜ **Decorator** — обёртка для добавления поведения
+## 05_Паттерны/ ★ NEW
+- ⬜ **01_Singleton.dib** — единственный экземпляр (thread-safe с `Lazy<T>`)
+- ⬜ **02_Factory_Method.dib** — создание через метод, не `new`
+- ⬜ **03_Strategy.dib** — семейство алгоритмов через интерфейс
+- ⬜ **04_Observer.dib** — подписка на события
+- ⬜ **05_State.dib** — конечный автомат (FSM)
+- ⬜ **06_Command.dib** — действие как объект (undo/redo)
+- ⬜ **07_Builder.dib** — пошаговое построение сложного объекта
+- ⬜ **08_Decorator.dib** — обёртка для добавления поведения
 
-## 06_Архитектура.dib ★ NEW
-- ⬜ MVVM (Model-View-ViewModel)
-  - ⬜ `INotifyPropertyChanged`
-  - ⬜ `ICommand` / `RelayCommand`
-  - ⬜ Data Binding
-- ⬜ Clean Architecture
+## 06_Архитектура/ ★ NEW
+- ⬜ **01_MVVM.dib**
+  - ⬜ `INotifyPropertyChanged`, `ICommand`, Data Binding
+- ⬜ **02_Clean_Architecture.dib**
   - ⬜ Domain → Application → Infrastructure → Presentation
-  - ⬜ Зависимости направлены внутрь
-- ⬜ Repository pattern
-- ⬜ CQRS (Command Query Responsibility Segregation) — обзор
+  - ⬜ Repository pattern, CQRS (обзор)
 
-## 07_DI.dib ★ NEW
-- ⬜ Что такое DI и зачем (проблема жёстких зависимостей)
-- ⬜ Constructor injection
-- ⬜ `Microsoft.Extensions.DependencyInjection`:
-  - ⬜ `AddTransient<T>` — новый каждый раз
-  - ⬜ `AddScoped<T>` — один на scope
-  - ⬜ `AddSingleton<T>` — один на всё приложение
+## 07_DI/ ★ NEW
+- ⬜ **01_DI.dib**
+  - ⬜ Constructor injection
+  - ⬜ `AddTransient`, `AddScoped`, `AddSingleton`
   - ⬜ `IServiceProvider`
-- ⬜ Регистрация интерфейс → реализация
-- ⬜ DI в реальном приложении
 
-## 08_Логирование.dib ★ NEW
-- ⬜ `Debug.WriteLine()`, `Trace.WriteLine()`
-- ⬜ `Microsoft.Extensions.Logging`
-  - ⬜ `ILogger`, `ILoggerFactory`
-  - ⬜ Уровни: Trace, Debug, Information, Warning, Error, Critical
-- ⬜ Structured logging: `"User {UserId} logged in"` (плейсхолдеры, не интерполяция!)
-- ⬜ `LoggerMessage.Define()` — высокопроизводительное
-- ⬜ Serilog — обзор: Sinks, Enrichers
+## 08_Логирование/ ★ NEW
+- ⬜ **01_Логирование.dib**
+  - ⬜ `Microsoft.Extensions.Logging`, `ILogger`
+  - ⬜ Уровни: Trace → Critical
+  - ⬜ Structured logging, `LoggerMessage.Define()`
+  - ⬜ Serilog (обзор)
 
-## 09_Стиль_кода.dib ★ NEW
-- ⬜ Именование .NET:
-  - ⬜ PascalCase — публичные (ClassName, MethodName, PropertyName)
-  - ⬜ camelCase — параметры, локальные переменные
-  - ⬜ _camelCase — приватные поля
-  - ⬜ I — префикс интерфейсов (IDisposable)
-  - ⬜ T — префикс generic параметров
-- ⬜ `.editorconfig` — правила стиля для проекта
-- ⬜ Roslyn analyzers, StyleCop
-- ⬜ XML-документация: `<summary>`, `<param>`, `<returns>`
+## 09_Стиль_кода/ ★ NEW
+- ⬜ **01_Стиль_кода.dib**
+  - ⬜ Именование .NET: PascalCase, camelCase, _camelCase
+  - ⬜ `.editorconfig`, Roslyn analyzers
+  - ⬜ XML-документация
 
 ---
 
@@ -559,7 +523,6 @@
 
 ## Godot (после Level 2+)
 > Файлы: `Notebooks/Godot/`
-> Справочник: `Notebooks/Godot/_docs/`
 
 - ⬜ Архитектура Godot: сцены, узлы, дерево сцен
 - ⬜ Жизненный цикл: `_Ready()`, `_Process()`, `_PhysicsProcess()`
@@ -581,7 +544,6 @@
 
 ## Uno Platform (после Level 2+)
 > Файлы: `Notebooks/Uno/`
-> Справочник: `Notebooks/Uno/_docs/`
 
 - ⬜ Основы XAML: элементы, атрибуты, Layout (Grid, StackPanel)
 - ⬜ Элементы управления: Button, TextBox, ListView, ComboBox...

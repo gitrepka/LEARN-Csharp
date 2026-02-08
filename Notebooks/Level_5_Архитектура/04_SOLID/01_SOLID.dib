@@ -1,0 +1,652 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# SOLID — принципы чистого кода
+> **Уровень:** 5 — Архитектура | **Тема:** SOLID (1/1)
+> **Предыдущий:** [Оптимизация памяти](../03_Память/02_Оптимизация_памяти.dib) | **Следующий:** [Singleton](../05_Паттерны/01_Singleton.dib)
+---
+
+**Что это:** SOLID — это 5 принципов проектирования классов, которые делают код:
+- Легко изменяемым (не нужно переписывать половину проекта)
+- Легко тестируемым (можно подставить mock-объекты)
+- Легко расширяемым (добавить фичу = добавить класс, а не менять существующий)
+
+**Зачем это нужно:**
+- Код, написанный по SOLID, живёт долго и не превращается в "спагетти"
+- Это основа любой серьёзной архитектуры (Clean Architecture, DDD)
+- В Godot: правильная организация нод и скриптов
+- В Uno: MVVM, сервисы, DI — всё построено на SOLID
+
+**Аналогия:** SOLID — это как правила дорожного движения. Можно ехать без них, но рано или поздно будет авария. С ними — все едут предсказуемо и безопасно.
+
+---
+
+### Содержание:
+1. **S** — Single Responsibility Principle (Принцип единственной ответственности)
+2. **O** — Open/Closed Principle (Принцип открытости/закрытости)
+3. **L** — Liskov Substitution Principle (Принцип подстановки Лисков)
+4. **I** — Interface Segregation Principle (Принцип разделения интерфейсов)
+5. **D** — Dependency Inversion Principle (Принцип инверсии зависимостей)
+
+#!markdown
+
+## S — Single Responsibility Principle
+### Каждый класс должен иметь одну причину для изменения
+
+Аналогия: швейцарский нож — удобная штука, но ты не будешь чинить им машину. Для каждой задачи — свой инструмент.
+
+**Плохо:** Класс `Player` отвечает за движение, здоровье, инвентарь, сохранение, отрисовку.
+**Хорошо:** `PlayerMovement`, `PlayerHealth`, `Inventory`, `SaveSystem`, `PlayerRenderer`.
+
+#!csharp
+
+// === ДО (нарушение SRP) ===
+// Этот класс делает слишком много: и бизнес-логика, и валидация, и сохранение
+
+public class OrderProcessorBad
+{
+    public void ProcessOrder(string customerEmail, string product, decimal price)
+    {
+        // 1. Валидация (ответственность: проверка данных)
+        if (string.IsNullOrEmpty(customerEmail) || !customerEmail.Contains('@'))
+            throw new Exception("Неверный email!");
+        if (price <= 0)
+            throw new Exception("Неверная цена!");
+
+        // 2. Бизнес-логика (ответственность: скидки, расчёты)
+        decimal discount = price > 1000 ? 0.1m : 0;
+        decimal finalPrice = price * (1 - discount);
+
+        // 3. Сохранение (ответственность: база данных)
+        Console.WriteLine($"[DB] Сохраняю заказ: {product} = {finalPrice}");
+
+        // 4. Уведомление (ответственность: отправка email)
+        Console.WriteLine($"[EMAIL] Отправляю {customerEmail}: Ваш заказ {product} на {finalPrice}");
+    }
+}
+
+// Если поменяется формат email — меняем этот класс
+// Если поменяется система скидок — меняем этот класс
+// Если поменяется база данных — меняем этот класс
+// 3 причины для изменения = нарушение SRP!
+
+var bad = new OrderProcessorBad();
+bad.ProcessOrder("test@mail.com", "Ноутбук", 1500);
+
+#!csharp
+
+// === ПОСЛЕ (SRP соблюдён) ===
+// Каждый класс — одна ответственность, одна причина для изменения
+
+public class OrderValidator
+{
+    public bool Validate(string email, decimal price, out string error)
+    {
+        if (string.IsNullOrEmpty(email) || !email.Contains('@'))
+        {
+            error = "Неверный email!";
+            return false;
+        }
+        if (price <= 0)
+        {
+            error = "Неверная цена!";
+            return false;
+        }
+        error = string.Empty;
+        return true;
+    }
+}
+
+public class PricingService
+{
+    public decimal CalculatePrice(decimal basePrice)
+    {
+        decimal discount = basePrice > 1000 ? 0.1m : 0;
+        return basePrice * (1 - discount);
+    }
+}
+
+public class OrderRepository
+{
+    public void Save(string product, decimal price)
+    {
+        Console.WriteLine($"[DB] Сохраняю заказ: {product} = {price}");
+    }
+}
+
+public class EmailService
+{
+    public void SendConfirmation(string email, string product, decimal price)
+    {
+        Console.WriteLine($"[EMAIL] Отправляю {email}: Ваш заказ {product} на {price}");
+    }
+}
+
+// Оркестратор — собирает всё вместе
+public class OrderProcessorGood
+{
+    private readonly OrderValidator _validator = new();
+    private readonly PricingService _pricing = new();
+    private readonly OrderRepository _repository = new();
+    private readonly EmailService _email = new();
+
+    public void ProcessOrder(string customerEmail, string product, decimal price)
+    {
+        if (!_validator.Validate(customerEmail, price, out string error))
+            throw new Exception(error);
+
+        decimal finalPrice = _pricing.CalculatePrice(price);
+        _repository.Save(product, finalPrice);
+        _email.SendConfirmation(customerEmail, product, finalPrice);
+    }
+}
+
+var good = new OrderProcessorGood();
+good.ProcessOrder("test@mail.com", "Ноутбук", 1500);
+
+#!markdown
+
+## O — Open/Closed Principle
+### Открыт для расширения, закрыт для изменения
+
+Аналогия: розетка. Чтобы подключить новый прибор, ты не ломаешь стену — просто втыкаешь вилку. Розетка "открыта для расширения" (новые приборы) и "закрыта для модификации" (не нужно переделывать проводку).
+
+#!csharp
+
+// === ДО (нарушение OCP) ===
+// Чтобы добавить новый тип скидки — нужно МЕНЯТЬ существующий метод
+
+public class DiscountCalculatorBad
+{
+    public decimal Calculate(string discountType, decimal price)
+    {
+        // Каждый новый тип скидки = изменение этого метода
+        switch (discountType)
+        {
+            case "seasonal": return price * 0.15m;
+            case "loyalty": return price * 0.10m;
+            case "bulk": return price * 0.20m;
+            // Завтра попросят "employee" скидку — опять сюда лезть!
+            default: return 0;
+        }
+    }
+}
+
+Console.WriteLine("=== Плохой подход ===");
+var bad = new DiscountCalculatorBad();
+Console.WriteLine($"Сезонная скидка на 1000: {bad.Calculate("seasonal", 1000)}");
+Console.WriteLine($"За лояльность на 1000: {bad.Calculate("loyalty", 1000)}");
+
+#!csharp
+
+// === ПОСЛЕ (OCP соблюдён) ===
+// Новый тип скидки = новый класс. Существующий код НЕ меняется.
+
+public interface IDiscount
+{
+    string Name { get; }
+    decimal Calculate(decimal price);
+}
+
+public class SeasonalDiscount : IDiscount
+{
+    public string Name => "Сезонная";
+    public decimal Calculate(decimal price) => price * 0.15m;
+}
+
+public class LoyaltyDiscount : IDiscount
+{
+    public string Name => "За лояльность";
+    public decimal Calculate(decimal price) => price * 0.10m;
+}
+
+public class BulkDiscount : IDiscount
+{
+    public string Name => "Оптовая";
+    public decimal Calculate(decimal price) => price * 0.20m;
+}
+
+// Добавить новую скидку — просто создай новый класс!
+public class EmployeeDiscount : IDiscount
+{
+    public string Name => "Для сотрудников";
+    public decimal Calculate(decimal price) => price * 0.30m;
+}
+
+// Калькулятор НЕ НУЖНО менять при добавлении новых скидок
+public class DiscountCalculatorGood
+{
+    public decimal CalculateTotal(decimal price, IEnumerable<IDiscount> discounts)
+    {
+        decimal totalDiscount = discounts.Sum(d => d.Calculate(price));
+        return Math.Max(0, price - totalDiscount);
+    }
+}
+
+Console.WriteLine("=== Хороший подход ===");
+var calc = new DiscountCalculatorGood();
+var discounts = new IDiscount[] { new SeasonalDiscount(), new LoyaltyDiscount() };
+
+decimal price = 1000;
+foreach (var d in discounts)
+    Console.WriteLine($"{d.Name}: -{d.Calculate(price)}");
+Console.WriteLine($"Итого: {calc.CalculateTotal(price, discounts)}");
+
+// Добавляем скидку сотрудника — НЕ трогая существующий код
+var allDiscounts = discounts.Append(new EmployeeDiscount());
+Console.WriteLine($"\nС доп. скидкой сотрудника: {calc.CalculateTotal(price, allDiscounts)}");
+
+#!markdown
+
+## L — Liskov Substitution Principle
+### Объекты подклассов должны быть заменимы на объекты базового класса
+
+Аналогия: если ты заказал такси и приехал минивэн — это нормально, он выполняет ту же функцию. Но если приехала скорая — это нарушение, она не возит пассажиров.
+
+**Правило:** подкласс не должен нарушать "контракт" (ожидания) базового класса.
+
+#!csharp
+
+// === ДО (нарушение LSP) — классический пример с прямоугольником ===
+
+public class RectangleBad
+{
+    public virtual int Width { get; set; }
+    public virtual int Height { get; set; }
+    public int Area => Width * Height;
+}
+
+public class SquareBad : RectangleBad
+{
+    // Квадрат — это прямоугольник? Математически да, но в коде — нет!
+    public override int Width
+    {
+        get => base.Width;
+        set { base.Width = value; base.Height = value; } // Неожиданно меняет Height!
+    }
+
+    public override int Height
+    {
+        get => base.Height;
+        set { base.Height = value; base.Width = value; } // Неожиданно меняет Width!
+    }
+}
+
+void ResizeRectangle(RectangleBad rect)
+{
+    rect.Width = 5;
+    rect.Height = 10;
+    Console.WriteLine($"Ожидаем площадь 50, получили: {rect.Area}");
+}
+
+Console.WriteLine("=== Нарушение LSP ===");
+ResizeRectangle(new RectangleBad());  // 50 — OK
+ResizeRectangle(new SquareBad());     // 100 — СЮРПРИЗ! Нарушение LSP
+
+#!csharp
+
+// === ПОСЛЕ (LSP соблюдён) ===
+
+// Вместо наследования — отдельные типы с общим интерфейсом
+public interface IShape
+{
+    double Area { get; }
+    string Name { get; }
+}
+
+public class Rectangle : IShape
+{
+    public double Width { get; }
+    public double Height { get; }
+    public double Area => Width * Height;
+    public string Name => "Прямоугольник";
+
+    public Rectangle(double width, double height)
+    {
+        Width = width;
+        Height = height;
+    }
+}
+
+public class Square : IShape
+{
+    public double Side { get; }
+    public double Area => Side * Side;
+    public string Name => "Квадрат";
+
+    public Square(double side)
+    {
+        Side = side;
+    }
+}
+
+public class Circle : IShape
+{
+    public double Radius { get; }
+    public double Area => Math.PI * Radius * Radius;
+    public string Name => "Круг";
+
+    public Circle(double radius)
+    {
+        Radius = radius;
+    }
+}
+
+// Теперь любая фигура работает предсказуемо
+void PrintArea(IShape shape)
+{
+    Console.WriteLine($"{shape.Name}: площадь = {shape.Area:F2}");
+}
+
+Console.WriteLine("=== LSP соблюдён ===");
+PrintArea(new Rectangle(5, 10));  // 50
+PrintArea(new Square(7));          // 49
+PrintArea(new Circle(5));          // 78.54
+
+#!markdown
+
+## I — Interface Segregation Principle
+### Много специализированных интерфейсов лучше, чем один "жирный"
+
+Аналогия: в ресторане лучше отдельные меню (завтрак, обед, десерты), чем одна огромная книга на 200 страниц.
+
+**Правило:** клиент не должен зависеть от методов, которые он не использует.
+
+#!csharp
+
+// === ДО (нарушение ISP) ===
+// Один гигантский интерфейс заставляет всех реализовывать ненужные методы
+
+public interface IWorkerBad
+{
+    void Work();
+    void Eat();        // Роботу не нужно есть!
+    void Sleep();      // Роботу не нужно спать!
+    void Code();
+    void AttendMeeting();
+}
+
+public class HumanWorkerBad : IWorkerBad
+{
+    public void Work() => Console.WriteLine("Человек работает");
+    public void Eat() => Console.WriteLine("Человек ест");
+    public void Sleep() => Console.WriteLine("Человек спит");
+    public void Code() => Console.WriteLine("Человек кодит");
+    public void AttendMeeting() => Console.WriteLine("Человек на митинге");
+}
+
+public class RobotWorkerBad : IWorkerBad
+{
+    public void Work() => Console.WriteLine("Робот работает");
+    public void Eat() => throw new NotSupportedException("Робот не ест!"); // Вынужден реализовать!
+    public void Sleep() => throw new NotSupportedException("Робот не спит!"); // Вынужден реализовать!
+    public void Code() => Console.WriteLine("Робот кодит");
+    public void AttendMeeting() => throw new NotSupportedException("Робот не ходит на митинги!");
+}
+
+Console.WriteLine("=== Нарушение ISP ===");
+IWorkerBad robot = new RobotWorkerBad();
+robot.Work(); // OK
+try { robot.Eat(); } catch (Exception ex) { Console.WriteLine($"Ошибка: {ex.Message}"); }
+
+#!csharp
+
+// === ПОСЛЕ (ISP соблюдён) ===
+// Маленькие специализированные интерфейсы
+
+public interface IWorkable
+{
+    void Work();
+}
+
+public interface IFeedable
+{
+    void Eat();
+    void Sleep();
+}
+
+public interface IProgrammer
+{
+    void Code();
+}
+
+public interface IMeetingAttendee
+{
+    void AttendMeeting();
+}
+
+// Человек реализует всё
+public class HumanDeveloper : IWorkable, IFeedable, IProgrammer, IMeetingAttendee
+{
+    public string Name { get; }
+    public HumanDeveloper(string name) => Name = name;
+
+    public void Work() => Console.WriteLine($"{Name} работает");
+    public void Eat() => Console.WriteLine($"{Name} обедает");
+    public void Sleep() => Console.WriteLine($"{Name} спит");
+    public void Code() => Console.WriteLine($"{Name} пишет код");
+    public void AttendMeeting() => Console.WriteLine($"{Name} на митинге");
+}
+
+// Робот — только то, что ему нужно
+public class CodingRobot : IWorkable, IProgrammer
+{
+    public string Model { get; }
+    public CodingRobot(string model) => Model = model;
+
+    public void Work() => Console.WriteLine($"Робот {Model} работает");
+    public void Code() => Console.WriteLine($"Робот {Model} пишет код");
+}
+
+Console.WriteLine("=== ISP соблюдён ===");
+
+var human = new HumanDeveloper("Алексей");
+var robot = new CodingRobot("GPT-5");
+
+// Функция принимает только то, что нужно
+void DoWork(IWorkable worker) => worker.Work();
+void FeedIfNeeded(IFeedable? creature) => creature?.Eat();
+
+DoWork(human);
+DoWork(robot);
+FeedIfNeeded(human);
+// FeedIfNeeded(robot); // Даже не скомпилируется! Робот не IFeedable
+
+#!markdown
+
+## D — Dependency Inversion Principle
+### Зависи от абстракций, а не от конкретных реализаций
+
+Аналогия: USB-порт. Компьютер не зависит от конкретной мышки или клавиатуры — он зависит от стандарта USB. Любое USB-устройство подойдёт.
+
+**Правило:**
+- Модули верхнего уровня не должны зависеть от модулей нижнего уровня. Оба должны зависеть от абстракций.
+- Абстракции не должны зависеть от деталей. Детали должны зависеть от абстракций.
+
+#!csharp
+
+// === ДО (нарушение DIP) ===
+// GameEngine напрямую зависит от конкретных классов
+
+public class ConsoleLogger
+{
+    public void Log(string msg) => Console.WriteLine($"[CONSOLE] {msg}");
+}
+
+public class JsonFileStorage
+{
+    public void Save(string data) => Console.WriteLine($"[JSON] Сохраняю: {data}");
+    public string Load() => "saved_data";
+}
+
+public class GameEngineBad
+{
+    // Жёсткие зависимости от конкретных классов!
+    private ConsoleLogger _logger = new ConsoleLogger();
+    private JsonFileStorage _storage = new JsonFileStorage();
+
+    public void StartGame()
+    {
+        _logger.Log("Игра запущена");
+        _storage.Save("game_state");
+    }
+}
+
+// Проблема: хотим заменить ConsoleLogger на FileLogger?
+// Нужно менять код GameEngine!
+
+Console.WriteLine("=== Нарушение DIP ===");
+var badEngine = new GameEngineBad();
+badEngine.StartGame();
+
+#!csharp
+
+// === ПОСЛЕ (DIP соблюдён) ===
+// GameEngine зависит от абстракций (интерфейсов)
+
+public interface ILogger
+{
+    void Log(string message);
+}
+
+public interface IStorage
+{
+    void Save(string data);
+    string Load();
+}
+
+// Конкретные реализации
+public class ConsoleLoggerGood : ILogger
+{
+    public void Log(string msg) => Console.WriteLine($"[CONSOLE] {msg}");
+}
+
+public class FileLoggerGood : ILogger
+{
+    public void Log(string msg) => Console.WriteLine($"[FILE] {msg}");
+}
+
+public class JsonStorageGood : IStorage
+{
+    public void Save(string data) => Console.WriteLine($"[JSON] Сохраняю: {data}");
+    public string Load() => "json_data";
+}
+
+public class CloudStorageGood : IStorage
+{
+    public void Save(string data) => Console.WriteLine($"[CLOUD] Загружаю в облако: {data}");
+    public string Load() => "cloud_data";
+}
+
+// GameEngine зависит только от интерфейсов — не знает про конкретные реализации
+public class GameEngineGood
+{
+    private readonly ILogger _logger;
+    private readonly IStorage _storage;
+
+    // Зависимости передаются через конструктор (Constructor Injection)
+    public GameEngineGood(ILogger logger, IStorage storage)
+    {
+        _logger = logger;
+        _storage = storage;
+    }
+
+    public void StartGame()
+    {
+        _logger.Log("Игра запущена");
+        _storage.Save("game_state");
+    }
+}
+
+Console.WriteLine("=== DIP соблюдён ===\n");
+
+// Можем легко менять реализации!
+Console.WriteLine("Вариант 1: Console + JSON");
+var engine1 = new GameEngineGood(new ConsoleLoggerGood(), new JsonStorageGood());
+engine1.StartGame();
+
+Console.WriteLine("\nВариант 2: File + Cloud");
+var engine2 = new GameEngineGood(new FileLoggerGood(), new CloudStorageGood());
+engine2.StartGame();
+
+// Для тестов — можно подставить моки!
+// var testEngine = new GameEngineGood(new MockLogger(), new MockStorage());
+
+#!markdown
+
+---
+
+## Упражнения
+
+### Упражнение 1 (Рефакторинг по SOLID)
+
+Вот класс, нарушающий несколько принципов SOLID. Отрефактори его:
+
+```csharp
+public class NotificationService
+{
+    public void SendNotification(string to, string message, string type)
+    {
+        if (type == "email")
+        {
+            Console.WriteLine($"EMAIL to {to}: {message}");
+        }
+        else if (type == "sms")
+        {
+            Console.WriteLine($"SMS to {to}: {message}");
+        }
+        else if (type == "push")
+        {
+            Console.WriteLine($"PUSH to {to}: {message}");
+        }
+
+        Console.WriteLine($"[LOG] Sent {type} to {to}");
+        Console.WriteLine($"[DB] Saving notification to {to}");
+    }
+}
+```
+
+Нарушения: SRP (уведомления + логи + БД), OCP (новый тип = менять switch), DIP (нет абстракций).
+
+Создай интерфейсы и классы по SOLID. Должна быть возможность добавить новый тип уведомления без изменения существующего кода.
+
+#!csharp
+
+// Упражнение 1: Рефакторинг NotificationService по SOLID
+// Напиши свой код здесь
+
+#!markdown
+
+### Упражнение 2 (Система оружия для игры)
+
+Спроектируй систему оружия для RPG-игры, соблюдая все принципы SOLID:
+
+1. Интерфейс `IWeapon` с методом `Attack()`
+2. Минимум 3 типа оружия: `Sword`, `Bow`, `Staff`
+3. Интерфейс `IWeaponEnhancer` (зачарование: огонь, лёд, яд)
+4. Класс `Character`, который получает оружие через конструктор (DIP)
+5. Возможность добавлять новые виды оружия и зачарований без изменения существующего кода (OCP)
+
+#!csharp
+
+// Упражнение 2: Система оружия по SOLID
+// Напиши свой код здесь
+
+#!markdown
+
+---
+
+## Контрольные вопросы
+
+1. Объясни принцип **Single Responsibility** своими словами. Как определить, что класс делает "слишком много"?
+2. Как **Open/Closed Principle** связан с полиморфизмом?
+3. Приведи пример нарушения **Liskov Substitution** из реальной жизни (не из кода).
+4. Зачем разбивать один большой интерфейс на несколько маленьких (**ISP**)? Это же больше кода?
+5. Как **Dependency Inversion** помогает при написании тестов?
+6. Какой из 5 принципов, на твой взгляд, самый важный и почему?
+
+---
+> **Предыдущий:** [Оптимизация памяти](../03_Память/02_Оптимизация_памяти.dib) | **Следующий:** [Singleton](../05_Паттерны/01_Singleton.dib)

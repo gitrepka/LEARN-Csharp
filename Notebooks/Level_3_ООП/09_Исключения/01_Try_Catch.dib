@@ -1,0 +1,218 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"aliases":[],"name":"csharp"}]}}
+
+#!markdown
+
+# Try / Catch / Finally
+> **Уровень:** 3 — ООП | **Тема:** Исключения (1/2)
+> **Предыдущий:** [Queue и Stack](../08_Коллекции/04_Queue_Stack.dib) | **Следующий:** [Кастомные исключения и паттерны](02_Кастомные_и_паттерны.dib)
+---
+
+**Новая тема**
+
+## Зачем это нужно?
+Программы ломаются. Пользователь вводит букву вместо числа. Файл не найден. Сервер не отвечает. Деление на ноль. Индекс за пределами массива.
+
+**Исключения** — это механизм C# для **контролируемой обработки ошибок**. Вместо того чтобы программа просто упала, ты можешь **поймать** ошибку и решить, что делать.
+
+Аналогия: **Страховка**. Ты не планируешь аварию, но если она случится — страховка (catch) покроет последствия. А `finally` — это как техосмотр: выполняется **всегда**, независимо от аварий.
+
+#!markdown
+
+## 1. try / catch / finally — основы
+
+#!csharp
+
+// Базовый try-catch
+Console.WriteLine("=== Деление чисел ===");
+
+try
+{
+    int a = 100;
+    int b = 0;
+    int result = a / b; // Это выбросит исключение!
+    Console.WriteLine($"Результат: {result}"); // Эта строка НЕ выполнится
+}
+catch (DivideByZeroException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+finally
+{
+    // finally ВСЕГДА выполняется — и при ошибке, и без
+    Console.WriteLine("Операция завершена (finally)");
+}
+
+Console.WriteLine("\nПрограмма продолжает работать!");
+
+#!csharp
+
+// try-catch с несколькими типами исключений
+void ProcessInput(string input)
+{
+    try
+    {
+        Console.WriteLine($"Обработка: '{input}'");
+
+        // Может выбросить FormatException
+        int number = int.Parse(input);
+
+        // Может выбросить DivideByZeroException
+        int result = 100 / number;
+
+        // Может выбросить IndexOutOfRangeException
+        int[] arr = { 1, 2, 3 };
+        Console.WriteLine($"arr[{number}] = {arr[number]}");
+
+        Console.WriteLine($"Всё ОК! Результат: {result}");
+    }
+    catch (FormatException)
+    {
+        Console.WriteLine($"  Ошибка формата: '{input}' — не число!");
+    }
+    catch (DivideByZeroException)
+    {
+        Console.WriteLine("  Ошибка: деление на ноль!");
+    }
+    catch (IndexOutOfRangeException ex)
+    {
+        Console.WriteLine($"  Ошибка индекса: {ex.Message}");
+    }
+    catch (Exception ex) // Ловит ВСЁ остальное (всегда в конце!)
+    {
+        Console.WriteLine($"  Неизвестная ошибка: {ex.Message}");
+    }
+    finally
+    {
+        Console.WriteLine("  ---");
+    }
+}
+
+ProcessInput("hello"); // FormatException
+ProcessInput("0");     // DivideByZeroException
+ProcessInput("5");     // IndexOutOfRangeException
+ProcessInput("2");     // OK!
+
+#!markdown
+
+## 2. Фильтры исключений (when)
+
+С C# 6 можно добавлять **условие** к catch-блоку.
+
+#!csharp
+
+// catch с фильтром when
+void MakeRequest(string url, int statusCode)
+{
+    try
+    {
+        if (statusCode >= 400)
+            throw new HttpRequestException($"HTTP {statusCode} от {url}");
+
+        Console.WriteLine($"Успех: {url}");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("404"))
+    {
+        Console.WriteLine($"  Страница не найдена: {url}");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("500"))
+    {
+        Console.WriteLine($"  Сервер упал: {url}. Попробуем позже.");
+    }
+    catch (HttpRequestException ex) when (ex.Message.Contains("403"))
+    {
+        Console.WriteLine($"  Доступ запрещён: {url}");
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.WriteLine($"  Другая HTTP ошибка: {ex.Message}");
+    }
+}
+
+MakeRequest("api.game.com/players", 200);
+MakeRequest("api.game.com/secret", 403);
+MakeRequest("api.game.com/missing", 404);
+MakeRequest("api.game.com/data", 500);
+MakeRequest("api.game.com/other", 418);
+
+#!markdown
+
+## 3. Иерархия исключений
+
+Все исключения наследуются от `System.Exception`. Знание иерархии помогает **ловить правильно**.
+
+```
+Exception
+├── SystemException
+│   ├── NullReferenceException    — обращение к null
+│   ├── IndexOutOfRangeException  — индекс за пределами
+│   ├── DivideByZeroException     — деление на ноль
+│   ├── InvalidOperationException — неверная операция
+│   ├── ArgumentException         — неверный аргумент
+│   │   ├── ArgumentNullException — аргумент null
+│   │   └── ArgumentOutOfRangeException — аргумент вне диапазона
+│   ├── FormatException           — неверный формат
+│   ├── OverflowException         — переполнение
+│   ├── InvalidCastException      — неверное приведение типа
+│   └── StackOverflowException    — переполнение стека
+├── IOException                    — ошибка ввода/вывода
+│   └── FileNotFoundException      — файл не найден
+└── ...
+```
+
+#!csharp
+
+// Демонстрация иерархии
+void ShowExceptionHierarchy(Exception ex)
+{
+    Console.Write($"  Тип: {ex.GetType().Name}");
+    var type = ex.GetType().BaseType;
+    while (type != null && type != typeof(object))
+    {
+        Console.Write($" -> {type.Name}");
+        type = type.BaseType;
+    }
+    Console.WriteLine();
+}
+
+var exceptions = new Exception[]
+{
+    new ArgumentNullException("param"),
+    new ArgumentOutOfRangeException("index"),
+    new FileNotFoundException("save.dat"),
+    new DivideByZeroException(),
+    new FormatException("bad input"),
+};
+
+Console.WriteLine("=== Иерархия исключений ===");
+foreach (var ex in exceptions)
+{
+    ShowExceptionHierarchy(ex);
+}
+
+// Важно: catch ловит ВСЕ наследники!
+Console.WriteLine("\ncatch (ArgumentException) поймает и ArgumentNull, и ArgumentOutOfRange!");
+
+#!markdown
+
+## Упражнения
+
+### Упражнение 1 (🟢)
+Создай метод `int[] ParseNumbers(string[] inputs)` который:
+- Пытается преобразовать каждую строку в число через `int.TryParse`
+- Для неудачных преобразований — выводит предупреждение
+- Возвращает массив только успешно распарсенных чисел
+- Протестируй с входом: `["42", "hello", "13", "", "7", "abc", "99"]`
+
+#!markdown
+
+## Контрольные вопросы (❓)
+
+1. Для чего нужен блок `try/catch/finally`?
+2. В каком порядке нужно располагать catch-блоки? Почему?
+3. Для чего нужен `finally`?
+4. Что делает фильтр `when` в catch-блоке?
+
+---
+> **Предыдущий:** [Queue и Stack](../08_Коллекции/04_Queue_Stack.dib) | **Следующий:** [Кастомные исключения и паттерны](02_Кастомные_и_паттерны.dib)
