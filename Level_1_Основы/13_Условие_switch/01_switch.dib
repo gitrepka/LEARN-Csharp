@@ -1,0 +1,352 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
+
+#!markdown
+
+# УРОК: switch — выбор по значению
+
+#!markdown
+
+## Зачем нужен switch?
+
+Когда у тебя **много вариантов одного значения**, цепочка `else if` становится громоздкой:
+
+```csharp
+// Некрасиво — 7 раз пишем "day =="
+if (day == 1) Console.WriteLine("Понедельник");
+else if (day == 2) Console.WriteLine("Вторник");
+else if (day == 3) Console.WriteLine("Среда");
+else if (day == 4) Console.WriteLine("Четверг");
+else if (day == 5) Console.WriteLine("Пятница");
+else if (day == 6) Console.WriteLine("Суббота");
+else if (day == 7) Console.WriteLine("Воскресенье");
+```
+
+`switch` делает то же самое, но **чище и нагляднее**.
+
+#!markdown
+
+## 1. Синтаксис switch
+
+```csharp
+switch (переменная)
+{
+    case значение1:
+        // код если переменная == значение1
+        break;
+    case значение2:
+        // код если переменная == значение2
+        break;
+    default:
+        // код если ни один case не подошёл
+        break;
+}
+```
+
+Ключевые слова:
+- `switch` — начало конструкции
+- `case` — вариант для проверки
+- `break` — выход из switch (обязателен!)
+- `default` — «всё остальное» (как else)
+
+#!markdown
+
+## 2. switch по числу (int)
+
+```csharp
+int day = 3;
+
+switch (day)
+{
+    case 1:
+        Console.WriteLine("Понедельник");
+        break;
+    case 2:
+        Console.WriteLine("Вторник");
+        break;
+    case 3:
+        Console.WriteLine("Среда");        // ← сработает
+        break;
+    case 4:
+        Console.WriteLine("Четверг");
+        break;
+    case 5:
+        Console.WriteLine("Пятница");
+        break;
+    default:
+        Console.WriteLine("Выходной");
+        break;
+}
+```
+
+Как работает:
+1. Берём значение `day` (= 3)
+2. Сравниваем с каждым `case` сверху вниз
+3. `case 3` совпал → выполняем код → `break` → выходим
+4. Остальные case **не проверяются**
+
+#!markdown
+
+### Попробуй сам: `int month` (1–12). Через switch выведи название месяца. В default — "Неверный месяц"
+
+#!csharp
+
+// Твой код здесь:
+int month = 6;
+
+switch(month)
+{
+    case 1:
+    Console.WriteLine("Январь");
+    break;
+
+    case 2:
+    Console.WriteLine("Февраль");
+    break;
+
+    case 3:
+    Console.WriteLine("Март");
+    break;
+
+    default:
+    Console.WriteLine("Остальные месяцы");
+    break;
+}
+
+#!markdown
+
+## 3. switch по строке (string)
+
+switch работает не только с числами — **строки тоже можно**:
+
+```csharp
+string command = "start";
+
+switch (command)
+{
+    case "start":
+        Console.WriteLine("Запускаем...");
+        break;
+    case "stop":
+        Console.WriteLine("Останавливаем...");
+        break;
+    case "restart":
+        Console.WriteLine("Перезапускаем...");
+        break;
+    default:
+        Console.WriteLine($"Неизвестная команда: {command}");
+        break;
+}
+```
+
+Сравнение строк — **регистрозависимое!** `"Start"` ≠ `"start"`. Если нужно без учёта регистра — приведи к нижнему: `switch (command.ToLower())`
+
+#!markdown
+
+### Попробуй сам: `string color` ("red", "green", "blue"). Через switch выведи RGB-код: red → "(255, 0, 0)", green → "(0, 255, 0)", blue → "(0, 0, 255)". Default → "Неизвестный цвет"
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. break — зачем он нужен?
+
+В C# `break` после каждого case **обязателен**. Без него — ошибка компиляции.
+
+```csharp
+case 1:
+    Console.WriteLine("Один");
+    // ❌ Ошибка! Забыли break
+case 2:
+    Console.WriteLine("Два");
+    break;
+```
+
+В некоторых языках (C, JavaScript) без break выполнение «проваливается» в следующий case. В C# это **запрещено** — защита от багов.
+
+Единственное исключение — **пустой case** (см. следующий раздел).
+
+#!markdown
+
+## 5. Несколько case для одного блока
+
+Если несколько значений должны делать **одно и то же** — пиши case подряд без кода между ними:
+
+```csharp
+int month = 7;
+
+switch (month)
+{
+    case 12:
+    case 1:
+    case 2:
+        Console.WriteLine("Зима");
+        break;
+    case 3:
+    case 4:
+    case 5:
+        Console.WriteLine("Весна");
+        break;
+    case 6:
+    case 7:
+    case 8:
+        Console.WriteLine("Лето");          // ← month=7, сработает
+        break;
+    case 9:
+    case 10:
+    case 11:
+        Console.WriteLine("Осень");
+        break;
+    default:
+        Console.WriteLine("Неверный месяц");
+        break;
+}
+```
+
+`case 6:`, `case 7:`, `case 8:` — все ведут к одному блоку "Лето". Это **единственный случай**, когда case без break допустим (потому что он пустой).
+
+#!markdown
+
+### Попробуй сам: `char grade` ('A', 'B', 'C', 'D', 'F'). A и B → "Отлично", C → "Хорошо", D → "Удовлетворительно", F → "Неуд". Default → "Неверная оценка"
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. default — необязателен, но полезен
+
+`default` — как `else` в if. Ловит все случаи, которые не попали ни в один case.
+
+```csharp
+// Без default — если ничего не совпало, ничего не произойдёт
+switch (x)
+{
+    case 1: Console.WriteLine("Один"); break;
+    case 2: Console.WriteLine("Два"); break;
+    // если x = 99 — просто ничего не будет
+}
+
+// С default — страховка
+switch (x)
+{
+    case 1: Console.WriteLine("Один"); break;
+    case 2: Console.WriteLine("Два"); break;
+    default: Console.WriteLine("Что-то другое"); break;
+}
+```
+
+**Рекомендация:** всегда добавляй `default` — он защищает от забытых случаев.
+
+#!markdown
+
+## 7. Что можно в switch, а что нет
+
+**Можно** проверять:
+- `int`, `long`, `byte` и другие целые числа
+- `char` — символы
+- `string` — строки
+- `bool` — true/false
+- `enum` — перечисления (узнаешь позже)
+
+**Нельзя** проверять:
+- Диапазоны (`case > 10:` — ❌)
+- `float`, `double`, `decimal` (дробные числа — ❌)
+- Сложные выражения (`case x + y:` — ❌)
+
+Для диапазонов и сложных условий — используй `if/else if`.
+
+#!markdown
+
+## 8. Когда if, когда switch?
+
+| Ситуация | Используй |
+|---|---|
+| Проверка **конкретных значений** (1, 2, 3, "start", "stop") | `switch` |
+| Проверка **диапазонов** (> 10, от 18 до 65) | `if/else if` |
+| **2–3 варианта** | `if/else if` (switch избыточен) |
+| **4+ вариантов** одного значения | `switch` (чище) |
+| Сложные условия с `&&`,  | `if/else if` |
+| Сравнение с `null` | `if` |
+
+Простое правило: **если сравниваешь одну переменную с набором конкретных значений — switch. Всё остальное — if.**
+
+#!markdown
+
+### Попробуй сам: `string direction` ("up", "down", "left", "right"). Через switch измени координаты `int x = 0, y = 0`: up → y+1, down → y-1, left → x-1, right → x+1. Выведи "Позиция: ({x}, {y})"
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## ИТОГО:
+
+1. `switch` — выбор по **конкретному значению** переменной
+2. `case` — вариант, `break` — обязательный выход, `default` — всё остальное
+3. Работает с `int`, `string`, `char`, `enum` — но НЕ с диапазонами и дробными
+4. Несколько case подряд (без кода) → одно действие для группы значений
+5. Для диапазонов и сложных условий — используй `if/else if`
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Калькулятор (лёгкая)
+`double a = 10, b = 3; string op = "*";` Через switch по `op` выполни операцию (+, -, *, /). При делении на ноль — "Ошибка". Default — "Неизвестная операция". Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: День недели (лёгкая)
+`int day` (1–7). Через switch выведи название. Объедини case для будних (1–5) → добавь "(будний)" и выходных (6–7) → добавь "(выходной)".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Конвертер единиц (средняя)
+`double value = 100; string from = "km"; string to = "miles";`
+Поддержи пары: "km"→"miles" (÷1.609), "miles"→"km" (×1.609), "kg"→"lb" (×2.205), "lb"→"kg" (÷2.205).
+Подсказка: сделай switch по `from + "→" + to` (конкатенация строк).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Оценка ECTS (средняя)
+`int score` (0–100). Сначала через if/else if определи букву: >= 90 → 'A', >= 80 → 'B', >= 70 → 'C', >= 60 → 'D', иначе → 'F'. Потом через switch по букве выведи описание: A → "Отлично", B → "Хорошо", C → "Удовлетворительно", D → "Достаточно", F → "Неуд". Тут видно когда if, а когда switch.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Текстовый квест (сложная)
+Мини-игра. `string room = "start";`
+
+Комната "start": выбор "left" → зал, "right" → подвал, default → "Непонятная команда"
+Комната "hall": выбор "open" → сокровище, "back" → start, default → "Нечего делать"
+Комната "basement": выбор "search" → ключ, "back" → start, default → "Темно..."
+
+Используй switch по room, внутри каждого case — вложенный switch по выбору игрока. Выведи историю.
+
+#!csharp
+
+// Твой код здесь:
