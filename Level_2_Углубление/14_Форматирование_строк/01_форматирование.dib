@@ -1,0 +1,505 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Форматирование строк — числа, спецстроки, сравнение
+
+#!markdown
+
+## 1. Числовые форматы: N, F, C, P, D, X
+
+В C# числа можно форматировать с помощью **спецификаторов формата**. Используются в интерполяции `$"{value:FORMAT}"` или в `ToString("FORMAT")`:
+
+| Спецификатор | Название | Пример (1234.5678) | Результат |
+|---|---|---|---|
+| `N` | Number | `$"{x:N2}"` | 1 234,57 (с разделителем тысяч) |
+| `F` | Fixed-point | `$"{x:F2}"` | 1234,57 (фиксированные знаки) |
+| `C` | Currency | `$"{x:C}"` | 1 234,57 ₽ (валюта) |
+| `P` | Percent | `$"{0.156:P1}"` | 15,6 % |
+| `D` | Decimal (int) | `$"{42:D5}"` | 00042 (дополнить нулями) |
+| `X` | Hexadecimal | `$"{255:X}"` | FF |
+
+Число после буквы — количество знаков после запятой (или общая ширина для D).
+
+#!csharp
+
+double price = 1234.5678;
+int count = 42;
+double ratio = 0.1567;
+
+Console.WriteLine($"N2 (Number):     {price:N2}");     // 1 234,57
+Console.WriteLine($"F3 (Fixed):      {price:F3}");     // 1234,568
+Console.WriteLine($"C  (Currency):   {price:C}");      // 1 234,57 ₽
+Console.WriteLine($"P1 (Percent):    {ratio:P1}");     // 15,7 %
+Console.WriteLine($"D5 (Decimal):    {count:D5}");     // 00042
+Console.WriteLine($"X  (Hex):        {255:X}");        // FF
+Console.WriteLine($"X4 (Hex padded): {255:X4}");       // 00FF
+
+// ToString() — то же самое
+Console.WriteLine(price.ToString("N0"));    // 1 235 (без дробной части)
+Console.WriteLine(price.ToString("C2"));    // 1 234,57 ₽
+
+#!csharp
+
+// Кастомные числовые форматы
+double val = 1234.5;
+
+Console.WriteLine($"#,##0.00   → {val:#,##0.00}");      // 1 234,50
+Console.WriteLine($"000000     → {val:000000}");          // 001235
+Console.WriteLine($"0.###      → {val:0.###}");           // 1234,5 (без лишних нулей)
+Console.WriteLine($"+0;-0;zero → {val:+0;-0;zero}");     // +1235 (формат для +/-)
+
+double negative = -42.5;
+Console.WriteLine($"+0.0;-0.0  → {negative:+0.0;-0.0}"); // -42,5
+
+// Полезно для телефонов, номеров
+long phone = 79001234567;
+Console.WriteLine($"Телефон: {phone:+# (###) ###-##-##}");  // +7 (900) 123-45-67
+
+#!markdown
+
+### Попробуй сам: создай переменные: цена (1500.50), скидка (0.15), количество (7). Выведи цену в формате C, скидку в формате P0, количество в формате D3.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Verbatim-строки @"" и escape-последовательности
+
+Обычные строки используют `\` для специальных символов (escape):
+
+| Escape | Значение |
+|---|---|
+| `\n` | Новая строка |
+| `\t` | Табуляция |
+| `\\` | Обратный слэш |
+| `\"` | Кавычка |
+| `\0` | Нулевой символ |
+
+**Verbatim-строка** `@"..."` — всё **как есть**, `\` — обычный символ:
+
+```csharp
+// Обычная строка — нужно экранировать
+string path1 = "C:\\Users\\Admin\\Documents";
+
+// Verbatim — без экранирования
+string path2 = @"C:\Users\Admin\Documents";
+
+// Verbatim — многострочная
+string text = @"Строка 1
+Строка 2
+Строка 3";
+```
+
+#!csharp
+
+// Escape-последовательности
+Console.WriteLine("Первая строка\nВторая строка");
+Console.WriteLine("Столбец1\tСтолбец2\tСтолбец3");
+Console.WriteLine("Путь: C:\\Users\\Admin");
+Console.WriteLine("Он сказал: \"Привет!\"");
+
+Console.WriteLine("\n--- Verbatim ---");
+
+// Verbatim @""
+string path = @"C:\Users\Admin\Documents\file.txt";
+Console.WriteLine(path);
+
+// Многострочный verbatim
+string poem = @"
+Я помню чудное мгновенье:
+Передо мной явилась ты,
+Как мимолётное виденье,
+Как гений чистой красоты.";
+Console.WriteLine(poem);
+
+// Кавычки в verbatim — удваиваем
+string quote = @"Он сказал: ""Привет!""";
+Console.WriteLine(quote);
+
+#!markdown
+
+### Попробуй сам: с помощью verbatim-строки @"" создай путь к файлу (Windows-путь с обратными слэшами). Затем создай многострочный ASCII-арт (домик, дерево — что угодно).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Raw string literals """ (C# 11+)
+
+**Raw string literals** — ещё более мощный вариант (C# 11, .NET 7+):
+
+```csharp
+string raw = """
+    Это "сырая" строка.
+    Кавычки "не" нужно экранировать.
+    Обратные слэши \ тоже обычные.
+    """;
+```
+
+Правила:
+- Начинается и заканчивается **минимум тремя кавычками** `"""`
+- Отступ определяется позицией закрывающих `"""`
+- Можно использовать интерполяцию: `$"""..."""`
+
+```csharp
+string json = """
+    {
+        "name": "Иван",
+        "age": 25
+    }
+    """;
+```
+
+#!csharp
+
+// Raw string literals
+string json = """
+    {
+        "name": "Иван",
+        "age": 25,
+        "city": "Москва"
+    }
+    """;
+Console.WriteLine("JSON:");
+Console.WriteLine(json);
+
+// С интерполяцией ($$""" и {{expr}})
+string name = "Пётр";
+int age = 30;
+string template = $$"""
+    {
+        "name": "{{name}}",
+        "age": {{age}}
+    }
+    """;
+Console.WriteLine("\nС интерполяцией:");
+Console.WriteLine(template);
+
+// Полезно для SQL, HTML, XML
+string html = """
+    <div class="card">
+        <h1>Заголовок</h1>
+        <p>Текст "параграфа"</p>
+    </div>
+    """;
+Console.WriteLine("\nHTML:");
+Console.WriteLine(html);
+
+#!markdown
+
+### Попробуй сам: с помощью raw string literal создай шаблон XML с кавычками в атрибутах. Затем создай строку JSON с интерполяцией ($$""" и {{переменная}}).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Сравнение строк: == vs Equals() vs Compare()
+
+Строки можно сравнивать несколькими способами:
+
+```csharp
+string a = "Привет";
+string b = "привет";
+
+a == b           // false (регистрозависимо)
+a.Equals(b)      // false
+
+// С игнорированием регистра:
+a.Equals(b, StringComparison.OrdinalIgnoreCase)    // true!
+string.Compare(a, b, StringComparison.OrdinalIgnoreCase)  // 0 (равны)
+```
+
+| StringComparison | Описание |
+|---|---|
+| `Ordinal` | Побайтовое сравнение (самый быстрый) |
+| `OrdinalIgnoreCase` | Побайтовое без регистра |
+| `CurrentCulture` | С учётом культуры (локали) |
+| `CurrentCultureIgnoreCase` | Без регистра с культурой |
+| `InvariantCulture` | Инвариантная культура |
+
+**Рекомендация:** для программных сравнений (логины, ключи) — `Ordinal/OrdinalIgnoreCase`. Для пользовательского текста — `CurrentCulture`.
+
+#!csharp
+
+string a = "Привет";
+string b = "привет";
+string c = "Привет";
+
+// == и Equals (регистрозависимые)
+Console.WriteLine($"a == b:  {a == b}");         // False
+Console.WriteLine($"a == c:  {a == c}");         // True
+Console.WriteLine($"Equals:  {a.Equals(b)}");   // False
+
+// С игнорированием регистра
+Console.WriteLine($"\nIgnoreCase:");
+Console.WriteLine($"Equals:  {a.Equals(b, StringComparison.OrdinalIgnoreCase)}");  // True
+
+// string.Compare возвращает: <0, 0, >0
+int cmp = string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
+Console.WriteLine($"Compare: {cmp}");   // 0 (равны)
+
+// Полезно для сортировки
+string[] names = {"Яблоко", "апельсин", "Банан", "вишня"};
+Array.Sort(names, StringComparer.OrdinalIgnoreCase);
+Console.WriteLine($"\nСортировка: {string.Join(", ", names)}");
+
+#!markdown
+
+### Попробуй сам: создай две строки "Москва" и "москва". Сравни их через ==, Equals, и Equals с OrdinalIgnoreCase. Убедись, что без игнорирования регистра они не равны, а с ним — равны.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. PadLeft() и PadRight() — выравнивание
+
+**`PadLeft(width)`** — дополняет строку пробелами (или другим символом) **слева** до указанной ширины:
+
+```csharp
+"42".PadLeft(6)        // "    42"
+"42".PadLeft(6, '0')   // "000042"
+```
+
+**`PadRight(width)`** — дополняет **справа**:
+
+```csharp
+"Имя".PadRight(10)     // "Имя       "
+"Имя".PadRight(10, '.') // "Имя......."
+```
+
+**Полезно для:** таблиц, отчётов, форматированного вывода.
+
+#!csharp
+
+// PadLeft / PadRight
+Console.WriteLine("=== PadLeft ===");
+Console.WriteLine("42".PadLeft(8));          //       42
+Console.WriteLine("42".PadLeft(8, '0'));     // 00000042
+Console.WriteLine("123".PadLeft(8, '*'));    // *****123
+
+Console.WriteLine("\n=== PadRight ===");
+Console.WriteLine("Имя".PadRight(15, '.'));  // Имя............
+Console.WriteLine("Анна".PadRight(15, '.')); // Анна...........
+
+// Таблица с выравниванием
+Console.WriteLine("\n=== Таблица ===");
+string[] items = {"Хлеб", "Молоко", "Масло сливочное"};
+double[] prices = {45.50, 89.90, 120.00};
+
+for (int i = 0; i < items.Length; i++)
+{
+    string line = items[i].PadRight(20, '.') + prices[i].ToString("F2").PadLeft(8);
+    Console.WriteLine(line);
+}
+
+#!markdown
+
+### Попробуй сам: создай «чек» из магазина: название товара (PadRight с точками), цена (PadLeft). Добавь итого с линией-разделителем.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. string.Format() — классическое форматирование
+
+**`string.Format()`** — «старый» способ форматирования (до интерполяции `$""`):
+
+```csharp
+string result = string.Format("Привет, {0}! Тебе {1} лет.", "Анна", 25);
+// "Привет, Анна! Тебе 25 лет."
+```
+
+`{0}`, `{1}` — **индексы** аргументов (начиная с 0).
+
+Можно добавить **формат**: `{0:F2}`, `{1:C}`, `{2:D5}`:
+
+```csharp
+string.Format("Цена: {0:C}, Скидка: {1:P0}", 1500.0, 0.15);
+// "Цена: 1 500,00 ₽, Скидка: 15 %"
+```
+
+**Когда использовать:**
+- `$""` (интерполяция) — предпочтительный современный способ
+- `string.Format()` — когда шаблон приходит из переменной или ресурса
+
+#!csharp
+
+// string.Format — классический способ
+string result1 = string.Format("Имя: {0}, Возраст: {1}", "Анна", 25);
+Console.WriteLine(result1);
+
+// С форматами
+string result2 = string.Format("Цена: {0:C}, Скидка: {1:P0}, Код: {2:D6}",
+    1500.50, 0.15, 42);
+Console.WriteLine(result2);
+
+// Повторное использование аргумента
+string result3 = string.Format("{0} + {0} = {1}", 5, 10);
+Console.WriteLine(result3);  // 5 + 5 = 10
+
+// Выравнивание в Format: {index,width:format}
+Console.WriteLine("\n--- Таблица через Format ---");
+Console.WriteLine(string.Format("{0,-15} {1,10} {2,10}", "Товар", "Цена", "Кол-во"));
+Console.WriteLine(new string('-', 37));
+Console.WriteLine(string.Format("{0,-15} {1,10:C} {2,10}", "Хлеб", 45.50, 2));
+Console.WriteLine(string.Format("{0,-15} {1,10:C} {2,10}", "Молоко", 89.90, 1));
+Console.WriteLine(string.Format("{0,-15} {1,10:C} {2,10}", "Масло", 120.00, 1));
+
+#!markdown
+
+### Попробуй сам: с помощью string.Format создай строку: "Сегодня: [дата], Время: [время], Температура: [число]°C". Используй форматы для даты и числа.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. Выравнивание в интерполяции: $"{value,width:format}"
+
+В интерполяции тоже можно задать **ширину поля** через запятую:
+
+```csharp
+$"{value,width:format}"
+```
+
+- **`width > 0`** — выравнивание вправо (PadLeft)
+- **`width < 0`** — выравнивание влево (PadRight)
+
+```csharp
+$"{"Имя",-15}{"Возраст",8}"   // "Имя             Возраст"
+```
+
+#!csharp
+
+// Выравнивание в интерполяции
+string[] names = {"Анна", "Пётр", "Александра"};
+int[] ages = {25, 30, 22};
+double[] salaries = {75000, 92000, 68000};
+
+Console.WriteLine($"{"Имя",-15}{"Возраст",8}{"Зарплата",12}");
+Console.WriteLine(new string('-', 35));
+
+for (int i = 0; i < names.Length; i++)
+{
+    Console.WriteLine($"{names[i],-15}{ages[i],8}{salaries[i],12:N0}");
+}
+
+#!markdown
+
+## 8. Сводная таблица методов строк
+
+| Метод / Синтаксис | Описание |
+|---|---|
+| `$"{x:N2}"` | Числовой формат с разделителем тысяч |
+| `$"{x:F2}"` | Фиксированная точность |
+| `$"{x:C}"` | Валюта |
+| `$"{x:P}"` | Процент |
+| `@"строка"` | Verbatim (без escape) |
+| `"""строка"""` | Raw string literal (C# 11) |
+| `==`, `Equals()` | Сравнение строк |
+| `StringComparison` | Контроль сравнения (регистр, культура) |
+| `PadLeft(n)` | Дополнить слева |
+| `PadRight(n)` | Дополнить справа |
+| `string.Format()` | Форматирование по шаблону |
+| `$"{val,width:fmt}"` | Интерполяция с выравниванием |
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Форматирование цен (лёгкая)
+Создай массив цен: {1234.50, 99.99, 45000.00, 7.50}. Выведи каждую в формате Currency (C) и в формате Number (N2).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Hex-таблица (лёгкая)
+Выведи таблицу чисел от 0 до 20: каждое число в десятичном и шестнадцатеричном (X2) формате, с выравниванием.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Verbatim SQL (средняя)
+С помощью verbatim-строки @"" создай SQL-запрос на несколько строк:
+```sql
+SELECT name, age, city
+FROM users
+WHERE age > 18
+ORDER BY name ASC
+LIMIT 100;
+```
+Выведи его. Затем создай тот же запрос с помощью raw string literal """.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Красивый отчёт (средняя)
+Создай отчёт с выравниванием. Столбцы: "Месяц" (влево, 12 символов), "Доход" (вправо, 12 символов, формат C), "Расход" (вправо, 12 символов, формат C), "Баланс" (вправо, 12 символов, формат C). Заполни 3-4 строки данными.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Сравнение логинов (сложная)
+Создай массив логинов: {"Admin", "user1", "ADMIN", "User1", "admin"}. Найди все уникальные логины (без учёта регистра). Выведи количество уникальных и список.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Генератор карточки товара (сложная)
+Создай метод `string ProductCard(string name, double price, double discount, int stock)`. С помощью форматирования и PadLeft/PadRight создай красивую карточку:
+```
+╔══════════════════════════╗
+║  Название: Ноутбук      ║
+║  Цена:        45 000 ₽  ║
+║  Скидка:           15 %  ║
+║  Со скидкой:  38 250 ₽  ║
+║  На складе:       12 шт  ║
+╚══════════════════════════╝
+```
+
+#!csharp
+
+// Твой код здесь:

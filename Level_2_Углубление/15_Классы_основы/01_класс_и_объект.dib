@@ -1,0 +1,392 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Классы и объекты — основы ООП
+
+#!markdown
+
+## 1. Что такое класс?
+
+**Класс** — это **чертёж** (blueprint) для создания объектов. Он описывает:
+- **Какие данные** хранит объект (поля)
+- **Что умеет делать** объект (методы)
+
+Аналогия из реального мира:
+- **Класс** `Автомобиль` — это чертёж: марка, цвет, скорость + методы: ехать, тормозить
+- **Объект** — конкретный автомобиль: "Toyota Camry, красный, 60 км/ч"
+
+```csharp
+// Класс — описание
+class Dog
+{
+    public string Name;     // поле: имя
+    public int Age;         // поле: возраст
+
+    public void Bark()      // метод: лаять
+    {
+        Console.WriteLine($"{Name} говорит: Гав!");
+    }
+}
+```
+
+**Объект** (экземпляр) — конкретный «предмет», созданный по чертежу.
+
+#!markdown
+
+## 2. Создание объекта — оператор new
+
+Для создания объекта используется **`new`**:
+
+```csharp
+Dog myDog = new Dog();     // создали объект типа Dog
+myDog.Name = "Бобик";     // задали поле
+myDog.Age = 3;
+myDog.Bark();              // вызвали метод → "Бобик говорит: Гав!"
+```
+
+Что происходит при `new`:
+1. В памяти **выделяется место** для объекта
+2. Все поля получают **значения по умолчанию** (0, null, false)
+3. Возвращается **ссылка** на объект
+
+Можно создать **несколько объектов** одного класса:
+```csharp
+Dog dog1 = new Dog();
+Dog dog2 = new Dog();    // другой объект!
+dog1.Name = "Бобик";
+dog2.Name = "Шарик";    // у каждого своё имя
+```
+
+#!csharp
+
+// Определяем класс
+class Dog
+{
+    public string Name;
+    public string Breed;
+    public int Age;
+
+    public void Bark()
+    {
+        Console.WriteLine($"{Name} говорит: Гав-гав!");
+    }
+
+    public void Info()
+    {
+        Console.WriteLine($"Собака: {Name}, порода: {Breed}, возраст: {Age} лет");
+    }
+}
+
+// Создаём объекты
+Dog dog1 = new Dog();
+dog1.Name = "Бобик";
+dog1.Breed = "Дворняга";
+dog1.Age = 3;
+
+Dog dog2 = new Dog();
+dog2.Name = "Рекс";
+dog2.Breed = "Овчарка";
+dog2.Age = 5;
+
+// Используем
+dog1.Info();
+dog2.Info();
+dog1.Bark();
+dog2.Bark();
+
+#!markdown
+
+### Попробуй сам: создай класс `Cat` с полями Name и Color и методом Meow(). Создай два объекта-кота и вызови их методы.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Поля (Fields) — данные объекта
+
+**Поля** — это переменные, объявленные внутри класса. Каждый объект имеет **свою копию** полей.
+
+```csharp
+class Player
+{
+    public string Name;       // поле
+    public int Health = 100;  // поле с значением по умолчанию
+    public int Score;         // по умолчанию = 0
+}
+```
+
+Значения по умолчанию для полей:
+| Тип | Значение по умолчанию |
+|---|---|
+| `int`, `double` | 0 |
+| `bool` | false |
+| `string` | null |
+| `char` | '\0' |
+| Другие классы | null |
+
+#!csharp
+
+class Player
+{
+    public string Name;
+    public int Health = 100;   // начальное значение
+    public int Score;
+    public bool IsAlive = true;
+
+    public void TakeDamage(int damage)
+    {
+        Health -= damage;
+        if (Health <= 0)
+        {
+            Health = 0;
+            IsAlive = false;
+            Console.WriteLine($"{Name} погиб!");
+        }
+        else
+        {
+            Console.WriteLine($"{Name} получил {damage} урона. HP: {Health}");
+        }
+    }
+
+    public void AddScore(int points)
+    {
+        Score += points;
+        Console.WriteLine($"{Name}: +{points} очков (всего: {Score})");
+    }
+}
+
+Player p = new Player();
+p.Name = "Герой";
+p.TakeDamage(30);    // HP: 70
+p.TakeDamage(50);    // HP: 20
+p.AddScore(100);
+p.TakeDamage(25);    // Погиб!
+Console.WriteLine($"Жив? {p.IsAlive}");
+
+#!markdown
+
+### Попробуй сам: создай класс `BankAccount` с полями: Owner (string), Balance (double, начально 0). Методы: Deposit(double amount), Withdraw(double amount), ShowBalance(). Создай объект и сделай несколько операций.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Методы класса — поведение объекта
+
+Методы внутри класса имеют доступ ко всем **полям объекта** напрямую (без точки):
+
+```csharp
+class Circle
+{
+    public double Radius;
+
+    public double Area()
+    {
+        return Math.PI * Radius * Radius;   // Radius — поле этого объекта
+    }
+
+    public double Circumference()
+    {
+        return 2 * Math.PI * Radius;
+    }
+}
+```
+
+Метод может **возвращать значения**, **принимать параметры**, **изменять поля** объекта:
+
+```csharp
+Circle c = new Circle();
+c.Radius = 5;
+Console.WriteLine(c.Area());           // 78.54
+Console.WriteLine(c.Circumference());  // 31.42
+```
+
+#!csharp
+
+class Rectangle
+{
+    public double Width;
+    public double Height;
+
+    public double Area()
+    {
+        return Width * Height;
+    }
+
+    public double Perimeter()
+    {
+        return 2 * (Width + Height);
+    }
+
+    public bool IsSquare()
+    {
+        return Width == Height;
+    }
+
+    public void Scale(double factor)
+    {
+        Width *= factor;
+        Height *= factor;
+    }
+
+    public void Print()
+    {
+        Console.WriteLine($"Прямоугольник {Width}x{Height}, S={Area():F2}, P={Perimeter():F2}, Квадрат: {IsSquare()}");
+    }
+}
+
+Rectangle r = new Rectangle();
+r.Width = 5;
+r.Height = 3;
+r.Print();
+
+r.Scale(2);       // увеличиваем в 2 раза
+r.Print();
+
+r.Height = r.Width;   // делаем квадратом
+r.Print();
+
+#!markdown
+
+### Попробуй сам: создай класс `Counter` с полем Count (int, начально 0). Методы: Increment(), Decrement(), Reset(), GetCount() (возвращает текущее значение). Создай объект и поработай с ним.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Ссылочный тип — важная особенность
+
+Классы — это **ссылочные типы**. Переменная хранит не сам объект, а **ссылку** (адрес) на него:
+
+```csharp
+Dog a = new Dog();
+a.Name = "Бобик";
+
+Dog b = a;           // b указывает на тот же объект!
+b.Name = "Шарик";
+
+Console.WriteLine(a.Name);  // "Шарик" — изменился и через a!
+```
+
+Это отличается от **значимых типов** (int, double, struct), где переменная хранит **само значение**.
+
+```csharp
+int x = 5;
+int y = x;     // y = копия значения 5
+y = 10;
+// x всё ещё 5!
+```
+
+#!csharp
+
+class Box
+{
+    public string Label;
+    public int Size;
+}
+
+// Ссылочный тип — две переменные на один объект
+Box box1 = new Box();
+box1.Label = "Коробка А";
+box1.Size = 10;
+
+Box box2 = box1;         // box2 указывает на тот же объект!
+box2.Label = "Коробка Б";
+
+Console.WriteLine($"box1: {box1.Label}");  // "Коробка Б" — изменился!
+Console.WriteLine($"box2: {box2.Label}");  // "Коробка Б"
+Console.WriteLine($"Один объект? {ReferenceEquals(box1, box2)}");  // True
+
+// Новый объект — другая ссылка
+Box box3 = new Box();
+box3.Label = "Коробка В";
+Console.WriteLine($"\nbox1: {box1.Label}");  // "Коробка Б"
+Console.WriteLine($"box3: {box3.Label}");    // "Коробка В"
+Console.WriteLine($"Один объект? {ReferenceEquals(box1, box3)}");  // False
+
+#!markdown
+
+## ИТОГО:
+
+1. **Класс** — чертёж (шаблон) для создания объектов
+2. **Объект** — конкретный экземпляр класса, создаётся через `new`
+3. **Поля** — данные объекта (переменные внутри класса)
+4. **Методы** — поведение объекта (функции внутри класса)
+5. Классы — **ссылочные типы**: переменная хранит ссылку, не копию
+6. Несколько переменных могут ссылаться на **один объект**
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Класс Book (лёгкая)
+Создай класс `Book` с полями: Title, Author, Pages, IsRead. Метод Info() выводит информацию. Создай 2-3 книги и выведи информацию о каждой.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Класс Student (лёгкая)
+Создай класс `Student` с полями: Name, int[] Grades. Метод Average() возвращает средний балл. Метод IsPassing() — проходной ли (средний >= 3.0). Создай студента и проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Класс Timer (средняя)
+Создай класс `Timer` с полем Seconds. Методы: AddSeconds(int s), AddMinutes(int m), Reset(), Display() — выводит время в формате "MM:SS". Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Класс Inventory (средняя)
+Создай класс `Inventory` с полем string[] Items (массив на 10 элементов) и полем Count. Методы: Add(string item), Remove(string item), Contains(string item), Print(). Реализуй добавление и удаление.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Класс Vector2D (сложная)
+Создай класс `Vector2D` с полями X и Y (double). Методы: Length() (длина вектора), Add(Vector2D other) (возвращает новый вектор-сумму), Scale(double factor), Print(). Создай два вектора, сложи их, выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Класс TodoList (сложная)
+Создай класс `TodoList` с полями: string[] Tasks, bool[] Done, int Count. Методы: Add(string task), Complete(int index), PrintAll(), PrintPending() (только невыполненные), Progress() (возвращает "3/5 выполнено"). Протестируй все методы.
+
+#!csharp
+
+// Твой код здесь:

@@ -1,0 +1,449 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Queue\<T\>, Stack\<T\> и PriorityQueue
+
+#!markdown
+
+## 1. Queue\<T\> — очередь (FIFO)
+
+**Queue** (очередь) работает по принципу **FIFO** — **F**irst **I**n, **F**irst **O**ut (первый вошёл — первый вышел).
+
+Представь очередь в магазине: кто первый встал — тот первый обслуживается.
+
+```
+Enqueue →  [Анна] [Пётр] [Ира] [Олег]  → Dequeue
+           (конец)                (начало)
+```
+
+**Основные методы:**
+
+| Метод | Описание |
+|---|---|
+| `Enqueue(элемент)` | Добавить в **конец** очереди |
+| `Dequeue()` | Забрать из **начала** очереди (удаляет!) |
+| `Peek()` | Посмотреть первый элемент (без удаления) |
+| `Count` | Количество элементов |
+| `Contains(элемент)` | Есть ли элемент в очереди? |
+| `TryDequeue(out var)` | Безопасное извлечение (без исключения) |
+| `TryPeek(out var)` | Безопасный просмотр (без исключения) |
+
+**Когда использовать:** задачи обработки в порядке поступления, буферизация, BFS-алгоритмы.
+
+#!csharp
+
+Queue<string> line = new Queue<string>();
+
+// Enqueue — встать в очередь
+line.Enqueue("Анна");
+line.Enqueue("Пётр");
+line.Enqueue("Ира");
+line.Enqueue("Олег");
+Console.WriteLine($"Очередь: {string.Join(" → ", line)}");
+Console.WriteLine($"Количество: {line.Count}");
+
+// Peek — посмотреть кто первый (не удаляя)
+Console.WriteLine($"\nПервый в очереди: {line.Peek()}");
+Console.WriteLine($"Count после Peek: {line.Count}"); // не изменился!
+
+// Dequeue — обслужить первого (удаляет!)
+string served = line.Dequeue();
+Console.WriteLine($"\nОбслужен: {served}");
+Console.WriteLine($"Очередь после Dequeue: {string.Join(" → ", line)}");
+Console.WriteLine($"Count: {line.Count}");
+
+// Обслуживаем всех
+Console.WriteLine("\nОбслуживаем всех:");
+while (line.Count > 0)
+{
+    Console.WriteLine($"  Обслужен: {line.Dequeue()}");
+}
+Console.WriteLine($"Очередь пуста: Count = {line.Count}");
+
+#!markdown
+
+### Попробуй сам: создай очередь из 5 задач (`Queue<string>`). Обрабатывай задачи по одной через `Dequeue()`, выводя "Выполнено: ..." Добавь 2 новые задачи в процессе. Обработай все до конца
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. TryDequeue() и TryPeek() — безопасные методы
+
+`Dequeue()` и `Peek()` на пустой очереди бросают `InvalidOperationException`. Безопасные версии:
+
+```csharp
+if (queue.TryDequeue(out string? result))
+{
+    // result содержит извлечённый элемент
+}
+else
+{
+    // очередь была пуста
+}
+```
+
+Это **тот же паттерн**, что `TryGetValue()` в Dictionary и `TryParse()` у типов.
+
+#!csharp
+
+Queue<int> numbers = new Queue<int>();
+numbers.Enqueue(10);
+numbers.Enqueue(20);
+
+// Безопасное извлечение
+while (numbers.TryDequeue(out int value))
+{
+    Console.WriteLine($"Извлечено: {value}");
+}
+
+// Следующий TryDequeue вернёт false (очередь пуста)
+if (!numbers.TryDequeue(out int empty))
+{
+    Console.WriteLine("Очередь пуста, ничего не извлечено");
+}
+
+// Сравнение: Dequeue на пустой очереди
+try
+{
+    numbers.Dequeue(); // бросит исключение!
+}
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+### Попробуй сам: создай очередь из 3 чисел. Извлекай через `TryDequeue()` в цикле, пока очередь не опустеет. Попробуй извлечь ещё раз — убедись, что `TryDequeue` вернёт false
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Stack\<T\> — стек (LIFO)
+
+**Stack** (стек) работает по принципу **LIFO** — **L**ast **I**n, **F**irst **O**ut (последний вошёл — первый вышел).
+
+Представь стопку тарелок: берёшь сверху ту, что положил последней.
+
+```
+      Push ↓     ↑ Pop
+         [Олег]    ← верхушка (Top)
+         [Ира]
+         [Пётр]
+         [Анна]
+```
+
+**Основные методы:**
+
+| Метод | Описание |
+|---|---|
+| `Push(элемент)` | Положить **на верх** стека |
+| `Pop()` | Снять **с верха** стека (удаляет!) |
+| `Peek()` | Посмотреть верхний (без удаления) |
+| `Count` | Количество элементов |
+| `Contains(элемент)` | Есть ли элемент? |
+| `TryPop(out var)` | Безопасное извлечение |
+| `TryPeek(out var)` | Безопасный просмотр |
+
+**Когда использовать:** Undo/Redo, история навигации (кнопка "Назад"), парсинг скобок, DFS-алгоритмы, call stack.
+
+#!csharp
+
+Stack<string> history = new Stack<string>();
+
+// Push — добавить на верх
+history.Push("google.com");
+history.Push("youtube.com");
+history.Push("github.com");
+history.Push("stackoverflow.com");
+Console.WriteLine($"Стек: {string.Join(" → ", history)}");
+Console.WriteLine($"Количество: {history.Count}");
+
+// Peek — посмотреть верхний
+Console.WriteLine($"\nТекущая страница: {history.Peek()}");
+
+// Pop — кнопка "Назад"
+Console.WriteLine("\nНажимаем 'Назад':");
+string page1 = history.Pop();
+Console.WriteLine($"  Ушли с: {page1}, теперь на: {history.Peek()}");
+
+string page2 = history.Pop();
+Console.WriteLine($"  Ушли с: {page2}, теперь на: {history.Peek()}");
+
+Console.WriteLine($"\nОставшийся стек: {string.Join(" → ", history)}");
+
+#!markdown
+
+### Попробуй сам: реализуй "Undo" (отмена). Создай `Stack<string>` — стек действий. Добавь 4 действия ("Написал текст", "Удалил слово", ...). Отмени последние 2 через `Pop()`. Выведи оставшиеся действия
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Сравнение Queue vs Stack
+
+| Свойство | Queue\<T\> (Очередь) | Stack\<T\> (Стек) |
+|---|---|---|
+| Принцип | **FIFO** — первый вошёл, первый вышел | **LIFO** — последний вошёл, первый вышел |
+| Добавить | `Enqueue()` — в конец | `Push()` — на верх |
+| Забрать | `Dequeue()` — из начала | `Pop()` — с верха |
+| Посмотреть | `Peek()` — первый элемент | `Peek()` — верхний элемент |
+| Аналогия | Очередь в магазине | Стопка тарелок |
+| Применение | Обработка задач, BFS | Undo, история, DFS |
+
+```csharp
+// Queue: добавляем 1,2,3 — забираем 1,2,3
+Queue<int> q = new Queue<int>();
+q.Enqueue(1); q.Enqueue(2); q.Enqueue(3);
+q.Dequeue(); // 1
+q.Dequeue(); // 2
+q.Dequeue(); // 3
+
+// Stack: добавляем 1,2,3 — забираем 3,2,1
+Stack<int> s = new Stack<int>();
+s.Push(1); s.Push(2); s.Push(3);
+s.Pop(); // 3
+s.Pop(); // 2
+s.Pop(); // 1
+```
+
+#!csharp
+
+// Наглядное сравнение
+Console.WriteLine("=== QUEUE (FIFO) ===");
+Queue<int> queue = new Queue<int>();
+queue.Enqueue(1); queue.Enqueue(2); queue.Enqueue(3);
+Console.Write("Добавлено: 1, 2, 3 → Извлекаем: ");
+while (queue.Count > 0)
+    Console.Write($"{queue.Dequeue()} ");
+Console.WriteLine();
+
+Console.WriteLine("\n=== STACK (LIFO) ===");
+Stack<int> stack = new Stack<int>();
+stack.Push(1); stack.Push(2); stack.Push(3);
+Console.Write("Добавлено: 1, 2, 3 → Извлекаем: ");
+while (stack.Count > 0)
+    Console.Write($"{stack.Pop()} ");
+Console.WriteLine();
+
+#!markdown
+
+### Попробуй сам: добавь числа 10, 20, 30, 40, 50 и в Queue, и в Stack. Извлеки все элементы из обоих и выведи. Убедись, что порядок разный
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. PriorityQueue\<TElement, TPriority\>
+
+**PriorityQueue** (C# 10) — очередь с **приоритетом**. Элемент с **наименьшим** приоритетом извлекается первым.
+
+```csharp
+PriorityQueue<string, int> pq = new PriorityQueue<string, int>();
+pq.Enqueue("Низкий приоритет", 3);
+pq.Enqueue("Срочно!", 1);
+pq.Enqueue("Средний", 2);
+
+pq.Dequeue(); // "Срочно!" (приоритет 1 — наименьший)
+pq.Dequeue(); // "Средний" (приоритет 2)
+pq.Dequeue(); // "Низкий приоритет" (приоритет 3)
+```
+
+| Метод | Описание |
+|---|---|
+| `Enqueue(элемент, приоритет)` | Добавить с указанием приоритета |
+| `Dequeue()` | Извлечь элемент с наименьшим приоритетом |
+| `Peek()` | Посмотреть элемент с наименьшим приоритетом |
+| `TryDequeue(out elem, out priority)` | Безопасное извлечение |
+| `Count` | Количество элементов |
+
+**Важно:** меньший приоритет = выше в очереди. Если нужно наоборот — используй отрицательные числа.
+
+#!csharp
+
+// Система тикетов поддержки
+PriorityQueue<string, int> tickets = new PriorityQueue<string, int>();
+
+// Приоритет: 1 = критический, 2 = высокий, 3 = средний, 4 = низкий
+tickets.Enqueue("Сайт не работает", 1);
+tickets.Enqueue("Опечатка на странице", 4);
+tickets.Enqueue("Не проходит оплата", 1);
+tickets.Enqueue("Медленная загрузка", 3);
+tickets.Enqueue("Забыл пароль", 2);
+
+Console.WriteLine("Обработка тикетов по приоритету:");
+while (tickets.TryDequeue(out string? ticket, out int priority))
+{
+    string level = priority switch
+    {
+        1 => "КРИТИЧЕСКИЙ",
+        2 => "ВЫСОКИЙ",
+        3 => "СРЕДНИЙ",
+        _ => "НИЗКИЙ"
+    };
+    Console.WriteLine($"  [{level}] {ticket}");
+}
+
+#!markdown
+
+### Попробуй сам: создай PriorityQueue задач на день. Добавь 5-6 задач с разными приоритетами. Извлеки и выведи в порядке приоритета
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Таблица выбора коллекции и Big O
+
+### Сложность операций (Big O)
+
+| Операция | `List<T>` | `Dictionary<K,V>` | `HashSet<T>` | `Queue<T>` | `Stack<T>` |
+|---|---|---|---|---|---|
+| Добавить в конец/верх | O(1)* | O(1)* | O(1)* | O(1)* | O(1)* |
+| Вставить в середину | O(n) | — | — | — | — |
+| Удалить по индексу | O(n) | — | — | — | — |
+| Удалить по значению | O(n) | O(1) | O(1) | — | — |
+| Поиск (Contains) | **O(n)** | **O(1)** | **O(1)** | O(n) | O(n) |
+| Доступ по индексу | O(1) | — | — | — | — |
+| Доступ по ключу | — | O(1) | — | — | — |
+
+\* O(1) амортизированно — иногда O(n) при расширении внутреннего массива.
+
+### Какую коллекцию выбрать?
+
+| Задача | Коллекция |
+|---|---|
+| Упорядоченный набор элементов, доступ по индексу | `List<T>` |
+| Пары ключ-значение, быстрый поиск по ключу | `Dictionary<TKey, TValue>` |
+| Только уникальные элементы, быстрый Contains | `HashSet<T>` |
+| Обработка в порядке поступления (FIFO) | `Queue<T>` |
+| Отмена действий, история (LIFO) | `Stack<T>` |
+| Очередь с приоритетами | `PriorityQueue<T, P>` |
+| Фиксированный размер, максимальная производительность | Массив `T[]` |
+
+#!csharp
+
+// Демонстрация выбора коллекции на примере
+
+// 1. Нужен список студентов с доступом по индексу → List
+List<string> students = new List<string> { "Анна", "Пётр", "Ира" };
+Console.WriteLine($"Студент #1: {students[0]}");
+
+// 2. Нужен справочник "имя → оценка" → Dictionary
+Dictionary<string, int> grades = new Dictionary<string, int>
+{
+    ["Анна"] = 5, ["Пётр"] = 4, ["Ира"] = 5
+};
+Console.WriteLine($"Оценка Пётра: {grades["Пётр"]}");
+
+// 3. Нужны уникальные теги → HashSet
+HashSet<string> tags = new HashSet<string> { "C#", "tutorial", "C#" };
+Console.WriteLine($"Уникальных тегов: {tags.Count}"); // 2
+
+// 4. Нужна обработка заявок по порядку → Queue
+Queue<string> requests = new Queue<string>();
+requests.Enqueue("Заявка #1");
+requests.Enqueue("Заявка #2");
+Console.WriteLine($"Следующая заявка: {requests.Dequeue()}");
+
+// 5. Нужна история для Undo → Stack
+Stack<string> undoStack = new Stack<string>();
+undoStack.Push("Действие 1");
+undoStack.Push("Действие 2");
+Console.WriteLine($"Отменить: {undoStack.Pop()}");
+
+#!markdown
+
+### Попробуй сам: для каждой ситуации напиши, какую коллекцию выбрал бы ты (в комментарии), и создай пример:
+1. Хранить историю браузера
+2. Обрабатывать заказы в ресторане
+3. Хранить словарь (слово → перевод)
+4. Хранить уникальные email-адреса подписчиков
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Очередь в банке (лёгкая)
+Создай `Queue<string>` — очередь клиентов в банке. Добавь 5 клиентов. Обслуживай по одному, выводя "Обслуживается: ...". После обслуживания 2 клиентов добавь ещё одного ("опоздавший"). Обслужи всех до конца.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Отмена действий (лёгкая)
+Создай `Stack<string>` — стек действий в текстовом редакторе. Добавь 5 действий. Реализуй "Undo" — отмени последние 3 действия, выводя "Отменено: ...". Выведи оставшиеся действия.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Проверка скобок (средняя)
+Дана строка с различными скобками: `"({[]})"`. Используя `Stack<char>`, проверь, правильно ли расставлены скобки. Алгоритм: встретил открывающую — Push, встретил закрывающую — Pop и проверь пару. Протестируй на: `"({[]})"` (true), `"({[}])"` (false), `"((("` (false).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Принтер (средняя)
+Создай `PriorityQueue<string, int>` — очередь печати документов. Добавь 6-7 документов с приоритетами (1 = срочный, 5 = обычный). Печатай документы по приоритету, выводя порядок. Добавь "срочный" документ в середине процесса.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Разворот строки стеком (средняя)
+Используя `Stack<char>`, разверни строку. Положи все символы в стек, потом извлеки — получится обратный порядок. Проверь, является ли слово палиндромом.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Конвейер задач (сложная)
+Смоделируй систему: `Queue<string> incoming` — входящие задачи, `Stack<string> completed` — выполненные (последняя сверху), `PriorityQueue<string, int> priority` — приоритетные задачи. Добавь 5 обычных задач в Queue и 3 приоритетных. Обрабатывай: сначала все приоритетные (по приоритету), потом обычные (по порядку). Каждую выполненную клади в Stack. В конце выведи историю выполнения из Stack.
+
+#!csharp
+
+// Твой код здесь:

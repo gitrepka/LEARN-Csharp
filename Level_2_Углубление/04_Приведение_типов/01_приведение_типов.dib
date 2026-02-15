@@ -1,0 +1,481 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Приведение типов — конвертация данных
+
+#!markdown
+
+## 1. Неявное приведение (implicit conversion)
+
+**Неявное приведение** происходит **автоматически**, когда данные гарантированно **не теряются**. Компилятор делает это сам — тебе ничего не нужно писать.
+
+**Правило:** можно неявно преобразовать **меньший** тип в **больший**:
+
+```csharp
+int x = 42;
+long y = x;        // int → long (автоматически, 32 бит → 64 бит)
+double z = x;      // int → double (автоматически, целое → дробное)
+float f = x;       // int → float (автоматически)
+decimal d = x;     // int → decimal (автоматически)
+```
+
+**Цепочка неявных преобразований (от меньшего к большему):**
+
+```
+byte → short → int → long → float → double
+                ↓
+              decimal
+```
+
+| Из | В | Потеря данных? | Пример |
+|---|---|---|---|
+| `byte` → `int` | Расширение | Нет | `int x = (byte)255;` |
+| `int` → `long` | Расширение | Нет | `long x = 42;` |
+| `int` → `double` | Расширение | Нет* | `double x = 42;` |
+| `int` → `float` | Расширение | Возможна потеря точности! | `float x = 123456789;` |
+| `char` → `int` | Расширение | Нет | `int x = 'A'; // 65` |
+
+*`int` → `float` может терять точность для больших чисел, но формально допускается.
+
+```csharp
+// Примеры — всё автоматически:
+byte b = 200;
+int i = b;           // 200
+long l = i;          // 200
+double d = l;        // 200.0
+
+// char → int (код символа)
+char letter = 'A';
+int code = letter;   // 65
+
+Console.WriteLine($"byte: {b}, int: {i}, long: {l}, double: {d}");
+Console.WriteLine($"'{letter}' → {code}");
+```
+
+#!markdown
+
+### Попробуй сам: создай `byte b = 250;`. Присвой его в int, long, double, float переменные (без приведения). Выведи все значения и их типы через `.GetType().Name`
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Явное приведение (explicit cast)
+
+**Явное приведение** нужно, когда преобразование может **потерять данные**. Ты пишешь `(тип)` перед значением, говоря: "Я знаю о возможной потере, делай!"
+
+```csharp
+(целевойТип)значение
+```
+
+**Когда нужно явное приведение:**
+
+```csharp
+double pi = 3.14159;
+int rounded = (int)pi;       // 3 — дробная часть ОТБРОШЕНА (не округлена!)
+Console.WriteLine(rounded);  // 3
+
+long bigNumber = 1_000_000_000_000;
+int small = (int)bigNumber;  // ПЕРЕПОЛНЕНИЕ! Результат непредсказуем
+
+float f = 3.99f;
+int i = (int)f;              // 3 — дробная часть отброшена!
+
+double d = -2.7;
+int neg = (int)d;            // -2 — отбрасывает дробь (не округляет!)
+```
+
+**Важно:** явное приведение **отбрасывает** дробную часть, а **не округляет**!
+
+| Выражение | Результат | Почему |
+|---|---|---|
+| `(int)3.1` | 3 | Отброшено 0.1 |
+| `(int)3.9` | 3 | Отброшено 0.9 (НЕ округлено до 4!) |
+| `(int)-2.7` | -2 | Отброшено -0.7 |
+| `(int)3.0` | 3 | Ничего не потеряно |
+
+**Потеря данных при переполнении:**
+
+```csharp
+int big = 300;
+byte b = (byte)big;         // 44 (300 - 256 = 44, переполнение!)
+Console.WriteLine(b);       // 44
+
+int negative = -1;
+uint u = (uint)negative;    // 4294967295 (переполнение!)
+Console.WriteLine(u);
+```
+
+#!markdown
+
+### Попробуй сам: создай `double d = 9.87;`. Приведи к int, float, byte. Выведи результаты. Затем создай `int big = 1000;` и приведи к byte — увидь переполнение
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Потеря данных: примеры и как защититься
+
+**Таблица потерь при явном приведении:**
+
+| Из → В | Что теряется | Пример |
+|---|---|---|
+| `double` → `int` | Дробная часть | `(int)3.14` → `3` |
+| `long` → `int` | Старшие биты | `(int)3000000000L` → непредсказуемо |
+| `int` → `byte` | Переполнение | `(byte)300` → `44` |
+| `int` → `short` | Переполнение | `(short)40000` → непредсказуемо |
+| `double` → `float` | Точность | `(float)1.23456789012345` → `1.2345679` |
+
+**Как округлить вместо отбрасывания?**
+
+```csharp
+double value = 3.7;
+
+int truncated = (int)value;                    // 3 — отброшено
+int rounded = (int)Math.Round(value);          // 4 — округлено!
+int ceiling = (int)Math.Ceiling(value);        // 4 — вверх
+int floor = (int)Math.Floor(value);            // 3 — вниз
+
+Console.WriteLine($"Отброс: {truncated}");
+Console.WriteLine($"Округление: {rounded}");
+Console.WriteLine($"Вверх: {ceiling}");
+Console.WriteLine($"Вниз: {floor}");
+```
+
+**Защита от переполнения — checked:**
+
+```csharp
+int big = 300;
+
+// Без checked — тихое переполнение:
+byte b1 = (byte)big;          // 44 (молча потеряли данные!)
+
+// С checked — выбросит исключение:
+byte b2 = checked((byte)big); // OverflowException!
+```
+
+#!markdown
+
+### Попробуй сам: создай `double[] values = {1.1, 2.5, 3.7, 4.9, -1.3};`. Для каждого выведи: значение, (int) приведение, Math.Round(), Math.Ceiling(), Math.Floor()
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Convert — класс для безопасной конвертации
+
+Класс **`Convert`** предоставляет методы для конвертации между типами. В отличие от `(int)`, Convert **округляет** и **проверяет** переполнение:
+
+```csharp
+// Convert.ToInt32 — округляет!
+double d = 3.7;
+int a = (int)d;                    // 3 — отбрасывает
+int b = Convert.ToInt32(d);        // 4 — округляет!
+
+// Convert.ToInt32 — проверяет переполнение!
+long big = 3_000_000_000;
+int c = Convert.ToInt32(big);      // OverflowException!
+```
+
+**Основные методы Convert:**
+
+| Метод | Преобразует в | Пример |
+|---|---|---|
+| `Convert.ToInt32()` | `int` | `Convert.ToInt32(3.7)` → `4` |
+| `Convert.ToDouble()` | `double` | `Convert.ToDouble("3.14")` → `3.14` |
+| `Convert.ToString()` | `string` | `Convert.ToString(42)` → `"42"` |
+| `Convert.ToBoolean()` | `bool` | `Convert.ToBoolean(1)` → `true` |
+| `Convert.ToByte()` | `byte` | `Convert.ToByte(200)` → `200` |
+| `Convert.ToChar()` | `char` | `Convert.ToChar(65)` → `'A'` |
+
+**Convert из строк:**
+
+```csharp
+string numStr = "42";
+int num = Convert.ToInt32(numStr);       // 42
+double dbl = Convert.ToDouble(numStr);   // 42.0
+
+string boolStr = "true";
+bool flag = Convert.ToBoolean(boolStr);  // true
+
+// ОШИБКА при некорректном вводе:
+string bad = "hello";
+int x = Convert.ToInt32(bad);            // FormatException!
+```
+
+**Сравнение (int) и Convert.ToInt32():**
+
+| | `(int)` cast | `Convert.ToInt32()` |
+|---|---|---|
+| Дробные числа | Отбрасывает дробь | Округляет |
+| Переполнение | Тихо (мусор) | Выбрасывает исключение |
+| Из строки | Невозможно | Работает |
+| null | Невозможно | Возвращает 0 |
+| Скорость | Быстрее | Чуть медленнее |
+
+#!markdown
+
+### Попробуй сам: сравни результаты `(int)` и `Convert.ToInt32()` для значений: 3.4, 3.5, 3.6, -2.5, -2.4. Выведи таблицу
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. int.Parse() — парсинг строк
+
+**`int.Parse()`** преобразует строку в число. Если строка некорректна — **выбрасывает исключение**:
+
+```csharp
+int a = int.Parse("42");       // 42
+int b = int.Parse("-15");      // -15
+int c = int.Parse("  100  "); // 100 (пробелы по краям ОК)
+
+double d = double.Parse("3.14"); // 3.14 (зависит от локали!)
+```
+
+**Когда Parse выбрасывает исключение:**
+
+```csharp
+int x = int.Parse("hello");    // FormatException!
+int y = int.Parse("");          // FormatException!
+int z = int.Parse(null);       // ArgumentNullException!
+int w = int.Parse("3.14");     // FormatException! (для int)
+int v = int.Parse("99999999999"); // OverflowException!
+```
+
+**Parse есть у всех числовых типов:**
+
+```csharp
+int i = int.Parse("42");
+double d = double.Parse("3.14");
+long l = long.Parse("1000000000000");
+float f = float.Parse("2.5");
+bool b = bool.Parse("true");
+decimal m = decimal.Parse("99.99");
+```
+
+#!markdown
+
+### Попробуй сам: спарси строки "100", "3.14" (в double), "true" (в bool), "-42" (в int). Выведи результаты. Затем попробуй `int.Parse("abc")` — увидь исключение
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. int.TryParse() — безопасный парсинг
+
+**`TryParse`** — безопасная альтернатива Parse. Не выбрасывает исключение, а возвращает **`bool`**: получилось или нет.
+
+```csharp
+bool успех = int.TryParse(строка, out int результат);
+```
+
+**Как работает:**
+
+```csharp
+// Успешный парсинг
+bool ok1 = int.TryParse("42", out int num1);
+Console.WriteLine($"ok: {ok1}, value: {num1}");  // ok: True, value: 42
+
+// Неуспешный парсинг
+bool ok2 = int.TryParse("hello", out int num2);
+Console.WriteLine($"ok: {ok2}, value: {num2}");  // ok: False, value: 0
+
+// null
+bool ok3 = int.TryParse(null, out int num3);
+Console.WriteLine($"ok: {ok3}, value: {num3}");  // ok: False, value: 0
+```
+
+**Типичный паттерн использования:**
+
+```csharp
+string input = "не число";
+
+if (int.TryParse(input, out int number))
+{
+    Console.WriteLine($"Число: {number}");
+}
+else
+{
+    Console.WriteLine("Ввод некорректный!");
+}
+```
+
+**TryParse есть у всех числовых типов:**
+
+```csharp
+int.TryParse("42", out int i);
+double.TryParse("3.14", out double d);
+bool.TryParse("true", out bool b);
+long.TryParse("123456789", out long l);
+```
+
+**Сравнение Parse vs TryParse:**
+
+| | `Parse()` | `TryParse()` |
+|---|---|---|
+| Некорректный ввод | Выбрасывает исключение | Возвращает false |
+| Результат | Через return | Через out параметр |
+| Когда использовать | Когда ввод гарантированно корректный | Когда ввод может быть некорректным |
+| Производительность при ошибках | Медленно (исключение дорогое) | Быстро |
+
+#!markdown
+
+### Попробуй сам: создай массив строк `string[] inputs = {"42", "hello", "3.14", "", "100", "abc"};`. Для каждой попробуй `int.TryParse()`. Выведи: "строка → число" или "строка → ОШИБКА"
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. ToString() — преобразование в строку
+
+Метод **`ToString()`** есть у **каждого** объекта в C#. Он возвращает строковое представление:
+
+```csharp
+int num = 42;
+string s1 = num.ToString();        // "42"
+
+double pi = 3.14159;
+string s2 = pi.ToString();        // "3.14159"
+
+bool flag = true;
+string s3 = flag.ToString();      // "True"
+
+DateTime now = DateTime.Now;
+string s4 = now.ToString();       // "15.02.2026 14:30:00" (зависит от локали)
+```
+
+**Форматирование через ToString():**
+
+```csharp
+double price = 1234.5678;
+
+Console.WriteLine(price.ToString("F2"));    // "1234.57" — 2 знака после запятой
+Console.WriteLine(price.ToString("F0"));    // "1235" — 0 знаков (округлено)
+Console.WriteLine(price.ToString("N2"));    // "1 234,57" — с разделителями тысяч
+Console.WriteLine(price.ToString("C"));     // "1 234,57 ₽" — валюта (зависит от локали)
+Console.WriteLine(price.ToString("E2"));    // "1.23E+003" — научная нотация
+
+int num = 255;
+Console.WriteLine(num.ToString("X"));       // "FF" — шестнадцатеричное
+Console.WriteLine(num.ToString("D8"));      // "00000255" — с ведущими нулями
+Console.WriteLine(num.ToString("B"));       // двоичное (C# 10+)
+```
+
+**Полная картина конвертации:**
+
+```
+                    ToString()
+        число ──────────────────→ строка
+        число ←──────────────────  строка
+                  Parse() / TryParse()
+
+                    (тип) / Convert
+        число ──────────────────→ число
+```
+
+#!markdown
+
+### Попробуй сам: создай `double salary = 150000.50;`. Выведи её через ToString() с форматами: "F2", "N0", "C", "E1". Также выведи число 42 в шестнадцатеричном формате ("X") и с ведущими нулями ("D6")
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## ИТОГО:
+
+1. **Неявное приведение** — автоматическое, без потерь (int → long, int → double)
+2. **Явное приведение `(тип)`** — вручную, может потерять данные, отбрасывает дробь
+3. **`Convert.ToXxx()`** — безопасно, округляет, работает со строками
+4. **`int.Parse()`** — строка → число, выбрасывает исключение при ошибке
+5. **`int.TryParse()`** — строка → число, возвращает bool, безопасно
+6. **`ToString()`** — что угодно → строка, с форматированием
+7. **`Math.Round()`** — для правильного округления при приведении
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Таблица приведений (лёгкая)
+Создай `double d = 123.456;`. Выведи результат преобразования в: int (cast), int (Convert), float, byte, string. Для каждого покажи значение и тип.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Безопасный ввод (средняя)
+Создай массив строк `string[] inputs = {"25", "abc", "3.14", "100", "", "-5", "999999999999"};`. Для каждой строки попробуй int.TryParse. Выведи: "OK: число" или "Ошибка: строка не является числом". Посчитай количество успешных и неуспешных парсингов.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Конвертер строк (средняя)
+Напиши метод `double? SafeParseDouble(string input)`, который возвращает число или null. Протестируй с: "3.14", "abc", "", null, "100", "-0.5". Выведи результаты.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Сравнение методов (средняя)
+Для числа `double val = 2.5` сравни результаты: (int)val, Convert.ToInt32(val), (int)Math.Round(val), (int)Math.Floor(val), (int)Math.Ceiling(val). Повтори для 3.5, -1.5, 4.49, 4.51. Выведи в виде таблицы.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Парсер CSV строки (сложная)
+Дана строка `string csv = "Алексей,25,true,72.5,москва,null,3.14";`. Раздели по запятой (`Split(',')`). Попробуй каждый элемент распарсить как int, потом как double, потом как bool. Выведи для каждого: значение, определённый тип, успешно ли парсинг.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Система оценок (сложная)
+Дан массив строк с оценками: `string[] rawGrades = {"5", "четыре", "3", "", "5", "два", "4", "N/A", "2"};`. Преобразуй в `int[]`, где нечисловые значения заменяются на 0. Выведи: исходный массив, результат, среднюю оценку (только по ненулевым), количество ошибочных вводов.
+
+#!csharp
+
+// Твой код здесь:

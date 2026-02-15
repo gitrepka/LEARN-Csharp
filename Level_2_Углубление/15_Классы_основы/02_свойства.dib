@@ -1,0 +1,403 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Свойства (Properties) — { get; set; }
+
+#!markdown
+
+## 1. Проблема: открытые поля
+
+Когда поля `public`, любой код может записать **некорректные данные**:
+
+```csharp
+class Person
+{
+    public string Name;
+    public int Age;
+}
+
+var p = new Person();
+p.Age = -5;      // ← Некорректно! Возраст не может быть отрицательным
+p.Name = "";     // ← Пустое имя — тоже плохо
+```
+
+Нет никакой **валидации** и **контроля**. В хорошем коде поля делают **private**, а доступ дают через **свойства**.
+
+#!markdown
+
+## 2. Свойства — { get; set; }
+
+**Свойство** (property) — это пара методов `get` (чтение) и `set` (запись), которые выглядят как поле:
+
+```csharp
+class Person
+{
+    private string name;     // private поле (backing field)
+
+    public string Name       // public свойство
+    {
+        get { return name; }           // чтение
+        set { name = value; }          // запись (value — новое значение)
+    }
+}
+
+var p = new Person();
+p.Name = "Анна";           // вызывает set
+Console.WriteLine(p.Name);  // вызывает get
+```
+
+Теперь в `set` можно добавить **валидацию**:
+
+```csharp
+public int Age
+{
+    get { return age; }
+    set
+    {
+        if (value < 0 || value > 150)
+            throw new ArgumentException("Некорректный возраст");
+        age = value;
+    }
+}
+```
+
+#!csharp
+
+class Person
+{
+    private string name;
+    private int age;
+
+    public string Name
+    {
+        get { return name; }
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Имя не может быть пустым");
+            name = value.Trim();
+        }
+    }
+
+    public int Age
+    {
+        get { return age; }
+        set
+        {
+            if (value < 0 || value > 150)
+                throw new ArgumentException($"Некорректный возраст: {value}");
+            age = value;
+        }
+    }
+}
+
+var p = new Person();
+p.Name = "  Анна  ";    // set вызовет Trim()
+p.Age = 25;
+
+Console.WriteLine($"{p.Name}, {p.Age} лет");   // Анна, 25 лет
+
+// Попробуем некорректное значение
+try
+{
+    p.Age = -5;   // выбросит исключение!
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+### Попробуй сам: создай класс `Temperature` со свойством Celsius (double). В set проверяй, что значение >= -273.15 (абсолютный ноль). Добавь свойство Fahrenheit (только get), которое вычисляет: Celsius * 9/5 + 32.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Автоматические свойства (Auto-Properties)
+
+Если валидация **не нужна** — используй **автосвойства**. Компилятор сам создаст backing field:
+
+```csharp
+class Person
+{
+    public string Name { get; set; }    // автосвойство
+    public int Age { get; set; }        // автосвойство
+}
+```
+
+Это **эквивалентно** полному свойству без логики, но гораздо короче.
+
+Можно задать **начальное значение**:
+```csharp
+public string Name { get; set; } = "Без имени";
+public int Health { get; set; } = 100;
+```
+
+Можно ограничить **доступ** к set:
+```csharp
+public string Id { get; private set; }    // читать могут все, записать — только сам класс
+public string Name { get; init; }         // можно задать только при создании (C# 9+)
+```
+
+#!csharp
+
+class Product
+{
+    public string Name { get; set; } = "Без названия";
+    public double Price { get; set; }
+    public int Stock { get; set; }
+
+    // Только чтение (вычисляемое)
+    public bool InStock { get { return Stock > 0; } }
+
+    // private set — только класс может менять
+    public int Id { get; private set; }
+
+    private static int nextId = 1;
+
+    public Product()
+    {
+        Id = nextId++;
+    }
+
+    public void Print()
+    {
+        Console.WriteLine($"[{Id}] {Name}: {Price:C}, наличие: {Stock} шт. ({(InStock ? "Есть" : "Нет")})");
+    }
+}
+
+var p1 = new Product { Name = "Ноутбук", Price = 45000, Stock = 5 };
+var p2 = new Product { Name = "Мышь", Price = 1500, Stock = 0 };
+var p3 = new Product { Name = "Клавиатура", Price = 3000, Stock = 12 };
+
+p1.Print();
+p2.Print();
+p3.Print();
+
+// p1.Id = 999;   // ОШИБКА! private set — нельзя изменить снаружи
+
+#!markdown
+
+### Попробуй сам: создай класс `Circle` с автосвойством Radius (double). Добавь вычисляемые свойства Area и Circumference (только get). Создай объект и выведи все свойства.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Вычисляемые свойства (Computed Properties)
+
+Свойство может **не хранить** данные, а **вычислять** их на лету:
+
+```csharp
+class Rectangle
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    // Вычисляемое свойство — только get
+    public double Area
+    {
+        get { return Width * Height; }
+    }
+
+    // Короткая запись (expression-bodied):
+    public double Perimeter => 2 * (Width + Height);
+}
+```
+
+**`=>`** (expression-bodied member) — короткий синтаксис для свойств и методов с одним выражением.
+
+#!csharp
+
+class Person
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime BirthDate { get; set; }
+
+    // Вычисляемые свойства
+    public string FullName => $"{FirstName} {LastName}";
+
+    public int Age => (int)((DateTime.Now - BirthDate).TotalDays / 365.25);
+
+    public bool IsAdult => Age >= 18;
+
+    public string Initials => $"{FirstName[0]}.{LastName[0]}.";
+}
+
+var person = new Person
+{
+    FirstName = "Анна",
+    LastName = "Иванова",
+    BirthDate = new DateTime(2000, 5, 15)
+};
+
+Console.WriteLine($"ФИО:      {person.FullName}");
+Console.WriteLine($"Инициалы: {person.Initials}");
+Console.WriteLine($"Возраст:  {person.Age}");
+Console.WriteLine($"Взрослый: {person.IsAdult}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Box` со свойствами Width, Height, Depth (double). Добавь вычисляемые свойства Volume (объём) и SurfaceArea (площадь поверхности). Проверь с конкретными размерами.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Поле vs Свойство — сравнение
+
+| | **Поле (Field)** | **Свойство (Property)** |
+|---|---|---|
+| Синтаксис | `public int Age;` | `public int Age { get; set; }` |
+| Валидация | Нет | Да (в set) |
+| Вычисляемое | Нет | Да (только get) |
+| Контроль доступа | public/private | get public + set private |
+| Data binding | Часто не работает | Работает (WPF, MAUI) |
+| Интерфейсы | Нельзя в интерфейсе | Можно |
+| **Рекомендация** | Только **private** | Для **public** доступа |
+
+**Правило:**
+- **Поля** — всегда `private` (данные внутри класса)
+- **Свойства** — для `public` доступа (интерфейс класса)
+
+```csharp
+// ПЛОХО:
+class Bad
+{
+    public string Name;     // публичное поле — нет контроля
+}
+
+// ХОРОШО:
+class Good
+{
+    public string Name { get; set; }   // свойство — можно добавить логику позже
+}
+```
+
+#!csharp
+
+// Демонстрация преимущества свойств
+class BankAccount
+{
+    private double balance;   // private поле
+
+    public string Owner { get; set; }
+
+    // Свойство с валидацией
+    public double Balance
+    {
+        get => balance;
+        private set    // только внутри класса можно менять
+        {
+            if (value < 0)
+                throw new InvalidOperationException("Баланс не может быть отрицательным");
+            balance = value;
+        }
+    }
+
+    public BankAccount(string owner, double initial)
+    {
+        Owner = owner;
+        Balance = initial;
+    }
+
+    public void Deposit(double amount)
+    {
+        if (amount <= 0) throw new ArgumentException("Сумма должна быть положительной");
+        Balance += amount;
+        Console.WriteLine($"+{amount:C} → Баланс: {Balance:C}");
+    }
+
+    public void Withdraw(double amount)
+    {
+        if (amount > Balance) throw new InvalidOperationException("Недостаточно средств");
+        Balance -= amount;
+        Console.WriteLine($"-{amount:C} → Баланс: {Balance:C}");
+    }
+}
+
+var acc = new BankAccount("Анна", 1000);
+acc.Deposit(500);
+acc.Withdraw(200);
+// acc.Balance = 999999;   // ОШИБКА! private set
+Console.WriteLine($"\nВладелец: {acc.Owner}, Баланс: {acc.Balance:C}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **Свойство** — пара `get`/`set` методов, выглядящая как поле
+2. **Автосвойство** `{ get; set; }` — компилятор создаёт backing field
+3. **Вычисляемое свойство** — только `get`, вычисляет значение на лету
+4. **`=>`** — короткая запись для свойств и методов с одним выражением
+5. **Правило:** поля — private, свойства — public
+6. `{ get; private set; }` — чтение для всех, запись только внутри класса
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Класс с автосвойствами (лёгкая)
+Создай класс `Movie` с автосвойствами: Title, Director, Year, Rating (double). Создай 2-3 фильма и выведи информацию.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Валидация в свойствах (лёгкая)
+Создай класс `Student` со свойством Grade (int). В set проверяй: значение от 1 до 5. Если вне диапазона — выброси исключение. Проверь корректные и некорректные значения.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Вычисляемые свойства (средняя)
+Создай класс `BMICalculator` со свойствами Weight (кг) и Height (м). Вычисляемые свойства: BMI (вес/рост^2), Category (строка: "Норма", "Избыток", "Недостаток" в зависимости от BMI). Проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: init-only свойства (средняя)
+Создай класс `User` со свойствами: Id (get; init), Username (get; init), Email (get; set). Id и Username нельзя изменить после создания. Проверь, что изменение Id вызывает ошибку.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Класс с полной инкапсуляцией (сложная)
+Создай класс `Password`. Private поле — хэш пароля (просто строка). Свойство `Value` — set принимает пароль, проверяет длину >= 8, и сохраняет. Get возвращает замаскированную версию "****". Метод `Verify(string input)` — проверяет совпадение.
+
+#!csharp
+
+// Твой код здесь:

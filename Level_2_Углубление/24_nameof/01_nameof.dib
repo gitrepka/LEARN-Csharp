@@ -1,0 +1,289 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: nameof() и sizeof() — получение имён и размеров
+
+#!markdown
+
+## 1. nameof() — получение имени как строки
+
+**`nameof()`** возвращает **имя** переменной, типа, члена как строку — на этапе **компиляции**:
+
+```csharp
+string name = "Анна";
+Console.WriteLine(nameof(name));     // "name" — имя переменной
+Console.WriteLine(nameof(String));   // "String" — имя типа
+Console.WriteLine(nameof(Console.WriteLine));  // "WriteLine"
+```
+
+**Зачем?** Чтобы не писать строковые литералы, которые могут устареть при рефакторинге:
+
+```csharp
+// ПЛОХО — строка "age" не обновится при переименовании
+if (age < 0) throw new ArgumentException("Некорректное значение", "age");
+
+// ХОРОШО — nameof обновится автоматически при переименовании
+if (age < 0) throw new ArgumentException("Некорректное значение", nameof(age));
+```
+
+#!csharp
+
+// Базовое использование nameof
+int score = 100;
+string playerName = "Герой";
+
+Console.WriteLine(nameof(score));        // "score"
+Console.WriteLine(nameof(playerName));   // "playerName"
+Console.WriteLine(nameof(Console));      // "Console"
+Console.WriteLine(nameof(String));       // "String"
+Console.WriteLine(nameof(Int32));        // "Int32"
+
+// Имена членов
+Console.WriteLine(nameof(string.Length));           // "Length"
+Console.WriteLine(nameof(Console.WriteLine));      // "WriteLine"
+Console.WriteLine(nameof(DateTime.Now));           // "Now"
+
+// Имена типов
+Console.WriteLine(nameof(DateTime));    // "DateTime"
+Console.WriteLine(nameof(List<int>));   // "List"
+
+#!markdown
+
+### Попробуй сам: создай несколько переменных разных типов. Выведи имя каждой через nameof(). Попробуй nameof для метода и свойства какого-нибудь типа.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. nameof в ArgumentException и валидации
+
+Самое частое применение nameof — в **исключениях** и **валидации параметров**:
+
+```csharp
+void SetAge(int age)
+{
+    if (age < 0)
+        throw new ArgumentOutOfRangeException(nameof(age), "Возраст не может быть отрицательным");
+    if (age > 150)
+        throw new ArgumentOutOfRangeException(nameof(age), "Нереальный возраст");
+}
+```
+
+При рефакторинге (переименование `age` → `years`) — nameof обновится автоматически.
+
+Другие применения:
+```csharp
+// ArgumentNullException
+void Process(string data)
+{
+    ArgumentNullException.ThrowIfNull(data, nameof(data));   // C# 10+
+    // или:
+    if (data == null) throw new ArgumentNullException(nameof(data));
+}
+```
+
+#!csharp
+
+// nameof в валидации
+void SetName(string name)
+{
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя не может быть пустым", nameof(name));
+    Console.WriteLine($"Имя установлено: {name}");
+}
+
+void SetAge(int age)
+{
+    if (age < 0 || age > 150)
+        throw new ArgumentOutOfRangeException(nameof(age), age, "Возраст от 0 до 150");
+    Console.WriteLine($"Возраст установлен: {age}");
+}
+
+void Transfer(double amount, string fromAccount, string toAccount)
+{
+    if (amount <= 0)
+        throw new ArgumentOutOfRangeException(nameof(amount), "Сумма должна быть положительной");
+    if (fromAccount == null)
+        throw new ArgumentNullException(nameof(fromAccount));
+    if (toAccount == null)
+        throw new ArgumentNullException(nameof(toAccount));
+
+    Console.WriteLine($"Перевод {amount:C} с {fromAccount} на {toAccount}");
+}
+
+// Тестируем
+SetName("Анна");
+SetAge(25);
+Transfer(1000, "ACC-001", "ACC-002");
+
+try { SetAge(-5); }
+catch (ArgumentOutOfRangeException ex)
+{
+    Console.WriteLine($"\nОшибка: {ex.Message}");
+    Console.WriteLine($"Параметр: {ex.ParamName}");  // "age" — благодаря nameof
+}
+
+#!csharp
+
+// nameof в классе — PropertyChanged (MVVM паттерн)
+// Это частый паттерн в WPF/MAUI приложениях
+
+class Person
+{
+    private string name = "";
+    private int age;
+
+    public string Name
+    {
+        get => name;
+        set
+        {
+            if (name != value)
+            {
+                name = value;
+                OnPropertyChanged(nameof(Name));   // "Name" — имя свойства
+            }
+        }
+    }
+
+    public int Age
+    {
+        get => age;
+        set
+        {
+            if (age != value)
+            {
+                age = value;
+                OnPropertyChanged(nameof(Age));    // "Age"
+            }
+        }
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        Console.WriteLine($"Свойство изменено: {propertyName}");
+    }
+}
+
+var p = new Person();
+p.Name = "Анна";   // "Свойство изменено: Name"
+p.Age = 25;         // "Свойство изменено: Age"
+
+#!markdown
+
+### Попробуй сам: создай метод `void Divide(int a, int b)`. Если b == 0, выбрось ArgumentException с nameof(b). Проверь корректный вызов и вызов с b=0, обработай исключение.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. sizeof() — размер типа в байтах
+
+**`sizeof()`** возвращает размер **значимого типа** в байтах:
+
+```csharp
+sizeof(int)      // 4 байта
+sizeof(double)   // 8 байт
+sizeof(bool)     // 1 байт
+sizeof(char)     // 2 байта (UTF-16)
+```
+
+**Ограничения:**
+- Работает только для **примитивных** и **unmanaged** типов
+- Для пользовательских struct — нужен `unsafe` контекст
+- **Не работает** для ссылочных типов (string, class)
+
+| Тип | sizeof | Описание |
+|---|---|---|
+| `byte` / `sbyte` | 1 | 8 бит |
+| `short` / `ushort` | 2 | 16 бит |
+| `int` / `uint` | 4 | 32 бита |
+| `long` / `ulong` | 8 | 64 бита |
+| `float` | 4 | 32 бита |
+| `double` | 8 | 64 бита |
+| `decimal` | 16 | 128 бит |
+| `char` | 2 | UTF-16 |
+| `bool` | 1 | 8 бит |
+
+#!csharp
+
+// sizeof для примитивных типов
+Console.WriteLine("=== Размеры типов в байтах ===");
+Console.WriteLine($"{"Тип",-12} {"sizeof",-8} {"Диапазон"}");
+Console.WriteLine(new string('-', 55));
+
+Console.WriteLine($"{"byte",-12} {sizeof(byte),-8} 0 — 255");
+Console.WriteLine($"{"sbyte",-12} {sizeof(sbyte),-8} -128 — 127");
+Console.WriteLine($"{"short",-12} {sizeof(short),-8} -32768 — 32767");
+Console.WriteLine($"{"ushort",-12} {sizeof(ushort),-8} 0 — 65535");
+Console.WriteLine($"{"int",-12} {sizeof(int),-8} ±2.1 млрд");
+Console.WriteLine($"{"uint",-12} {sizeof(uint),-8} 0 — 4.3 млрд");
+Console.WriteLine($"{"long",-12} {sizeof(long),-8} ±9.2 × 10^18");
+Console.WriteLine($"{"ulong",-12} {sizeof(ulong),-8} 0 — 1.8 × 10^19");
+Console.WriteLine($"{"float",-12} {sizeof(float),-8} ±3.4 × 10^38 (~7 цифр)");
+Console.WriteLine($"{"double",-12} {sizeof(double),-8} ±1.7 × 10^308 (~15 цифр)");
+Console.WriteLine($"{"decimal",-12} {sizeof(decimal),-8} ±7.9 × 10^28 (~28 цифр)");
+Console.WriteLine($"{"char",-12} {sizeof(char),-8} UTF-16 символ");
+Console.WriteLine($"{"bool",-12} {sizeof(bool),-8} true/false");
+
+// Вычисление размера массива
+int arrayLength = 1000;
+long memorySizeInt = (long)sizeof(int) * arrayLength;
+long memorySizeDouble = (long)sizeof(double) * arrayLength;
+Console.WriteLine($"\nМассив из {arrayLength} элементов:");
+Console.WriteLine($"  int[]:    {memorySizeInt:N0} байт ({memorySizeInt / 1024.0:F1} КБ)");
+Console.WriteLine($"  double[]: {memorySizeDouble:N0} байт ({memorySizeDouble / 1024.0:F1} КБ)");
+
+#!markdown
+
+## ИТОГО:
+
+1. **`nameof(x)`** — возвращает имя переменной/типа/члена как строку
+2. Главное применение — **исключения** (`ArgumentException`, `ArgumentNullException`)
+3. Безопасно при **рефакторинге** — имя обновляется автоматически
+4. Используется в **MVVM** (PropertyChanged) и **логировании**
+5. **`sizeof(type)`** — размер значимого типа в байтах
+6. sizeof работает только для **примитивных/unmanaged** типов
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Валидация с nameof (лёгкая)
+Создай метод `void CreateProduct(string name, double price, int quantity)`. Валидируй: name не пустое, price > 0, quantity >= 0. Используй nameof в каждом исключении. Проверь с корректными и некорректными данными.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: sizeof для выбора типа (лёгкая)
+Выведи таблицу: для каждого числового типа — название, sizeof, минимальное и максимальное значение (используй int.MinValue, int.MaxValue и т.д.). Помоги «выбрать тип» для хранения: возраста, населения страны, расстояния до звезды.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Логгер с nameof (средняя)
+Создай класс с несколькими свойствами. В каждом set используй nameof для логирования: "Свойство X изменено: oldValue → newValue". Покажи работу при изменении свойств.
+
+#!csharp
+
+// Твой код здесь:

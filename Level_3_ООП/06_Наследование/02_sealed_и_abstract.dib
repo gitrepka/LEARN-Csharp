@@ -1,0 +1,506 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Hiding (new), sealed, abstract классы и методы
+
+#!markdown
+
+## Обзор
+
+В предыдущем уроке мы изучили virtual/override. Теперь разберём:
+- **Hiding (new)** -- скрытие метода базового класса (и почему это плохо)
+- **sealed** -- запрет наследования / переопределения
+- **abstract** -- обязательное переопределение в наследниках
+- Переопределение **ToString()**, **Equals()**, **GetHashCode()** от Object
+
+#!markdown
+
+## 1. Hiding с new -- скрытие метода
+
+Если в производном классе объявить метод **с тем же именем**, что в базовом, но **без override**, происходит **hiding** (скрытие). Компилятор выдаст предупреждение, а ключевое слово `new` его подавляет:
+
+```csharp
+class Base
+{
+    public void Greet() => Console.WriteLine("Привет из Base");
+}
+
+class Derived : Base
+{
+    public new void Greet() => Console.WriteLine("Привет из Derived");
+}
+```
+
+**Проблема:** при hiding вызываемый метод зависит от **типа переменной**, а не от **типа объекта**:
+
+```csharp
+Derived d = new Derived();
+d.Greet();           // "Привет из Derived" -- ожидаемо
+
+Base b = new Derived();  // переменная типа Base, объект типа Derived
+b.Greet();           // "Привет из Base" -- НЕОЖИДАННО!
+```
+
+С virtual/override вызвался бы метод Derived. С hiding -- метод Base. Это **ловушка**.
+
+#!csharp
+
+public class Animal
+{
+    public void Speak() => Console.WriteLine("Animal: какой-то звук");
+    public virtual void Move() => Console.WriteLine("Animal: двигается");
+}
+
+public class Dog : Animal
+{
+    // HIDING -- скрывает Animal.Speak()
+    public new void Speak() => Console.WriteLine("Dog: Гав!");
+
+    // OVERRIDE -- переопределяет Animal.Move()
+    public override void Move() => Console.WriteLine("Dog: бежит!");
+}
+
+Console.WriteLine("=== Через переменную Dog ===");
+Dog dog = new Dog();
+dog.Speak();   // Dog: Гав!
+dog.Move();    // Dog: бежит!
+
+Console.WriteLine("\n=== Через переменную Animal (полиморфизм) ===");
+Animal animal = new Dog();  // Тот же объект, но тип переменной Animal
+animal.Speak();  // Animal: какой-то звук  <-- HIDING! Вызван метод Animal!
+animal.Move();   // Dog: бежит!            <-- OVERRIDE! Вызван метод Dog!
+
+Console.WriteLine("\n=== Вот почему hiding -- плохо ===");
+Animal[] zoo = { new Dog(), new Dog() };
+foreach (var a in zoo)
+{
+    a.Speak();  // Всегда "Animal: какой-то звук" -- hiding не работает через базовый тип!
+    a.Move();   // Всегда "Dog: бежит!" -- override работает правильно!
+}
+
+#!markdown
+
+### Попробуй сам: создай базовый класс `Printer` с методом `Print(string text)`. Создай `FancyPrinter` с `new Print(string text)` (добавляет рамку). Убедись, что через переменную типа Printer вызывается базовый метод.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. sealed class -- запрет наследования
+
+**`sealed`** запрещает наследование от класса:
+
+```csharp
+sealed class FinalClass
+{
+    public void DoWork() => Console.WriteLine("Работаю");
+}
+
+// Ошибка компиляции!
+// class Child : FinalClass { }
+```
+
+Зачем? Причины:
+1. **Безопасность** -- класс не предназначен для расширения
+2. **Производительность** -- sealed классы могут быть оптимизированы JIT
+3. **Дизайн** -- явное намерение: "этот класс -- конечная реализация"
+
+Примеры sealed в .NET: `string`, `DateTime`, `Guid`.
+
+#!csharp
+
+// Пример: финальная реализация
+public class Shape
+{
+    public virtual double Area() => 0;
+}
+
+public class Circle : Shape
+{
+    public double Radius { get; }
+    public Circle(double radius) { Radius = radius; }
+    public override double Area() => Math.PI * Radius * Radius;
+}
+
+// sealed -- от Square нельзя наследовать
+public sealed class Square : Shape
+{
+    public double Side { get; }
+    public Square(double side) { Side = side; }
+    public override double Area() => Side * Side;
+}
+
+// Ошибка! Нельзя наследовать от sealed
+// public class SpecialSquare : Square { }
+
+var shapes = new Shape[] { new Circle(5), new Square(4) };
+foreach (var s in shapes)
+    Console.WriteLine($"{s.GetType().Name}: площадь = {s.Area():F2}");
+
+Console.WriteLine($"\nstring sealed: {typeof(string).IsSealed}");     // True
+Console.WriteLine($"DateTime sealed: {typeof(DateTime).IsSealed}");   // True
+
+#!markdown
+
+### Попробуй сам: создай иерархию `Vehicle` -> `Car` -> `sealed ElectricCar`. Убедись, что от ElectricCar нельзя наследовать (закомментируй попытку и напиши комментарий об ошибке).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. sealed override -- запрет дальнейшего переопределения
+
+Можно запечатать **отдельный метод**, сохранив возможность наследования от класса:
+
+```csharp
+class A
+{
+    public virtual void Method() => Console.WriteLine("A");
+}
+
+class B : A
+{
+    public sealed override void Method() => Console.WriteLine("B");
+    // sealed override -- дальше переопределять нельзя!
+}
+
+class C : B
+{
+    // Ошибка! Method() запечатан в B
+    // public override void Method() => Console.WriteLine("C");
+}
+```
+
+#!csharp
+
+public class BaseLogger
+{
+    public virtual void Log(string message)
+        => Console.WriteLine($"[LOG] {message}");
+
+    public virtual void Error(string message)
+        => Console.WriteLine($"[ERROR] {message}");
+}
+
+public class FileLogger : BaseLogger
+{
+    // Переопределяем и ЗАПЕЧАТЫВАЕМ -- дальше менять нельзя
+    public sealed override void Log(string message)
+        => Console.WriteLine($"[FILE] {DateTime.Now:HH:mm:ss} {message}");
+
+    // Этот можно продолжать переопределять
+    public override void Error(string message)
+        => Console.WriteLine($"[FILE ERROR] {message}");
+}
+
+public class RotatingFileLogger : FileLogger
+{
+    // Нельзя! Log() запечатан
+    // public override void Log(string message) { }
+
+    // Можно! Error() не запечатан
+    public override void Error(string message)
+        => Console.WriteLine($"[ROTATING ERROR] {message}");
+}
+
+var logger = new RotatingFileLogger();
+logger.Log("Тест");     // Метод из FileLogger (запечатан)
+logger.Error("Ошибка!"); // Метод из RotatingFileLogger
+
+#!markdown
+
+## 4. abstract class -- абстрактный класс
+
+**`abstract class`** -- класс, от которого **нельзя создать объект**, но можно **наследовать**. Это шаблон для наследников.
+
+```csharp
+abstract class Shape
+{
+    // Обычные свойства и методы
+    public string Color { get; set; }
+
+    // Абстрактный метод -- НЕТ реализации!
+    // Наследники ОБЯЗАНЫ его реализовать
+    public abstract double Area();
+}
+
+// Нельзя: new Shape() -- ошибка!
+// Можно: class Circle : Shape { ... }
+```
+
+#!csharp
+
+// Абстрактный класс -- шаблон
+public abstract class Animal
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+
+    // Обычный метод -- с реализацией
+    public void Sleep() => Console.WriteLine($"{Name} спит...");
+
+    // Абстрактные методы -- БЕЗ реализации!
+    // Наследники ОБЯЗАНЫ их реализовать
+    public abstract string Speak();
+    public abstract string Describe();
+}
+
+// Конкретный класс -- реализует ВСЕ abstract методы
+public class Dog : Animal
+{
+    public string Breed { get; set; }
+
+    public override string Speak() => "Гав!";
+    public override string Describe() => $"Собака {Name} ({Breed}), {Age} лет";
+}
+
+public class Cat : Animal
+{
+    public override string Speak() => "Мяу!";
+    public override string Describe() => $"Кошка {Name}, {Age} лет";
+}
+
+// new Animal() -- ОШИБКА! Абстрактный класс нельзя создать!
+
+Animal[] animals = {
+    new Dog { Name = "Рекс", Age = 3, Breed = "Овчарка" },
+    new Cat { Name = "Мурка", Age = 5 },
+};
+
+foreach (var a in animals)
+{
+    Console.WriteLine(a.Describe());
+    Console.WriteLine($"  Говорит: {a.Speak()}");
+    a.Sleep();
+    Console.WriteLine();
+}
+
+#!markdown
+
+### Попробуй сам: создай abstract class `Instrument` с abstract методом `string Play()` и обычным методом `void Describe()`. Создай два наследника: `Guitar` (Play -> "Бренчит") и `Drums` (Play -> "Бум-бум"). Создай массив Instrument[] и вызови Play() и Describe().
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Abstract метод vs virtual метод
+
+| | `virtual` | `abstract` |
+|---|---|---|
+| **Реализация в базовом** | Есть (можно переопределить) | Нет (обязан переопределить) |
+| **override в наследнике** | Необязательно | **Обязательно** |
+| **Создание объекта** | Можно (если класс не abstract) | Нельзя |
+| **Ключевое слово** | `virtual` в базовом, `override` в наследнике | `abstract` в базовом, `override` в наследнике |
+
+```csharp
+abstract class Shape
+{
+    // virtual -- ЕСТЬ реализация по умолчанию
+    public virtual string Color => "Без цвета";
+
+    // abstract -- НЕТ реализации, наследник ОБЯЗАН реализовать
+    public abstract double Area();
+}
+```
+
+#!csharp
+
+public abstract class Notification
+{
+    public string Recipient { get; set; }
+    public string Message { get; set; }
+
+    // ABSTRACT -- каждый наследник ОБЯЗАН реализовать
+    public abstract void Send();
+
+    // VIRTUAL -- есть реализация по умолчанию, можно переопределить
+    public virtual string Format()
+        => $"Кому: {Recipient}\nСообщение: {Message}";
+}
+
+public class EmailNotification : Notification
+{
+    public string Subject { get; set; }
+
+    // ОБЯЗАТЕЛЬНО реализовать abstract
+    public override void Send()
+        => Console.WriteLine($"Отправка email на {Recipient}: {Subject}");
+
+    // НЕОБЯЗАТЕЛЬНО -- но мы переопределяем virtual
+    public override string Format()
+        => $"Email: {Recipient}\nТема: {Subject}\n{Message}";
+}
+
+public class SmsNotification : Notification
+{
+    // ОБЯЗАТЕЛЬНО реализовать abstract
+    public override void Send()
+        => Console.WriteLine($"Отправка SMS на {Recipient}: {Message}");
+
+    // НЕ переопределяем Format() -- используется версия из Notification
+}
+
+var notifications = new Notification[]
+{
+    new EmailNotification { Recipient = "alice@mail.ru", Message = "Привет", Subject = "Тест" },
+    new SmsNotification { Recipient = "+7-999-123-45-67", Message = "Код: 1234" },
+};
+
+foreach (var n in notifications)
+{
+    Console.WriteLine(n.Format());
+    n.Send();
+    Console.WriteLine();
+}
+
+#!markdown
+
+## 6. Переопределение ToString(), Equals(), GetHashCode()
+
+Все классы наследуют от Object, поэтому можно переопределить его методы:
+
+### ToString() -- строковое представление
+```csharp
+public override string ToString() => $"{Name} ({Age} лет)";
+```
+
+### Equals() -- сравнение по значению
+```csharp
+public override bool Equals(object? obj)
+{
+    if (obj is MyClass other)
+        return Name == other.Name && Age == other.Age;
+    return false;
+}
+```
+
+### GetHashCode() -- хеш-код (если переопределяешь Equals, ОБЯЗАТЕЛЬНО!)
+```csharp
+public override int GetHashCode() => HashCode.Combine(Name, Age);
+```
+
+**Правило:** если `Equals(a, b) == true`, то `GetHashCode(a) == GetHashCode(b)` ОБЯЗАТЕЛЬНО. Иначе Dictionary, HashSet и т.д. сломаются.
+
+#!csharp
+
+public class Student
+{
+    public string Name { get; set; }
+    public int StudentId { get; set; }
+    public double GPA { get; set; }
+
+    public Student(string name, int id, double gpa)
+    {
+        Name = name;
+        StudentId = id;
+        GPA = gpa;
+    }
+
+    // ToString -- красивый вывод
+    public override string ToString()
+        => $"Студент #{StudentId}: {Name} (GPA: {GPA:F2})";
+
+    // Equals -- сравнение по StudentId (уникальный идентификатор)
+    public override bool Equals(object? obj)
+    {
+        if (obj is Student other)
+            return StudentId == other.StudentId;
+        return false;
+    }
+
+    // GetHashCode -- на основе того же поля, что и Equals
+    public override int GetHashCode() => StudentId.GetHashCode();
+}
+
+var s1 = new Student("Алиса", 1001, 4.5);
+var s2 = new Student("Алиса Иванова", 1001, 4.8);  // Тот же ID!
+var s3 = new Student("Боб", 1002, 3.9);
+
+Console.WriteLine(s1);  // ToString()
+Console.WriteLine(s2);
+
+Console.WriteLine($"\ns1 == s2 (тот же ID): {s1.Equals(s2)}");  // true
+Console.WriteLine($"s1 == s3: {s1.Equals(s3)}");                  // false
+
+// Работает в коллекциях!
+var set = new HashSet<Student> { s1, s2, s3 };
+Console.WriteLine($"\nВ HashSet: {set.Count} студентов");  // 2 (s1 и s2 -- один и тот же)
+
+var dict = new Dictionary<Student, string> { [s1] = "Отличница" };
+Console.WriteLine($"Поиск по s2: {dict[s2]}");  // Отличница (s2.Equals(s1) == true)
+
+#!markdown
+
+### Попробуй сам: создай класс `Point(int X, int Y)` с переопределёнными ToString() (формат "(3, 5)"), Equals() (по X и Y), GetHashCode(). Проверь, что два одинаковых Point равны и работают в HashSet.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Abstract фигуры (лёгкая)
+Создай abstract class `Shape` с abstract методами `double Area()` и `double Perimeter()`. Создай наследников: `Circle(double radius)` и `Triangle(double a, double b, double c)`. Вычисли площадь и периметр для каждого.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Sealed финальный класс (лёгкая)
+Создай иерархию `Animal` -> `Pet` -> `sealed GoldenRetriever`. Убедись, что от GoldenRetriever нельзя наследовать. Добавь методы и выведи информацию.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Virtual vs Abstract (средняя)
+Создай abstract class `PaymentMethod` с abstract `bool Process(decimal amount)` и virtual `string GetReceipt(decimal amount)`. Создай: `CreditCard` (переопределяет оба), `Cash` (переопределяет только Process, использует дефолтный GetReceipt), `Bitcoin` (переопределяет оба). Обработай платёж 1500 каждым способом.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: ToString + Equals + GetHashCode (средняя)
+Создай класс `Color(byte R, byte G, byte B)` с ToString() формата "#RRGGBB" (hex), Equals() по RGB, GetHashCode(). Создай набор цветов в HashSet, добавь дубликаты и убедись, что дубликаты не добавляются.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Hiding vs Override демонстрация (средняя)
+Создай класс `Base` с двумя методами: `virtual VMethod()` и обычным `Method()`. Создай `Derived` с `override VMethod()` и `new Method()`. Создай массив `Base[]` из объектов Derived и вызови оба метода. Объясни комментариями результат.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Система логирования (сложная)
+Создай abstract class `Logger` с: abstract `void WriteLog(string msg)`, virtual `string FormatMessage(string level, string msg)`, sealed override `ToString()`. Наследники: `ConsoleLogger`, `FileLogger` (имитируй), `sealed JsonLogger` (форматирует как JSON). Создай массив Logger[] и залогируй несколько сообщений через каждый.
+
+#!csharp
+
+// Твой код здесь:

@@ -1,0 +1,271 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Локальные функции
+
+#!markdown
+
+## Что такое локальная функция?
+
+**Локальная функция** -- это метод, объявленный **внутри другого метода**. Она видна только внутри "родительского" метода и нигде больше.
+
+Зачем это нужно? Иногда внутри метода есть **повторяющаяся логика**, которая:
+- Не нужна нигде больше в классе
+- Слишком мала для отдельного метода
+- Нуждается в доступе к локальным переменным родительского метода
+
+```csharp
+void ProcessData()
+{
+    // Локальная функция -- видна только внутри ProcessData
+    int Double(int x) => x * 2;
+
+    Console.WriteLine(Double(5));   // 10
+    Console.WriteLine(Double(10));  // 20
+}
+```
+
+#!markdown
+
+## 1. Синтаксис локальных функций
+
+Локальная функция объявляется **как обычный метод**, но внутри другого метода:
+
+```csharp
+void ParentMethod()
+{
+    // Полный синтаксис
+    int Add(int a, int b)
+    {
+        return a + b;
+    }
+
+    // Expression body
+    int Multiply(int a, int b) => a * b;
+
+    // Вызов
+    Console.WriteLine(Add(3, 4));       // 7
+    Console.WriteLine(Multiply(3, 4));  // 12
+}
+```
+
+Локальную функцию можно объявить **до или после** её вызова -- порядок не важен:
+
+```csharp
+void Demo()
+{
+    Greet("Мир");  // Можно вызвать ДО объявления!
+
+    void Greet(string name)
+    {
+        Console.WriteLine($"Привет, {name}!");
+    }
+}
+```
+
+#!csharp
+
+// Метод с локальными функциями
+void PrintReport(int[] numbers)
+{
+    // Локальные функции
+    double Average() => numbers.Length > 0 ? numbers.Average() : 0;
+    int Max() => numbers.Length > 0 ? numbers.Max() : 0;
+    int Min() => numbers.Length > 0 ? numbers.Min() : 0;
+    string FormatLine(string label, object value) => $"  {label,-15}: {value}";
+
+    // Основная логика
+    Console.WriteLine("=== ОТЧЁТ ===");
+    Console.WriteLine(FormatLine("Количество", numbers.Length));
+    Console.WriteLine(FormatLine("Минимум", Min()));
+    Console.WriteLine(FormatLine("Максимум", Max()));
+    Console.WriteLine(FormatLine("Среднее", $"{Average():F2}"));
+    Console.WriteLine(FormatLine("Сумма", numbers.Sum()));
+}
+
+PrintReport(new[] { 5, 2, 8, 1, 9, 3 });
+
+#!markdown
+
+### Попробуй сам: напиши метод `void PrintTriangle(int height)`, который использует локальную функцию `string MakeRow(int width)` (возвращает строку из `width` звёздочек) и выводит треугольник высотой `height`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Захват переменных (closure)
+
+Локальные функции могут **обращаться к переменным** родительского метода. Это называется **замыкание (closure)**:
+
+```csharp
+void Counter()
+{
+    int count = 0;  // переменная родительского метода
+
+    void Increment()
+    {
+        count++;  // локальная функция ИЗМЕНЯЕТ переменную родителя
+    }
+
+    Increment();
+    Increment();
+    Increment();
+    Console.WriteLine(count);  // 3
+}
+```
+
+Это мощный механизм, но он имеет **цену** -- компилятор создаёт скрытый объект для хранения захваченных переменных (аллокация в куче).
+
+#!csharp
+
+// Пример: валидация с общим списком ошибок
+void ValidateUser(string name, int age, string email)
+{
+    var errors = new List<string>();  // захваченная переменная
+
+    // Локальные функции добавляют ошибки в общий список
+    void ValidateName()
+    {
+        if (string.IsNullOrWhiteSpace(name)) errors.Add("Имя не может быть пустым");
+        if (name.Length < 2) errors.Add("Имя слишком короткое");
+    }
+
+    void ValidateAge()
+    {
+        if (age < 0) errors.Add("Возраст не может быть отрицательным");
+        if (age > 150) errors.Add("Нереальный возраст");
+    }
+
+    void ValidateEmail()
+    {
+        if (!email.Contains('@')) errors.Add("Email должен содержать @");
+        if (!email.Contains('.')) errors.Add("Email должен содержать точку");
+    }
+
+    // Вызываем все проверки
+    ValidateName();
+    ValidateAge();
+    ValidateEmail();
+
+    // Результат
+    if (errors.Count == 0)
+        Console.WriteLine("Валидация прошла успешно!");
+    else
+    {
+        Console.WriteLine("Ошибки валидации:");
+        foreach (var error in errors)
+            Console.WriteLine($"  - {error}");
+    }
+}
+
+ValidateUser("", -5, "bad");
+Console.WriteLine();
+ValidateUser("Алиса", 25, "alice@mail.ru");
+
+#!markdown
+
+### Попробуй сам: напиши метод `List<int> FilterAndTransform(int[] numbers)`, который использует локальные функции `IsValid(int n)` (число > 0 и < 100) и `Transform(int n)` (удваивает число). Отфильтруй и трансформируй массив {-5, 10, 200, 30, -1, 50, 150}.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Static локальные функции
+
+Если локальная функция **не должна захватывать переменные**, пометь её `static`. Это:
+1. **Запрещает** случайный захват переменных (ошибка компиляции)
+2. **Улучшает производительность** (нет аллокации для замыкания)
+
+```csharp
+void Process()
+{
+    int multiplier = 10;
+
+    // Обычная -- может захватывать
+    int WithCapture(int x) => x * multiplier;  // OK
+
+    // Static -- НЕ может захватывать
+    // static int NoCapture(int x) => x * multiplier;  // Ошибка!
+    static int NoCapture(int x) => x * 2;  // OK -- использует только параметры
+}
+```
+
+**Правило:** если локальная функция не использует внешние переменные, **всегда** делай её `static`.
+
+#!csharp
+
+void ProcessNumbers(int[] numbers)
+{
+    // static -- не захватывает ничего, только параметры
+    static bool IsEven(int n) => n % 2 == 0;
+    static int Square(int n) => n * n;
+    static string Format(int original, int result) => $"{original} -> {result}";
+
+    Console.WriteLine("Квадраты чётных чисел:");
+    foreach (var n in numbers)
+    {
+        if (IsEven(n))
+        {
+            var sq = Square(n);
+            Console.WriteLine(Format(n, sq));
+        }
+    }
+}
+
+ProcessNumbers(new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
+
+#!markdown
+
+### Попробуй сам: напиши метод, который принимает массив строк и выводит только те, которые длиннее 5 символов, в верхнем регистре. Используй static локальные функции `IsLongEnough` и `ToShout`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Калькулятор (лёгкая)
+Напиши метод `void Calculator(double a, double b)`, который содержит четыре локальные функции: `Add`, `Sub`, `Mul`, `Div`. Вызови все четыре и выведи результаты в красивом формате.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Генератор паролей (средняя)
+Напиши метод `string GeneratePassword(int length)` с локальными функциями: `char RandomLetter()`, `char RandomDigit()`, `char RandomSpecial()`. Сгенерируй пароль из случайных символов заданной длины.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Сортировка с компаратором (средняя)
+Напиши метод, который принимает массив строк и сортирует его, используя static локальную функцию `CompareByLength` как компаратор. Выведи массив до и после сортировки.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Парсер с валидацией (сложная)
+Напиши метод `(bool Success, int Value, string Error) TryParsePositive(string input)`, который использует локальные функции для проверки: `IsNotEmpty()`, `IsNumeric()`, `IsPositive(int n)`. Верни кортеж с результатом. Протестируй на: "", "abc", "-5", "0", "42".
+
+#!csharp
+
+// Твой код здесь:

@@ -1,0 +1,398 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Класс Math — математические операции
+
+#!markdown
+
+## 1. Что такое Math?
+
+**`Math`** — это встроенный класс C# с набором математических методов и констант. Все методы вызываются через `Math.`:
+
+```csharp
+double result = Math.Sqrt(25);   // 5 — квадратный корень
+double pi = Math.PI;             // 3.14159... — число Пи
+```
+
+Не нужно ничего подключать — `Math` доступен всегда.
+
+Основные возможности:
+
+| Категория | Методы |
+|---|---|
+| Модуль | `Abs()` |
+| Минимум/Максимум | `Max()`, `Min()` |
+| Округление | `Round()`, `Floor()`, `Ceiling()` |
+| Степень/Корень | `Pow()`, `Sqrt()` |
+| Константы | `PI`, `E` |
+| Ограничение | `Clamp()` |
+
+#!markdown
+
+## 2. Math.Abs() — модуль числа
+
+**`Math.Abs()`** возвращает **абсолютное значение** (модуль) — число без знака:
+
+```csharp
+Console.WriteLine(Math.Abs(-5));      // 5
+Console.WriteLine(Math.Abs(5));       // 5
+Console.WriteLine(Math.Abs(-3.14));   // 3.14
+Console.WriteLine(Math.Abs(0));       // 0
+```
+
+Работает с `int`, `double`, `decimal`, `float`, `long` и другими числовыми типами.
+
+**Применение** — расстояние между числами:
+```csharp
+int a = 10, b = 25;
+int distance = Math.Abs(a - b);
+Console.WriteLine($"Расстояние между {a} и {b}: {distance}");   // 15
+```
+
+**Применение** — проверка, что два числа "почти равны" (для дробных):
+```csharp
+double x = 0.1 + 0.2;   // 0.30000000000000004
+double y = 0.3;
+
+// Прямое сравнение может не работать из-за погрешности!
+Console.WriteLine(x == y);                         // False!
+Console.WriteLine(Math.Abs(x - y) < 0.0001);      // True — "почти равны"
+```
+
+#!markdown
+
+### Попробуй сам: даны два числа `int x = 7` и `int y = -15`. Выведи модуль каждого и расстояние между ними
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Math.Max() и Math.Min()
+
+**`Math.Max(a, b)`** — возвращает **большее** из двух чисел:
+```csharp
+Console.WriteLine(Math.Max(10, 20));      // 20
+Console.WriteLine(Math.Max(-5, -10));     // -5
+Console.WriteLine(Math.Max(3.14, 2.71)); // 3.14
+```
+
+**`Math.Min(a, b)`** — возвращает **меньшее** из двух чисел:
+```csharp
+Console.WriteLine(Math.Min(10, 20));      // 10
+Console.WriteLine(Math.Min(-5, -10));     // -10
+```
+
+**Только два аргумента!** Для трёх и более — вложенные вызовы:
+```csharp
+int a = 5, b = 12, c = 3;
+int maxOfThree = Math.Max(a, Math.Max(b, c));
+Console.WriteLine(maxOfThree);   // 12
+
+int minOfThree = Math.Min(a, Math.Min(b, c));
+Console.WriteLine(minOfThree);   // 3
+```
+
+**Применение** — ограничение значения:
+```csharp
+int score = 150;
+score = Math.Min(score, 100);   // не больше 100
+Console.WriteLine(score);        // 100
+
+int health = -20;
+health = Math.Max(health, 0);   // не меньше 0
+Console.WriteLine(health);       // 0
+```
+
+#!markdown
+
+### Попробуй сам: создай массив `int[] nums = {45, 12, 78, 3, 56, 91, 23}`. Найди максимальное и минимальное значение, перебирая массив циклом foreach и используя Math.Max/Math.Min
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Math.Round(), Math.Floor(), Math.Ceiling()
+
+Три способа округления числа:
+
+**`Math.Round()`** — математическое округление (к ближайшему):
+```csharp
+Console.WriteLine(Math.Round(3.2));    // 3
+Console.WriteLine(Math.Round(3.7));    // 4
+Console.WriteLine(Math.Round(3.5));    // 4 (к ближайшему чётному!)
+Console.WriteLine(Math.Round(4.5));    // 4 (к ближайшему чётному!)
+```
+
+Округление до N знаков после запятой:
+```csharp
+Console.WriteLine(Math.Round(3.14159, 2));   // 3.14
+Console.WriteLine(Math.Round(3.14159, 3));   // 3.142
+Console.WriteLine(Math.Round(3.14159, 0));   // 3
+```
+
+**`Math.Floor()`** — округление **вниз** (к минус бесконечности):
+```csharp
+Console.WriteLine(Math.Floor(3.9));    // 3
+Console.WriteLine(Math.Floor(3.1));    // 3
+Console.WriteLine(Math.Floor(-3.1));   // -4 (вниз!)
+```
+
+**`Math.Ceiling()`** — округление **вверх** (к плюс бесконечности):
+```csharp
+Console.WriteLine(Math.Ceiling(3.1));    // 4
+Console.WriteLine(Math.Ceiling(3.9));    // 4
+Console.WriteLine(Math.Ceiling(-3.9));   // -3 (вверх!)
+```
+
+Сравнительная таблица:
+
+| Число | `Round()` | `Floor()` | `Ceiling()` |
+|---|---|---|---|
+| 3.2 | 3 | 3 | 4 |
+| 3.7 | 4 | 3 | 4 |
+| 3.5 | 4 | 3 | 4 |
+| -3.2 | -3 | -4 | -3 |
+| -3.7 | -4 | -4 | -3 |
+
+**Применение** — подсчёт страниц:
+```csharp
+int totalItems = 47;
+int itemsPerPage = 10;
+int pages = (int)Math.Ceiling((double)totalItems / itemsPerPage);
+Console.WriteLine($"Страниц: {pages}");   // 5
+```
+
+#!markdown
+
+### Попробуй сам: дано `double price = 99.956`. Выведи цену: округлённую до 2 знаков, округлённую вниз (Floor), округлённую вверх (Ceiling)
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Math.Pow() и Math.Sqrt()
+
+**`Math.Pow(base, exponent)`** — возведение в степень:
+```csharp
+Console.WriteLine(Math.Pow(2, 3));     // 8     (2^3 = 2*2*2)
+Console.WriteLine(Math.Pow(5, 2));     // 25    (5^2 = 25)
+Console.WriteLine(Math.Pow(10, 0));    // 1     (любое число в степени 0 = 1)
+Console.WriteLine(Math.Pow(2, 10));    // 1024  (2^10)
+Console.WriteLine(Math.Pow(2, -1));    // 0.5   (2^-1 = 1/2)
+```
+
+**Внимание:** `Pow` возвращает `double`:
+```csharp
+double result = Math.Pow(2, 3);   // 8.0 (double, не int)
+int intResult = (int)Math.Pow(2, 3);   // 8 (приведение к int)
+```
+
+**`Math.Sqrt()`** — квадратный корень:
+```csharp
+Console.WriteLine(Math.Sqrt(25));    // 5
+Console.WriteLine(Math.Sqrt(2));     // 1.4142135623730951
+Console.WriteLine(Math.Sqrt(0));     // 0
+Console.WriteLine(Math.Sqrt(-1));    // NaN (Not a Number!)
+```
+
+**Применение** — расстояние между точками (теорема Пифагора):
+```csharp
+double x1 = 1, y1 = 2;
+double x2 = 4, y2 = 6;
+
+double distance = Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+Console.WriteLine($"Расстояние: {Math.Round(distance, 2)}");   // 5
+```
+
+#!markdown
+
+### Попробуй сам: вычисли гипотенузу прямоугольного треугольника с катетами a = 3 и b = 4 (по теореме Пифагора: c = sqrt(a^2 + b^2)). Выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Math.PI и Math.E
+
+**`Math.PI`** — число Пи (3.14159...):
+```csharp
+Console.WriteLine(Math.PI);   // 3.141592653589793
+```
+
+**`Math.E`** — число Эйлера (2.71828...):
+```csharp
+Console.WriteLine(Math.E);    // 2.718281828459045
+```
+
+Это **константы** (свойства, не методы — без скобок).
+
+**Применение** — площадь и длина окружности:
+```csharp
+double radius = 5;
+double area = Math.PI * Math.Pow(radius, 2);           // S = π * r²
+double circumference = 2 * Math.PI * radius;            // C = 2πr
+
+Console.WriteLine($"Радиус: {radius}");
+Console.WriteLine($"Площадь: {Math.Round(area, 2)}");          // 78.54
+Console.WriteLine($"Длина окружности: {Math.Round(circumference, 2)}"); // 31.42
+```
+
+**Перевод градусов в радианы** (для тригонометрии):
+```csharp
+double degrees = 180;
+double radians = degrees * Math.PI / 180;
+Console.WriteLine($"{degrees}° = {Math.Round(radians, 4)} рад");   // 3.1416 рад
+```
+
+#!markdown
+
+### Попробуй сам: вычисли площадь и длину окружности для радиуса 7.5. Выведи результаты, округлённые до 2 знаков
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. Math.Clamp()
+
+**`Math.Clamp(value, min, max)`** — ограничивает значение в диапазоне [min, max]:
+
+```csharp
+Console.WriteLine(Math.Clamp(5, 0, 10));     // 5  (в диапазоне — без изменений)
+Console.WriteLine(Math.Clamp(-3, 0, 10));    // 0  (меньше min → вернуть min)
+Console.WriteLine(Math.Clamp(15, 0, 10));    // 10 (больше max → вернуть max)
+```
+
+По сути, `Clamp` — это сокращение для:
+```csharp
+// Эквивалент Math.Clamp(value, min, max):
+result = Math.Max(min, Math.Min(max, value));
+```
+
+**Применение** — ограничение в играх:
+```csharp
+int health = 120;
+health = Math.Clamp(health, 0, 100);   // здоровье: 0-100
+Console.WriteLine(health);              // 100
+
+int damage = -10;
+damage = Math.Clamp(damage, 0, 100);   // урон не может быть отрицательным
+Console.WriteLine(damage);              // 0
+```
+
+**Применение** — оценки:
+```csharp
+int score = 112;
+int normalizedScore = Math.Clamp(score, 0, 100);
+Console.WriteLine($"Балл: {normalizedScore}");   // 100
+
+double temperature = -45.5;
+double safe = Math.Clamp(temperature, -40.0, 50.0);
+Console.WriteLine($"Безопасная температура: {safe}");   // -40
+```
+
+#!markdown
+
+## ИТОГО:
+
+| Метод | Описание | Пример | Результат |
+|---|---|---|---|
+| `Math.Abs(x)` | Модуль | `Math.Abs(-5)` | `5` |
+| `Math.Max(a, b)` | Большее | `Math.Max(3, 7)` | `7` |
+| `Math.Min(a, b)` | Меньшее | `Math.Min(3, 7)` | `3` |
+| `Math.Round(x, n)` | Округление | `Math.Round(3.456, 1)` | `3.5` |
+| `Math.Floor(x)` | Вниз | `Math.Floor(3.9)` | `3` |
+| `Math.Ceiling(x)` | Вверх | `Math.Ceiling(3.1)` | `4` |
+| `Math.Pow(a, b)` | Степень | `Math.Pow(2, 3)` | `8` |
+| `Math.Sqrt(x)` | Корень | `Math.Sqrt(25)` | `5` |
+| `Math.PI` | Пи | `Math.PI` | `3.14159...` |
+| `Math.E` | Эйлер | `Math.E` | `2.71828...` |
+| `Math.Clamp(v, min, max)` | Ограничить | `Math.Clamp(15, 0, 10)` | `10` |
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Калькулятор расстояния (лёгкая)
+Даны два числа: `int a = 15` и `int b = -8`. Вычисли расстояние между ними (модуль разности). Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Мин/Макс массива (лёгкая)
+Массив `double[] temps = {-12.5, 3.2, -0.8, 15.7, 8.3, -5.1, 22.0}`. Найди минимальную и максимальную температуру, используя Math.Min/Math.Max в цикле. Выведи: "Мин: ..., Макс: ..., Разброс: ...".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Округление цен (средняя)
+Массив `double[] prices = {19.99, 5.432, 100.005, 49.999, 0.1 + 0.2}`. Для каждой цены выведи: оригинал, Round(2), Floor и Ceiling. Формат: "19.99 → Round: 19.99, Floor: 19, Ceil: 20".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Площадь фигур (средняя)
+Вычисли площади трёх фигур и выведи с округлением до 2 знаков:
+- Круг: радиус = 6.5 (S = PI * r^2)
+- Квадрат: сторона = 8 (S = a^2)
+- Прямоугольный треугольник: катеты 5 и 12 (S = a*b/2), также найди гипотенузу
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Нормализация оценок (средняя)
+Массив `int[] rawScores = {105, -3, 87, 120, 45, 0, -15, 92, 150, 73}`. Нормализуй каждую оценку в диапазон 0-100 используя Math.Clamp. Выведи: "Было: 105 → Стало: 100" для каждого элемента. В конце выведи среднее нормализованных оценок (Round до 1 знака).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Геометрический калькулятор (сложная)
+Даны три точки на плоскости: A(1, 1), B(4, 5), C(7, 2). Вычисли:
+1. Длины всех трёх сторон треугольника (расстояние между точками)
+2. Периметр треугольника (сумма сторон)
+3. Площадь по формуле Герона: S = sqrt(p*(p-a)*(p-b)*(p-c)), где p = периметр/2
+Выведи всё с округлением до 2 знаков.
+
+#!csharp
+
+// Твой код здесь:

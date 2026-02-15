@@ -1,0 +1,450 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Records -- неизменяемые типы данных
+
+#!markdown
+
+## Зачем нужны record?
+
+В программировании часто нужны объекты, которые просто **хранят данные** и ничего больше. Например, координата точки, информация о пользователе, результат запроса.
+
+Для обычного класса тебе пришлось бы писать:
+- Свойства
+- Конструктор
+- `ToString()`
+- `Equals()` и `GetHashCode()`
+- Оператор `==`
+
+Это **десятки строк** шаблонного кода. **Record** решает эту проблему -- компилятор генерирует всё это автоматически.
+
+#!markdown
+
+## 1. Объявление record class
+
+`record` (или `record class`) -- это ссылочный тип, похожий на `class`, но с автоматической генерацией полезных методов.
+
+```csharp
+// Обычный класс -- много кода
+public class PersonClass
+{
+    public string Name { get; init; }
+    public int Age { get; init; }
+
+    public PersonClass(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+
+    // Ещё нужно переопределить ToString, Equals, GetHashCode...
+}
+
+// Record -- одна строка!
+public record Person(string Name, int Age);
+```
+
+Одна строка `record Person(string Name, int Age)` создаёт:
+- Свойства `Name` и `Age` (init-only)
+- Конструктор `Person(string name, int age)`
+- `ToString()` -- красивый вывод
+- `Equals()` / `GetHashCode()` -- сравнение по значениям
+- Оператор `==` -- сравнение по значениям
+- Метод `Deconstruct` -- деконструкция
+- Метод `Clone` + выражение `with` -- копирование с изменениями
+
+#!csharp
+
+// Объявляем record
+public record Person(string Name, int Age);
+
+// Создаём экземпляр
+var alice = new Person("Алиса", 25);
+Console.WriteLine(alice);           // Person { Name = Алиса, Age = 25 }
+Console.WriteLine(alice.Name);      // Алиса
+Console.WriteLine(alice.Age);       // 25
+
+#!markdown
+
+### Попробуй сам: создай record `Book(string Title, string Author, int Year)` и выведи его на экран
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Value Equality -- сравнение по значению
+
+Главное отличие record от class: **два record'а равны, если равны все их свойства**.
+
+У обычного класса `==` сравнивает **ссылки** (адреса в памяти). Два объекта с одинаковыми данными будут **не равны**:
+
+```csharp
+var c1 = new PersonClass("Алиса", 25);
+var c2 = new PersonClass("Алиса", 25);
+Console.WriteLine(c1 == c2);  // false -- разные объекты в памяти!
+```
+
+У record `==` сравнивает **значения**:
+
+```csharp
+var r1 = new Person("Алиса", 25);
+var r2 = new Person("Алиса", 25);
+Console.WriteLine(r1 == r2);  // true -- одинаковые данные!
+```
+
+#!csharp
+
+public record Point(int X, int Y);
+
+var p1 = new Point(3, 5);
+var p2 = new Point(3, 5);
+var p3 = new Point(1, 2);
+
+Console.WriteLine($"p1 == p2: {p1 == p2}");   // true  -- одинаковые значения
+Console.WriteLine($"p1 == p3: {p1 == p3}");   // false -- разные значения
+Console.WriteLine($"p1 != p3: {p1 != p3}");   // true
+
+// Equals тоже работает по значению
+Console.WriteLine($"p1.Equals(p2): {p1.Equals(p2)}");  // true
+
+// GetHashCode одинаков для равных записей
+Console.WriteLine($"p1 hash: {p1.GetHashCode()}");
+Console.WriteLine($"p2 hash: {p2.GetHashCode()}");  // тот же хеш!
+
+#!markdown
+
+### Попробуй сам: создай два одинаковых record `Color(int R, int G, int B)` и проверь их на равенство через `==`
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Выражение with -- копия с изменениями
+
+Record'ы по умолчанию **неизменяемые** (immutable) -- свойства `init`-only, их нельзя менять после создания.
+
+Но как создать "похожий" объект с одним изменённым свойством? Используй **`with`**:
+
+```csharp
+var alice = new Person("Алиса", 25);
+
+// Нельзя: alice.Age = 26;  -- ошибка компиляции!
+
+// Можно: создать копию с изменением
+var olderAlice = alice with { Age = 26 };
+```
+
+`with` создаёт **новый объект** -- копию оригинала, где указанные свойства заменены.
+
+#!csharp
+
+public record Employee(string Name, string Department, int Salary);
+
+var emp = new Employee("Иван", "IT", 100000);
+Console.WriteLine($"Оригинал:  {emp}");
+
+// Повышение зарплаты -- создаём НОВЫЙ объект
+var promoted = emp with { Salary = 120000 };
+Console.WriteLine($"Повышение: {promoted}");
+
+// Перевод в другой отдел
+var transferred = emp with { Department = "HR" };
+Console.WriteLine($"Перевод:   {transferred}");
+
+// Можно менять несколько свойств
+var newEmp = emp with { Department = "Marketing", Salary = 110000 };
+Console.WriteLine($"Новый:     {newEmp}");
+
+// Оригинал НЕ изменился!
+Console.WriteLine($"Оригинал:  {emp}");
+
+#!markdown
+
+### Попробуй сам: создай record `Product(string Name, decimal Price, int Stock)`. Создай продукт "Ноутбук" за 50000 с остатком 10. Затем через `with` создай копию с ценой 45000 (скидка). Выведи оба.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Деконструкция record
+
+Позиционный record автоматически генерирует метод `Deconstruct`, позволяя **разложить** объект на отдельные переменные:
+
+```csharp
+var person = new Person("Алиса", 25);
+
+// Деконструкция в отдельные переменные
+var (name, age) = person;
+Console.WriteLine(name);  // Алиса
+Console.WriteLine(age);   // 25
+```
+
+Это работает потому, что компилятор создал:
+```csharp
+public void Deconstruct(out string Name, out int Age)
+{
+    Name = this.Name;
+    Age = this.Age;
+}
+```
+
+#!csharp
+
+public record Address(string City, string Street, int House);
+
+var addr = new Address("Москва", "Ленина", 42);
+
+// Деконструкция -- все поля
+var (city, street, house) = addr;
+Console.WriteLine($"Город: {city}, Улица: {street}, Дом: {house}");
+
+// Можно игнорировать ненужные поля через _
+var (_, улица, _) = addr;
+Console.WriteLine($"Только улица: {улица}");
+
+// Деконструкция в switch (pattern matching)
+string Describe(Address a) => a switch
+{
+    ("Москва", _, _) => "Столица!",
+    (_, _, var h) when h > 100 => $"Большой дом #{h}",
+    _ => "Обычный адрес"
+};
+
+Console.WriteLine(Describe(addr));
+Console.WriteLine(Describe(new Address("Казань", "Мира", 150)));
+
+#!markdown
+
+### Попробуй сам: создай record `Student(string Name, int Grade, double GPA)`. Создай студента и разложи его на отдельные переменные через деконструкцию. Выведи каждую.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Record struct -- значимый тип
+
+Начиная с C# 10, можно создать record на основе **struct** вместо class:
+
+| Характеристика | `record class` | `record struct` |
+|---|---|---|
+| Тип | Ссылочный (heap) | Значимый (stack) |
+| По умолчанию | `record` = `record class` | Нужно писать `record struct` |
+| Свойства | `init`-only | **Мутабельные** (get; set;) |
+| Nullable | Может быть `null` | Не может быть `null` |
+| Value equality | Да | Да |
+| `with` | Да | Да |
+
+```csharp
+// record struct -- значимый тип
+public record struct Vector2D(double X, double Y);
+
+// readonly record struct -- как record class, но значимый тип
+public readonly record struct ReadonlyVector(double X, double Y);
+```
+
+#!csharp
+
+// record struct -- свойства мутабельные!
+public record struct MutablePoint(int X, int Y);
+
+var p = new MutablePoint(1, 2);
+p.X = 10;  // Можно менять!
+Console.WriteLine(p);  // MutablePoint { X = 10, Y = 2 }
+
+// readonly record struct -- свойства init-only
+public readonly record struct ImmutablePoint(int X, int Y);
+
+var ip = new ImmutablePoint(1, 2);
+// ip.X = 10;  // Ошибка! readonly
+Console.WriteLine(ip);
+
+// Value equality работает для обоих
+var a = new ImmutablePoint(3, 4);
+var b = new ImmutablePoint(3, 4);
+Console.WriteLine($"a == b: {a == b}");  // true
+
+#!markdown
+
+### Попробуй сам: создай `readonly record struct Money(decimal Amount, string Currency)`. Создай два одинаковых значения и проверь, что они равны.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. Автогенерация ToString()
+
+Record автоматически генерирует красивый `ToString()`, который выводит имя типа и все свойства:
+
+```csharp
+record Person(string Name, int Age);
+var p = new Person("Алиса", 25);
+Console.WriteLine(p);  // Person { Name = Алиса, Age = 25 }
+```
+
+Можно **переопределить** `ToString()`:
+
+```csharp
+record Person(string Name, int Age)
+{
+    public override string ToString() => $"{Name} ({Age} лет)";
+}
+```
+
+#!csharp
+
+public record Car(string Brand, string Model, int Year);
+
+var car = new Car("Toyota", "Camry", 2023);
+Console.WriteLine(car);  // Car { Brand = Toyota, Model = Camry, Year = 2023 }
+
+// Record с переопределённым ToString
+public record GameCharacter(string Name, int Level, string Class)
+{
+    public override string ToString()
+        => $"[{Class}] {Name} (ур. {Level})";
+}
+
+var hero = new GameCharacter("Артас", 60, "Паладин");
+Console.WriteLine(hero);  // [Паладин] Артас (ур. 60)
+
+#!markdown
+
+### Попробуй сам: создай record `Movie(string Title, int Year, double Rating)` с переопределённым ToString, который выводит в формате: "Начало (2010) -- рейтинг 8.8"
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 7. Record vs Class -- когда что использовать
+
+| Критерий | `class` | `record` |
+|---|---|---|
+| **Назначение** | Объект с поведением и состоянием | Контейнер для данных |
+| **Сравнение `==`** | По ссылке | По значению |
+| **Мутабельность** | Мутабельный (по умолчанию) | Иммутабельный (по умолчанию) |
+| **`with`** | Нет | Да |
+| **ToString** | Имя типа | Все свойства |
+| **Наследование** | Да | Да (только от record) |
+| **Deconstructing** | Нужно писать вручную | Автоматически |
+
+**Используй record когда:**
+- Объект -- просто **набор данных** (DTO, модель, конфигурация)
+- Нужно **сравнение по значению**
+- Нужна **неизменяемость**
+- Нужно удобное **копирование с изменениями** (`with`)
+
+**Используй class когда:**
+- Объект имеет **поведение** и **изменяемое состояние**
+- Идентичность объекта важнее его данных (BankAccount, HttpClient)
+- Нужно **мутабельное** состояние
+
+```csharp
+// Record -- данные
+record OrderItem(string Product, int Quantity, decimal Price);
+
+// Class -- поведение
+class ShoppingCart
+{
+    private List<OrderItem> items = new();
+
+    public void Add(OrderItem item) { items.Add(item); }
+    public decimal Total => items.Sum(i => i.Price * i.Quantity);
+}
+```
+
+#!csharp
+
+// Record для данных
+public record WeatherReport(string City, double Temperature, string Condition);
+
+// Удобно использовать в коллекциях
+var reports = new List<WeatherReport>
+{
+    new("Москва", -5.2, "Снег"),
+    new("Сочи", 12.0, "Солнечно"),
+    new("Казань", -8.1, "Облачно"),
+};
+
+// Поиск -- работает по значению!
+var searchFor = new WeatherReport("Сочи", 12.0, "Солнечно");
+Console.WriteLine($"Найден: {reports.Contains(searchFor)}");  // true
+
+// Фильтрация, сортировка
+foreach (var r in reports.Where(r => r.Temperature < 0))
+{
+    Console.WriteLine($"Холодно в {r.City}: {r.Temperature}C");
+}
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Координата (лёгкая)
+Создай `record Coordinate(double Latitude, double Longitude)`. Создай две координаты: Москва (55.75, 37.62) и Лондон (51.51, -0.13). Выведи обе. Проверь, что Москва != Лондон.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Копирование с with (лёгкая)
+Создай `record Config(string Theme, int FontSize, bool DarkMode)`. Создай конфиг по умолчанию ("Default", 14, false). Затем через `with` создай три варианта: тёмная тема, крупный шрифт, и оба изменения сразу. Выведи все четыре.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Деконструкция (средняя)
+Создай `record Temperature(double Value, string Unit)`. Напиши метод `string Describe(Temperature t)`, который через деконструкцию получает значение и единицу, и возвращает: "Жарко!" если > 30, "Холодно!" если < 0, "Нормально" иначе (считай, что единица всегда Цельсий). Протестируй на трёх значениях.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Record struct (средняя)
+Создай `readonly record struct RGBColor(byte R, byte G, byte B)` с переопределённым `ToString()`, который выводит `#RRGGBB` в hex-формате (подсказка: `R.ToString("X2")`). Создай красный (255,0,0), зелёный (0,255,0), синий (0,0,255). Выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Цепочка with (средняя)
+Создай `record Player(string Name, int Level, int HP, int XP)`. Создай игрока "Герой" (ур. 1, HP 100, XP 0). Симулируй: получил 50 XP, потерял 20 HP, получил ещё 60 XP, повысил уровень (level+1, XP сбрасывается в 0, HP восстанавливается до 100). Каждый шаг -- новый with. Выведи все состояния.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Record и коллекции (сложная)
+Создай `record Student(string Name, string Group, double GPA)`. Создай список из 5 студентов разных групп с разным GPA. Используя LINQ: (1) Найди студента с максимальным GPA. (2) Сгруппируй по группам и выведи средний GPA каждой группы. (3) Создай новый список, где у каждого студента GPA увеличен на 0.5 (через `with`, но не больше 5.0).
+
+#!csharp
+
+// Твой код здесь:

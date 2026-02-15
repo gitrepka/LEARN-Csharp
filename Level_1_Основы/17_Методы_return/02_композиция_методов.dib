@@ -1,0 +1,292 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Композиция методов — методы вызывают методы
+
+#!markdown
+
+## 1. Методы могут вызывать другие методы
+
+Внутри одного метода можно вызвать другой — это **композиция**:
+
+```csharp
+int Square(int n)
+{
+    return n * n;
+}
+
+int SumOfSquares(int a, int b)
+{
+    return Square(a) + Square(b);    // вызов Square внутри другого метода
+}
+
+Console.WriteLine(SumOfSquares(3, 4));  // 9 + 16 = 25
+```
+
+Это мощный приём: сложную задачу **разбиваешь** на простые методы, а потом **комбинируешь** их.
+
+#!markdown
+
+## 2. Цепочка вызовов
+
+Методы могут вызывать друг друга в цепочке:
+
+```csharp
+int Double(int n) { return n * 2; }
+int AddOne(int n) { return n + 1; }
+
+// Цепочка: Double → AddOne
+int result = AddOne(Double(5));    // Double(5)=10, AddOne(10)=11
+Console.WriteLine(result);         // 11
+
+// Порядок: сначала выполняется ВНУТРЕННИЙ вызов
+int x = Double(AddOne(Double(3)));
+// Double(3) = 6
+// AddOne(6) = 7
+// Double(7) = 14
+```
+
+Вычисление идёт **изнутри наружу**: сначала самый внутренний вызов, потом его результат передаётся во внешний.
+
+#!markdown
+
+### Попробуй сам: создай методы `int Add(int a, int b)` и `int Multiply(int a, int b)`. Используя их, вычисли: `(3 + 5) * (2 + 7)` — комбинируя вызовы
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Декомпозиция задачи
+
+**Декомпозиция** — разбиение сложной задачи на простые шаги.
+
+Задача: "Вычислить среднее арифметическое и определить, больше ли оно порога".
+
+Без декомпозиции:
+```csharp
+// Всё в одном месте — сложно читать
+int a = 10, b = 20, c = 30;
+double avg = (a + b + c) / 3.0;
+bool result = avg > 15;
+```
+
+С декомпозицией:
+```csharp
+double Average(int a, int b, int c)
+{
+    return (a + b + c) / 3.0;
+}
+
+bool IsAboveThreshold(double value, double threshold)
+{
+    return value > threshold;
+}
+
+// Читается как человеческий язык:
+double avg = Average(10, 20, 30);
+bool above = IsAboveThreshold(avg, 15.0);
+```
+
+Каждый метод делает **одну** вещь. Имена объясняют **что** происходит.
+
+#!markdown
+
+### Попробуй сам: разбей задачу на методы. Задача: "Определить, является ли число одновременно положительным И чётным". Создай `bool IsPositive(int n)`, `bool IsEven(int n)`, и `bool IsPositiveAndEven(int n)` (который вызывает первые два)
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Пример: проверка пароля
+
+Разобьём проверку пароля на отдельные методы:
+
+```csharp
+bool IsLongEnough(string password)
+{
+    return password.Length >= 8;
+}
+
+bool HasDigit(string password)
+{
+    for (int i = 0; i < password.Length; i++)
+    {
+        if (password[i] >= '0' && password[i] <= '9')
+            return true;     // нашли цифру — ранний выход
+    }
+    return false;            // прошли весь цикл — цифр нет
+}
+
+bool HasUpperCase(string password)
+{
+    for (int i = 0; i < password.Length; i++)
+    {
+        if (password[i] >= 'A' && password[i] <= 'Z')
+            return true;
+    }
+    return false;
+}
+
+string ValidatePassword(string password)
+{
+    if (!IsLongEnough(password))
+        return "Пароль слишком короткий (мин. 8 символов)";
+    if (!HasDigit(password))
+        return "Пароль должен содержать цифру";
+    if (!HasUpperCase(password))
+        return "Пароль должен содержать заглавную букву";
+    return "Пароль надёжный ✓";
+}
+```
+
+Каждый метод проверяет **одно** условие. `ValidatePassword` **комбинирует** их.
+
+#!markdown
+
+## 5. Ранний return как паттерн
+
+**Guard clause** (защитная проверка) — проверяй ошибки **в начале** метода и сразу выходи:
+
+```csharp
+// ❌ Глубокая вложенность — трудно читать
+double Divide(int a, int b)
+{
+    if (b != 0)
+    {
+        if (a != 0)
+        {
+            return (double)a / b;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+// ✅ Guard clauses — просто и ясно
+double Divide(int a, int b)
+{
+    if (b == 0) return 0;    // guard: защита от деления на 0
+    if (a == 0) return 0;    // guard: нулевой числитель
+    return (double)a / b;    // основная логика
+}
+```
+
+Принцип: **сначала отсеки невалидные случаи, потом занимайся основной логикой**.
+
+#!markdown
+
+### Попробуй сам: создай метод `int Clamp(int value, int min, int max)`, который возвращает: min если value < min, max если value > max, иначе value. Используй ранний return. Проверь: Clamp(5, 1, 10)=5, Clamp(-3, 0, 100)=0, Clamp(200, 0, 100)=100
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Разделение ответственности
+
+**Хороший метод** — делает **одну** вещь:
+
+```csharp
+// ❌ Метод делает слишком много
+void ProcessStudent(string name, int score)
+{
+    string grade;
+    if (score >= 90) grade = "A";
+    else if (score >= 80) grade = "B";
+    else grade = "C";
+    Console.WriteLine($"========");
+    Console.WriteLine($"Студент: {name}");
+    Console.WriteLine($"Оценка: {score} ({grade})");
+    Console.WriteLine($"========");
+}
+
+// ✅ Каждый метод — одна задача
+string GetGrade(int score)
+{
+    if (score >= 90) return "A";
+    if (score >= 80) return "B";
+    return "C";
+}
+
+void PrintStudentReport(string name, int score)
+{
+    string grade = GetGrade(score);    // делегируем вычисление
+    Console.WriteLine($"========");
+    Console.WriteLine($"Студент: {name}");
+    Console.WriteLine($"Оценка: {score} ({grade})");
+    Console.WriteLine($"========");
+}
+```
+
+#!markdown
+
+## ИТОГО:
+
+1. Методы могут **вызывать другие методы** — это композиция
+2. Вложенные вызовы выполняются **изнутри наружу**
+3. **Декомпозиция** — разбивай сложную задачу на простые методы
+4. **Guard clause** — проверяй ошибки в начале, выходи через ранний return
+5. Хороший метод делает **одну** вещь
+6. Имя метода должно **объяснять**, что он делает
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Математические функции (лёгкая)
+Создай `int Min(int a, int b)` и `int Max(int a, int b)`. Потом создай `int Clamp(int value, int min, int max)`, который использует Min и Max. Проверь: `Clamp(15, 0, 10)` = 10.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Расстояние (средняя)
+Создай `int Abs(int n)` (модуль числа). Потом `int Distance(int a, int b)` (расстояние = `Abs(a - b)`). Проверь: `Distance(5, 12)` = 7, `Distance(-3, 4)` = 7.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Анализ числа (средняя)
+Создай набор методов: `bool IsEven(int n)`, `bool IsPositive(int n)`, `bool IsPrime(int n)`, `int DigitCount(int n)` (количество цифр). Потом создай метод `void AnalyzeNumber(int n)`, который вызывает их все и выводит отчёт: "42: чётное, положительное, не простое, 2 цифры". Проанализируй числа: 7, 42, -15, 97.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Валидация email (сложная)
+Создай методы: `bool HasAtSign(string email)` (есть @), `bool HasDot(string email)` (есть точка), `bool IsLongEnough(string email)` (длина >= 5), `bool HasNoDuplicateAt(string email)` (@ встречается ровно 1 раз). Потом `string ValidateEmail(string email)` — возвращает "OK" или описание ошибки. Проверь: "user@mail.ru", "invalid", "a@@b.c", "ab".
+
+#!csharp
+
+// Твой код здесь:
+

@@ -1,0 +1,350 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Nullable типы — работа с отсутствующими значениями
+
+#!markdown
+
+## 1. Что такое null?
+
+**`null`** — это специальное значение, означающее **"ничего"**, **"пусто"**, **"значения нет"**.
+
+```csharp
+string name = null;   // строка не содержит никакого значения
+```
+
+**Зачем нужен null?**
+- Пользователь не заполнил поле в форме
+- Данные ещё не загружены из базы
+- Результат вычисления не определён (например, деление на ноль)
+- Объект ещё не создан
+
+**Важное различие:**
+
+| Выражение | Значение |
+|---|---|
+| `string s = ""` | Строка **есть**, но она пустая |
+| `string s = null` | Строки **нет вообще** |
+| `int x = 0` | Число **есть**, и оно равно нулю |
+| `int? x = null` | Числа **нет вообще** |
+
+**Ссылочные типы** (string, массивы, классы) могут быть `null` по умолчанию:
+```csharp
+string name = null;     // ОК — string ссылочный тип
+int[] arr = null;        // ОК — массив ссылочный тип
+```
+
+**Значимые типы** (int, double, bool, char) **НЕ могут** быть `null`:
+```csharp
+int x = null;           // ОШИБКА! int не может быть null
+bool flag = null;        // ОШИБКА! bool не может быть null
+```
+
+Но что если нам **нужно**, чтобы число или bool могли быть "пустыми"? Для этого существуют **Nullable типы**.
+
+#!markdown
+
+### Попробуй сам: создай переменную `string text = null;` и выведи её через `Console.WriteLine(text)`. Что выведется? Затем попробуй `Console.WriteLine(text.Length)` — что произойдёт?
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Nullable значимые типы: int?, double?, bool?
+
+Чтобы значимый тип мог принимать `null`, добавь **`?`** после имени типа:
+
+```csharp
+int? age = null;          // возраст неизвестен
+double? temperature = null; // температура не измерена
+bool? isReady = null;      // статус не определён
+```
+
+**Синтаксис:** `Тип?` — это сокращение для `Nullable<Тип>`:
+
+```csharp
+int? x = 10;               // сокращённая форма
+Nullable<int> y = 10;      // полная форма (то же самое)
+```
+
+**Nullable тип может хранить:**
+1. Любое значение базового типа: `int? x = 42;`
+2. Или null: `int? x = null;`
+
+```csharp
+int? score = 95;       // есть значение
+int? bonus = null;     // значения нет
+
+double? weight = 72.5; // есть значение
+double? height = null; // значения нет
+
+bool? agreed = true;   // согласен
+bool? declined = null; // не ответил
+```
+
+**Какие типы могут быть Nullable?**
+
+| Базовый тип | Nullable версия | Пример |
+|---|---|---|
+| `int` | `int?` | `int? age = null;` |
+| `double` | `double?` | `double? price = null;` |
+| `bool` | `bool?` | `bool? flag = null;` |
+| `char` | `char?` | `char? letter = null;` |
+| `long` | `long?` | `long? id = null;` |
+| `decimal` | `decimal?` | `decimal? salary = null;` |
+| `DateTime` | `DateTime?` | `DateTime? date = null;` |
+
+#!markdown
+
+### Попробуй сам: создай три Nullable переменные: `int? age`, `double? salary`, `bool? isStudent`. Присвой одной значение, другим — null. Выведи все три через Console.WriteLine
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Свойства HasValue и Value
+
+У каждого Nullable типа есть два важных свойства:
+
+### HasValue — проверка: есть ли значение?
+
+```csharp
+int? x = 42;
+Console.WriteLine(x.HasValue);  // True — значение есть
+
+int? y = null;
+Console.WriteLine(y.HasValue);  // False — значения нет
+```
+
+### Value — получение самого значения
+
+```csharp
+int? x = 42;
+Console.WriteLine(x.Value);    // 42
+```
+
+**ОПАСНОСТЬ!** Если значения нет (null), обращение к `.Value` вызовет **исключение**:
+
+```csharp
+int? y = null;
+Console.WriteLine(y.Value);    // InvalidOperationException!
+```
+
+### Безопасный паттерн: сначала проверь, потом бери
+
+```csharp
+int? score = null;
+
+if (score.HasValue)
+{
+    Console.WriteLine($"Оценка: {score.Value}");
+}
+else
+{
+    Console.WriteLine("Оценка не выставлена");
+}
+```
+
+**Важно:** можно также сравнивать с `null` напрямую:
+
+```csharp
+int? score = 85;
+
+if (score != null)
+{
+    Console.WriteLine($"Оценка: {score.Value}");
+}
+
+// Или ещё короче — неявное преобразование:
+if (score != null)
+{
+    int normalScore = (int)score;  // явное приведение из int? в int
+    Console.WriteLine(normalScore);
+}
+```
+
+#!markdown
+
+### Попробуй сам: создай `int? temperature = 25;`. Выведи HasValue и Value. Затем присвой null и снова выведи HasValue. Попробуй вывести Value от null — поймай ошибку!
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. GetValueOrDefault() — безопасное получение значения
+
+Метод **`GetValueOrDefault()`** возвращает:
+- **Значение**, если оно есть
+- **Значение по умолчанию** для типа (0, false, и т.д.), если null
+
+```csharp
+int? a = 42;
+int? b = null;
+
+Console.WriteLine(a.GetValueOrDefault());   // 42
+Console.WriteLine(b.GetValueOrDefault());   // 0 (по умолчанию для int)
+```
+
+Можно указать **своё значение по умолчанию**:
+
+```csharp
+int? score = null;
+
+Console.WriteLine(score.GetValueOrDefault(50));   // 50 — наше значение по умолчанию
+Console.WriteLine(score.GetValueOrDefault(-1));   // -1
+
+int? realScore = 95;
+Console.WriteLine(realScore.GetValueOrDefault(50)); // 95 — значение есть, default игнорируется
+```
+
+**Сравнение подходов:**
+
+| Подход | Что делает | Безопасно? |
+|---|---|---|
+| `.Value` | Возвращает значение или кидает исключение | Нет |
+| `.GetValueOrDefault()` | Возвращает значение или default типа | Да |
+| `.GetValueOrDefault(X)` | Возвращает значение или X | Да |
+| `if (x.HasValue)` | Проверка перед обращением | Да |
+| `x != null` | Проверка перед обращением | Да |
+
+#!markdown
+
+### Попробуй сам: создай массив `int?[] grades = {5, null, 4, null, 3};`. Выведи каждый элемент: если оценка есть — выведи её, если null — выведи "Н/О" (не оценён). Используй HasValue
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Арифметика и сравнение с Nullable
+
+**Арифметика:** если хотя бы один операнд `null`, результат тоже `null`:
+
+```csharp
+int? a = 10;
+int? b = null;
+
+int? sum = a + b;        // null (не 10!)
+Console.WriteLine(sum);  // (пусто)
+
+int? c = 5;
+int? result = a + c;     // 15
+Console.WriteLine(result); // 15
+```
+
+**Сравнение:**
+
+```csharp
+int? x = null;
+int? y = null;
+
+Console.WriteLine(x == y);     // True  (null == null)
+Console.WriteLine(x == null);  // True
+Console.WriteLine(x > 0);     // False (любое сравнение с null → false)
+Console.WriteLine(x < 0);     // False
+Console.WriteLine(x >= 0);    // False
+Console.WriteLine(x == 0);    // False (null != 0)
+```
+
+**Важно:** `null` — это не ноль! Это "отсутствие значения".
+
+```csharp
+int? zero = 0;
+int? nothing = null;
+
+Console.WriteLine(zero == nothing);   // False!  0 и null — разные вещи
+Console.WriteLine(zero == 0);         // True
+Console.WriteLine(nothing == null);   // True
+```
+
+#!markdown
+
+### Попробуй сам: создай `int? a = 10;` и `int? b = null;`. Вычисли сумму, разность, произведение. Выведи результаты и объясни, почему они такие
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## ИТОГО:
+
+1. **`null`** — означает "значения нет" (не ноль, не пустая строка!)
+2. **`int?`**, **`double?`**, **`bool?`** — Nullable версии значимых типов
+3. **`HasValue`** — проверка: есть ли значение (true/false)
+4. **`Value`** — получение значения (выбрасывает исключение, если null!)
+5. **`GetValueOrDefault()`** — безопасное получение значения
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Профиль пользователя (лёгкая)
+Создай переменные: `string name = "Алексей"`, `int? age = 30`, `double? weight = null`, `bool? isSubscribed = true`. Выведи каждую, а если null — выведи "не указано".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Средний балл (средняя)
+Дан массив `int?[] grades = {5, null, 4, null, 5, 3, null, 4};`. Посчитай средний балл **только** по выставленным оценкам (пропусти null). Выведи: "Оценок: N, Средний балл: X.XX".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Температурный журнал (средняя)
+Дан массив `double?[] temps = {22.5, null, 21.0, 23.1, null, null, 20.8};` — температура за неделю (null = датчик не сработал). Выведи для каждого дня: "День N: XX.X°C" или "День N: нет данных". В конце: "Данные есть за N из 7 дней".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Калькулятор с проверкой (средняя)
+Напиши метод `int? SafeDivide(int? a, int? b)`, который:
+- Возвращает null, если a или b равны null
+- Возвращает null, если b == 0 (деление на ноль)
+- Иначе возвращает a / b
+
+Протестируй: SafeDivide(10, 2), SafeDivide(10, null), SafeDivide(null, 5), SafeDivide(10, 0).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Замена null на значения (сложная)
+Дан массив `int?[] data = {1, null, 3, null, null, 6, 7, null};`. Создай новый массив `int[] filled`, где каждый null заменён на **среднее** из двух соседних значений (если оба соседа есть). Если один сосед null или элемент крайний — замени на 0. Выведи оба массива.
+
+#!csharp
+
+// Твой код здесь:

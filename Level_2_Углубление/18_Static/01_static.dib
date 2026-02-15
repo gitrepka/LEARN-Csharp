@@ -1,0 +1,513 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: static — статические члены и классы
+
+#!markdown
+
+## 1. static поля — общие для всех объектов
+
+**Обычное поле** — у каждого объекта **своё**:
+```csharp
+class Dog { public string Name; }
+Dog d1 = new Dog { Name = "Бобик" };
+Dog d2 = new Dog { Name = "Шарик" };
+// d1.Name и d2.Name — разные
+```
+
+**`static` поле** — **одно на весь класс**, общее для всех объектов:
+
+```csharp
+class Dog
+{
+    public string Name;
+    public static int Count = 0;   // общий счётчик для всех собак
+
+    public Dog(string name)
+    {
+        Name = name;
+        Count++;   // увеличиваем общий счётчик
+    }
+}
+```
+
+Доступ к static через **имя класса**, не через объект: `Dog.Count`.
+
+#!csharp
+
+class Player
+{
+    // Обычные поля — у каждого объекта своё
+    public string Name;
+    public int Score;
+
+    // Статическое поле — одно на всех
+    public static int TotalPlayers = 0;
+    public static int TotalScore = 0;
+
+    public Player(string name)
+    {
+        Name = name;
+        TotalPlayers++;
+    }
+
+    public void AddScore(int points)
+    {
+        Score += points;
+        TotalScore += points;   // общий счёт тоже обновляется
+    }
+}
+
+var p1 = new Player("Анна");
+var p2 = new Player("Пётр");
+var p3 = new Player("Мария");
+
+p1.AddScore(100);
+p2.AddScore(250);
+p3.AddScore(150);
+
+// Доступ к static — через имя класса
+Console.WriteLine($"Всего игроков: {Player.TotalPlayers}");  // 3
+Console.WriteLine($"Общий счёт:    {Player.TotalScore}");    // 500
+
+// Доступ к обычным — через объект
+Console.WriteLine($"\n{p1.Name}: {p1.Score}");
+Console.WriteLine($"{p2.Name}: {p2.Score}");
+Console.WriteLine($"{p3.Name}: {p3.Score}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Transaction` со static полем TotalAmount (double). Каждая транзакция при создании (конструктор принимает amount) прибавляет к TotalAmount. Создай 4 транзакции и выведи общую сумму.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. static методы — вызываются через класс
+
+**Static метод** не привязан к объекту. Он **не имеет доступа** к обычным полям (нет `this`):
+
+```csharp
+class MathHelper
+{
+    public static int Max(int a, int b)
+    {
+        return a > b ? a : b;
+    }
+}
+
+// Вызов через имя класса:
+int result = MathHelper.Max(10, 20);
+```
+
+Ты уже знаком со static методами:
+- `Console.WriteLine()` — static метод класса Console
+- `Math.Max()`, `Math.Sqrt()` — static методы класса Math
+- `int.Parse()`, `Array.Sort()` — тоже static
+
+**Правило:** static метод может обращаться **только к static** членам.
+
+```csharp
+class Foo
+{
+    public int X;              // обычное поле
+    public static int Y;      // static поле
+
+    public static void Bar()
+    {
+        // Console.WriteLine(X);  // ОШИБКА! X — не static
+        Console.WriteLine(Y);     // ✓ — Y static
+    }
+}
+```
+
+#!csharp
+
+class StringUtils
+{
+    // Static метод — утилита для строк
+    public static string Reverse(string text)
+    {
+        char[] chars = text.ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
+    }
+
+    public static bool IsPalindrome(string text)
+    {
+        string cleaned = text.ToLower().Replace(" ", "");
+        return cleaned == Reverse(cleaned);
+    }
+
+    public static string Repeat(string text, int count, string separator = "")
+    {
+        string[] parts = new string[count];
+        for (int i = 0; i < count; i++)
+            parts[i] = text;
+        return string.Join(separator, parts);
+    }
+}
+
+Console.WriteLine(StringUtils.Reverse("Привет"));           // тевирП
+Console.WriteLine(StringUtils.IsPalindrome("А роза упала на лапу Азора"));  // True
+Console.WriteLine(StringUtils.Repeat("Ха", 5, " "));        // Ха Ха Ха Ха Ха
+
+#!markdown
+
+### Попробуй сам: создай класс `Validator` со static методами: IsEmail(string) — содержит @, IsPositive(int) — > 0, IsInRange(int value, int min, int max). Проверь каждый.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. static свойства и static конструктор
+
+**Static свойства** — свойства уровня класса:
+
+```csharp
+class AppConfig
+{
+    public static string AppName { get; set; } = "MyApp";
+    public static string Version { get; } = "1.0.0";
+}
+```
+
+**Static конструктор** — вызывается **один раз** при первом обращении к классу:
+
+```csharp
+class Database
+{
+    public static string ConnectionString { get; private set; }
+
+    static Database()   // нет модификатора доступа, нет параметров
+    {
+        ConnectionString = "Server=localhost";
+        Console.WriteLine("База данных инициализирована");
+    }
+}
+```
+
+#!csharp
+
+class IdGenerator
+{
+    // Static поле
+    private static int nextId;
+
+    // Static свойство
+    public static int LastId => nextId;
+
+    // Static конструктор — вызовется один раз
+    static IdGenerator()
+    {
+        nextId = 1000;  // начинаем с 1000
+        Console.WriteLine("IdGenerator инициализирован");
+    }
+
+    // Static метод
+    public static int GetNextId()
+    {
+        return nextId++;
+    }
+}
+
+Console.WriteLine($"ID: {IdGenerator.GetNextId()}");  // 1000 (+ "инициализирован")
+Console.WriteLine($"ID: {IdGenerator.GetNextId()}");  // 1001
+Console.WriteLine($"ID: {IdGenerator.GetNextId()}");  // 1002
+Console.WriteLine($"Последний: {IdGenerator.LastId}");
+
+#!markdown
+
+### Попробуй сам: создай класс `AppSettings` со static свойствами: Theme (string, default "Light"), FontSize (int, default 14), Language (string, default "ru"). Static метод PrintSettings(). Измени настройки и выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. static класс — только static члены
+
+**`static class`** — класс, который **нельзя** создать через `new`. Содержит **только static** члены:
+
+```csharp
+static class MathHelper
+{
+    public static double Square(double x) => x * x;
+    public static double Cube(double x) => x * x * x;
+}
+
+// MathHelper m = new MathHelper();  // ОШИБКА! Нельзя создать экземпляр
+MathHelper.Square(5);                // ✓ — через имя класса
+```
+
+Примеры static классов в .NET: `Math`, `Console`, `Convert`, `Environment`.
+
+**Когда использовать:**
+- Утилиты и хелперы (MathHelper, StringUtils)
+- Методы расширения (extension methods)
+- Когда объект не нужен — только набор функций
+
+#!csharp
+
+// Пример static класса
+static class ArrayHelper
+{
+    public static void PrintArray<T>(T[] arr, string label = "Массив")
+    {
+        Console.WriteLine($"{label}: [{string.Join(", ", arr)}]");
+    }
+
+    public static T[] Shuffle<T>(T[] arr)
+    {
+        T[] result = (T[])arr.Clone();
+        var rng = new Random();
+        for (int i = result.Length - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (result[i], result[j]) = (result[j], result[i]);
+        }
+        return result;
+    }
+
+    public static int CountIf(int[] arr, Func<int, bool> condition)
+    {
+        int count = 0;
+        foreach (int item in arr)
+            if (condition(item))
+                count++;
+        return count;
+    }
+}
+
+int[] nums = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+ArrayHelper.PrintArray(nums, "Оригинал");
+ArrayHelper.PrintArray(ArrayHelper.Shuffle(nums), "Перемешанный");
+
+int evens = ArrayHelper.CountIf(nums, x => x % 2 == 0);
+Console.WriteLine($"Чётных: {evens}");
+
+#!markdown
+
+## 5. static vs instance — когда что?
+
+| | **Instance (обычный)** | **Static** |
+|---|---|---|
+| Принадлежит | Объекту | Классу |
+| Доступ | `obj.Method()` | `Class.Method()` |
+| Есть `this` | Да | Нет |
+| Доступ к instance-членам | Да | Нет |
+| Создание объекта | Нужно (`new`) | Не нужно |
+| Когда использовать | Данные зависят от объекта | Общая функциональность |
+
+**Примеры:**
+- `"hello".ToUpper()` — instance (зависит от конкретной строки)
+- `string.IsNullOrEmpty(s)` — static (утилита, не привязана к объекту)
+- `Math.Max(a, b)` — static (математическая функция)
+- `list.Add(item)` — instance (зависит от конкретного списка)
+
+#!csharp
+
+class Temperature
+{
+    // Instance — данные конкретного объекта
+    public double Celsius { get; set; }
+    public double Fahrenheit => Celsius * 9.0 / 5 + 32;
+
+    // Instance метод — работает с данными ЭТОГО объекта
+    public void Print()
+    {
+        Console.WriteLine($"  {Celsius}°C = {Fahrenheit:F1}°F");
+    }
+
+    // Static — утилиты, не привязанные к объекту
+    public static double CelsiusToFahrenheit(double c) => c * 9.0 / 5 + 32;
+    public static double FahrenheitToCelsius(double f) => (f - 32) * 5.0 / 9;
+
+    // Static фабричный метод
+    public static Temperature FromFahrenheit(double f)
+    {
+        return new Temperature { Celsius = FahrenheitToCelsius(f) };
+    }
+}
+
+// Instance — через объект
+var t1 = new Temperature { Celsius = 100 };
+t1.Print();
+
+// Static — через класс
+Console.WriteLine($"\n0°F = {Temperature.FahrenheitToCelsius(0):F1}°C");
+
+// Фабричный метод
+var t2 = Temperature.FromFahrenheit(212);
+t2.Print();
+
+#!markdown
+
+### Попробуй сам: создай класс `Counter` с instance-полем Value и static-полем TotalIncrements. Метод Increment() увеличивает и Value (instance), и TotalIncrements (static). Создай 3 счётчика, поинкрементируй каждый несколько раз. Выведи Value каждого и общий TotalIncrements.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. partial class и expression-bodied =>
+
+**partial class** — класс, разделённый на **несколько файлов**. Часто используется в Godot, WPF, генераторах кода:
+
+```csharp
+// Файл Player.cs
+partial class Player
+{
+    public string Name { get; set; }
+    public void Attack() { ... }
+}
+
+// Файл Player.Generated.cs (автогенерация)
+partial class Player
+{
+    public void SaveState() { ... }   // сгенерированный код
+}
+```
+
+Компилятор объединяет все части в один класс.
+
+**Expression-bodied members** `=>` — короткий синтаксис для членов с одним выражением:
+
+```csharp
+// Метод
+public double Area() => Math.PI * Radius * Radius;
+
+// Свойство (только get)
+public double Area => Math.PI * Radius * Radius;
+
+// Свойство с get и set
+public string Name
+{
+    get => name;
+    set => name = value ?? "";
+}
+
+// Конструктор
+public Point(double x, double y) => (X, Y) = (x, y);
+```
+
+#!csharp
+
+// Expression-bodied в действии
+class Vector2
+{
+    public double X { get; set; }
+    public double Y { get; set; }
+
+    // Expression-bodied конструктор
+    public Vector2(double x, double y) => (X, Y) = (x, y);
+
+    // Expression-bodied свойства
+    public double Length => Math.Sqrt(X * X + Y * Y);
+    public Vector2 Normalized => new Vector2(X / Length, Y / Length);
+
+    // Expression-bodied методы
+    public Vector2 Add(Vector2 other) => new Vector2(X + other.X, Y + other.Y);
+    public Vector2 Scale(double factor) => new Vector2(X * factor, Y * factor);
+    public double Dot(Vector2 other) => X * other.X + Y * other.Y;
+
+    public override string ToString() => $"({X:F2}, {Y:F2})";
+}
+
+var a = new Vector2(3, 4);
+var b = new Vector2(1, 2);
+
+Console.WriteLine($"a = {a}, длина = {a.Length:F2}");
+Console.WriteLine($"b = {b}, длина = {b.Length:F2}");
+Console.WriteLine($"a + b = {a.Add(b)}");
+Console.WriteLine($"a * 2 = {a.Scale(2)}");
+Console.WriteLine($"a · b = {a.Dot(b)}");
+Console.WriteLine($"a нормализованный = {a.Normalized}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **`static` поля** — общие для всех объектов класса
+2. **`static` методы** — вызываются через класс, не имеют `this`
+3. **`static` класс** — нельзя создать `new`, только static члены
+4. **static конструктор** — вызывается один раз при первом обращении
+5. **`partial class`** — класс в нескольких файлах (Godot, WPF)
+6. **`=>`** — expression-bodied синтаксис для методов и свойств
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Счётчик объектов (лёгкая)
+Создай класс `Animal` со static полем Count. Каждое создание объекта увеличивает Count. Добавь static метод PrintCount(). Создай 5 животных и выведи счётчик.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Static утилитный класс (лёгкая)
+Создай `static class NumberUtils` с методами: IsEven(int), IsPositive(int), Factorial(int), IsPrime(int). Проверь каждый метод.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Singleton (средняя)
+Создай класс `Logger` с private конструктором и static свойством Instance (ленивая инициализация). Метод Log(string message) добавляет сообщение в private список. Метод PrintAll() выводит все сообщения. Logger.Instance.Log("test") — единственный способ использования.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Фабричные методы (средняя)
+Создай класс `Color` (R, G, B). Добавь static фабричные методы: Red(), Green(), Blue(), White(), Black(), FromHex(string hex). Каждый возвращает new Color с нужными значениями.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Static кэш (сложная)
+Создай класс `FibCalculator` со static Dictionary<int, long> cache. Static метод Fibonacci(int n) вычисляет число Фибоначчи с кэшированием (если уже считали — берём из кэша). Static метод CacheSize() — размер кэша. Вычисли Fib(40), затем Fib(35) (должно быть мгновенно из кэша).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Expression-bodied рефакторинг (сложная)
+Создай класс `Product` с полями Name, Price, Quantity. Перепиши ВСЕ свойства и методы через `=>`: TotalCost, IsAvailable, Discount(double percent), ToString(). Класс должен быть максимально компактным.
+
+#!csharp
+
+// Твой код здесь:

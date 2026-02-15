@@ -1,0 +1,627 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Интерфейсы
+
+#!markdown
+
+## Что такое интерфейс?
+
+**Интерфейс** -- это **контракт** (договор). Он описывает, **какие методы и свойства** должен иметь класс, но **не содержит реализации** (за исключением default methods).
+
+Аналогия: **розетка**. Стандарт розетки (интерфейс) говорит: "у тебя должны быть два отверстия определённого размера". Любое устройство (класс), подходящее под этот стандарт, может подключиться. Розетке всё равно -- это чайник, лампа или компьютер.
+
+Зачем:
+1. **Множественная реализация** -- класс может реализовать МНОГО интерфейсов (в отличие от наследования)
+2. **Слабая связанность** -- код зависит от интерфейса, а не от конкретного класса
+3. **Полиморфизм** -- работаем с разными объектами через один интерфейс
+
+#!markdown
+
+## 1. Объявление интерфейса
+
+```csharp
+// Интерфейс -- только сигнатуры (ЧТО делать, но не КАК)
+public interface IMovable
+{
+    void Move(double x, double y);
+    double Speed { get; }
+}
+```
+
+Правила:
+- Имя начинается с **I** (IMovable, IDisposable, IEnumerable)
+- Члены по умолчанию **public** (нельзя указывать private/protected)
+- Нет полей, нет конструкторов
+- Может содержать: методы, свойства, индексаторы, события
+
+#!csharp
+
+// Интерфейс -- контракт "что должен уметь делать"
+public interface IDrawable
+{
+    void Draw();                    // Метод без реализации
+    string Color { get; set; }      // Свойство
+    double Area();                  // Ещё метод
+}
+
+// Класс РЕАЛИЗУЕТ интерфейс
+public class Circle : IDrawable
+{
+    public double Radius { get; set; }
+    public string Color { get; set; }  // Реализация свойства интерфейса
+
+    public Circle(double radius, string color)
+    {
+        Radius = radius;
+        Color = color;
+    }
+
+    public void Draw()  // Реализация метода интерфейса
+        => Console.WriteLine($"Рисую круг ({Color}), R={Radius}");
+
+    public double Area() => Math.PI * Radius * Radius;
+}
+
+public class Square : IDrawable
+{
+    public double Side { get; set; }
+    public string Color { get; set; }
+
+    public Square(double side, string color)
+    {
+        Side = side;
+        Color = color;
+    }
+
+    public void Draw()
+        => Console.WriteLine($"Рисую квадрат ({Color}), сторона={Side}");
+
+    public double Area() => Side * Side;
+}
+
+// Используем через интерфейс -- полиморфизм!
+IDrawable[] shapes = {
+    new Circle(5, "красный"),
+    new Square(4, "синий"),
+    new Circle(3, "зелёный"),
+};
+
+foreach (IDrawable shape in shapes)
+{
+    shape.Draw();
+    Console.WriteLine($"  Площадь: {shape.Area():F2}\n");
+}
+
+#!markdown
+
+### Попробуй сам: создай интерфейс `IPlayable` с методами `Play()`, `Pause()`, `Stop()` и свойством `string Title`. Реализуй его в классах `Song` и `Video`. Создай массив IPlayable[] и вызови Play() для каждого.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Множественная реализация интерфейсов
+
+Класс может реализовать **несколько** интерфейсов (в отличие от наследования, где только один базовый класс):
+
+```csharp
+public interface IMovable { void Move(); }
+public interface IAttackable { void Attack(); }
+public interface IHealable { void Heal(); }
+
+// Класс реализует ТРИ интерфейса!
+public class Paladin : IMovable, IAttackable, IHealable
+{
+    public void Move() => Console.WriteLine("Паладин идёт");
+    public void Attack() => Console.WriteLine("Паладин атакует");
+    public void Heal() => Console.WriteLine("Паладин лечит");
+}
+```
+
+#!csharp
+
+public interface IPrintable
+{
+    void Print();
+}
+
+public interface ISaveable
+{
+    void Save(string path);
+    bool IsSaved { get; }
+}
+
+public interface IExportable
+{
+    string Export(string format);
+}
+
+// Класс реализует ВСЕ ТРИ интерфейса
+public class Document : IPrintable, ISaveable, IExportable
+{
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public bool IsSaved { get; private set; }
+
+    public Document(string title, string content)
+    {
+        Title = title;
+        Content = content;
+    }
+
+    public void Print()
+        => Console.WriteLine($"Печать: {Title}\n{Content}");
+
+    public void Save(string path)
+    {
+        Console.WriteLine($"Сохранение {Title} в {path}");
+        IsSaved = true;
+    }
+
+    public string Export(string format)
+    {
+        return format.ToLower() switch
+        {
+            "txt" => Content,
+            "html" => $"<h1>{Title}</h1><p>{Content}</p>",
+            "md" => $"# {Title}\n\n{Content}",
+            _ => throw new ArgumentException($"Неизвестный формат: {format}")
+        };
+    }
+}
+
+var doc = new Document("Отчёт", "Продажи выросли на 20%");
+
+// Используем через разные интерфейсы
+IPrintable printable = doc;
+printable.Print();
+
+ISaveable saveable = doc;
+saveable.Save("/docs/report.txt");
+Console.WriteLine($"Сохранён: {saveable.IsSaved}");
+
+IExportable exportable = doc;
+Console.WriteLine($"\nHTML: {exportable.Export("html")}");
+Console.WriteLine($"Markdown: {exportable.Export("md")}");
+
+#!markdown
+
+### Попробуй сам: создай интерфейсы `IFlyable` (Fly()), `ISwimmable` (Swim()), `IRunnable` (Run()). Создай классы: `Duck` (все три!), `Eagle` (Fly + Run), `Fish` (Swim). Покажи, что Duck -- самый универсальный.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Явная реализация интерфейса (explicit)
+
+Если два интерфейса имеют метод с **одинаковым именем**, используй **явную реализацию**:
+
+```csharp
+public interface ILogger { void Log(string msg); }
+public interface IAuditor { void Log(string msg); }
+
+public class Service : ILogger, IAuditor
+{
+    // Явная реализация -- без public, с именем интерфейса
+    void ILogger.Log(string msg) => Console.WriteLine($"[LOG] {msg}");
+    void IAuditor.Log(string msg) => Console.WriteLine($"[AUDIT] {msg}");
+}
+```
+
+Явная реализация доступна **только через переменную типа интерфейса**:
+
+```csharp
+var service = new Service();
+// service.Log("test");  // Ошибка! Нет публичного Log()
+
+ILogger logger = service;
+logger.Log("test");   // [LOG] test
+
+IAuditor auditor = service;
+auditor.Log("test");  // [AUDIT] test
+```
+
+#!csharp
+
+public interface ISerializer
+{
+    string Serialize();
+}
+
+public interface IDebugInfo
+{
+    string Serialize();  // Тот же метод!
+}
+
+public class User : ISerializer, IDebugInfo
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+
+    // Явная реализация ISerializer
+    string ISerializer.Serialize()
+        => $"{{\"name\":\"{Name}\",\"age\":{Age}}}";
+
+    // Явная реализация IDebugInfo
+    string IDebugInfo.Serialize()
+        => $"[DEBUG] User(Name={Name}, Age={Age})";
+
+    // Можно добавить и свой публичный метод
+    public string ToJson() => ((ISerializer)this).Serialize();
+}
+
+var user = new User { Name = "Алиса", Age = 25 };
+
+// Через ISerializer
+ISerializer serializer = user;
+Console.WriteLine($"JSON: {serializer.Serialize()}");
+
+// Через IDebugInfo
+IDebugInfo debug = user;
+Console.WriteLine($"Debug: {debug.Serialize()}");
+
+// Через собственный метод
+Console.WriteLine($"ToJson: {user.ToJson()}");
+
+#!markdown
+
+### Попробуй сам: создай интерфейсы `IRussianGreeter` (string Greet()) и `IEnglishGreeter` (string Greet()). Создай класс `Polyglot`, реализующий оба явно. Вызови Greet() через переменную каждого интерфейса.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Default Interface Methods (C# 8+)
+
+Начиная с C# 8, интерфейсы могут содержать **методы с реализацией по умолчанию**:
+
+```csharp
+public interface ILogger
+{
+    void Log(string message);
+
+    // Default method -- реализация прямо в интерфейсе!
+    void LogError(string message) => Log($"ERROR: {message}");
+    void LogWarning(string message) => Log($"WARNING: {message}");
+}
+```
+
+Класс **не обязан** реализовывать default methods, но **может** переопределить.
+
+Важно: default methods доступны **только через переменную интерфейса**, не через экземпляр класса.
+
+#!csharp
+
+public interface INotifier
+{
+    // Обычный метод -- обязан реализовать
+    void Send(string to, string message);
+
+    // Default methods -- необязательные, уже реализованы
+    void SendUrgent(string to, string message)
+        => Send(to, $"[СРОЧНО] {message}");
+
+    void Broadcast(string[] recipients, string message)
+    {
+        foreach (var r in recipients)
+            Send(r, message);
+    }
+}
+
+public class EmailNotifier : INotifier
+{
+    // Реализуем только обязательный метод
+    public void Send(string to, string message)
+        => Console.WriteLine($"Email -> {to}: {message}");
+
+    // SendUrgent и Broadcast используют реализацию по умолчанию
+}
+
+public class SmsNotifier : INotifier
+{
+    public void Send(string to, string message)
+        => Console.WriteLine($"SMS -> {to}: {message}");
+
+    // Переопределяем default method
+    public void SendUrgent(string to, string message)
+        => Console.WriteLine($"SMS [!!!] -> {to}: {message.ToUpper()}");
+}
+
+// Используем через интерфейс (обязательно для default methods!)
+INotifier email = new EmailNotifier();
+email.Send("alice@mail.ru", "Привет");
+email.SendUrgent("boss@mail.ru", "Серверы лежат!");
+email.Broadcast(new[] { "a@mail.ru", "b@mail.ru" }, "Рассылка");
+
+Console.WriteLine();
+
+INotifier sms = new SmsNotifier();
+sms.Send("+7-999-000-00-00", "Код: 1234");
+sms.SendUrgent("+7-999-000-00-00", "Серверы лежат!");
+
+#!markdown
+
+## 5. Полиморфизм через интерфейсы
+
+Интерфейсы обеспечивают **полиморфизм** -- работу с разными объектами через единый интерфейс:
+
+```csharp
+// Метод принимает ИНТЕРФЕЙС -- работает с ЛЮБОЙ реализацией
+void ProcessAll(IEnumerable<IDrawable> items)
+{
+    foreach (var item in items)
+        item.Draw();  // Полиморфный вызов
+}
+```
+
+Это мощнее наследования: один класс может реализовать несколько интерфейсов и участвовать в разных полиморфных сценариях.
+
+#!csharp
+
+public interface IShippable
+{
+    string Name { get; }
+    double Weight { get; }
+    string ShippingAddress { get; }
+}
+
+public class Book : IShippable
+{
+    public string Name { get; set; }
+    public string Author { get; set; }
+    public double Weight { get; set; }
+    public string ShippingAddress { get; set; }
+}
+
+public class Electronics : IShippable
+{
+    public string Name { get; set; }
+    public double Weight { get; set; }
+    public string ShippingAddress { get; set; }
+    public bool IsFragile { get; set; }
+}
+
+public class Furniture : IShippable
+{
+    public string Name { get; set; }
+    public double Weight { get; set; }
+    public string ShippingAddress { get; set; }
+    public bool RequiresAssembly { get; set; }
+}
+
+// Метод работает с ЛЮБЫМ IShippable -- не знает конкретных типов!
+decimal CalculateShipping(IShippable item)
+{
+    decimal baseRate = 500;
+    decimal perKg = 50;
+    return baseRate + (decimal)item.Weight * perKg;
+}
+
+IShippable[] order = {
+    new Book { Name = "C# in Depth", Author = "Skeet", Weight = 0.8, ShippingAddress = "Москва" },
+    new Electronics { Name = "Ноутбук", Weight = 2.5, ShippingAddress = "Москва", IsFragile = true },
+    new Furniture { Name = "Стол", Weight = 25, ShippingAddress = "Москва", RequiresAssembly = true },
+};
+
+Console.WriteLine("=== Расчёт доставки ===");
+decimal total = 0;
+foreach (var item in order)
+{
+    decimal cost = CalculateShipping(item);
+    Console.WriteLine($"{item.Name} ({item.Weight} кг): {cost:C}");
+    total += cost;
+}
+Console.WriteLine($"\nИтого: {total:C}");
+
+#!markdown
+
+### Попробуй сам: создай интерфейс `IDiscountable` с `decimal GetDiscount()`. Реализуй в классах `VIPCustomer` (20%), `RegularCustomer` (5%), `NewCustomer` (10% на первый заказ). Напиши метод `decimal ApplyDiscount(IDiscountable customer, decimal price)` и протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. Интерфейс vs Абстрактный класс
+
+| | Интерфейс | Абстрактный класс |
+|---|---|---|
+| **Множественное наследование** | Да (сколько угодно) | Нет (только один) |
+| **Поля** | Нет | Да |
+| **Конструкторы** | Нет | Да |
+| **Реализация методов** | Только default (C# 8+) | Да (virtual/обычные) |
+| **Модификаторы доступа** | Только public | Любые (private, protected...) |
+| **Когда использовать** | "Что умеет делать" (can-do) | "Что является" (is-a) |
+
+**Используй интерфейс** когда:
+- Описываешь **способность** (IMovable, ISerializable, IDisposable)
+- Нужна **множественная** реализация
+- Классы **не связаны** иерархией (Car и Fish оба IMovable)
+
+**Используй abstract class** когда:
+- Описываешь **иерархию** (Animal -> Dog, Cat)
+- Нужен **общий код** (поля, конструкторы, реализация)
+- Классы **тесно связаны** общей логикой
+
+#!csharp
+
+// Интерфейс -- способность (can-do)
+public interface IStorable
+{
+    void SaveTo(string location);
+    void LoadFrom(string location);
+}
+
+// Абстрактный класс -- иерархия (is-a) с общим кодом
+public abstract class GameEntity
+{
+    public string Name { get; set; }      // Общее поле
+    public int Health { get; protected set; }  // protected -- для наследников
+
+    protected GameEntity(string name, int health)  // Конструктор!
+    {
+        Name = name;
+        Health = health;
+    }
+
+    public abstract void Update();  // Обязательно реализовать
+
+    public void TakeDamage(int damage)  // Общая логика
+    {
+        Health = Math.Max(0, Health - damage);
+    }
+}
+
+// Класс наследует abstract class И реализует интерфейс!
+public class Player : GameEntity, IStorable
+{
+    public int Score { get; set; }
+
+    public Player(string name) : base(name, 100) { }
+
+    public override void Update()
+        => Console.WriteLine($"{Name}: обновление игрока (HP:{Health}, Score:{Score})");
+
+    public void SaveTo(string location)
+        => Console.WriteLine($"Сохранение {Name} в {location}");
+
+    public void LoadFrom(string location)
+        => Console.WriteLine($"Загрузка {Name} из {location}");
+}
+
+var player = new Player("Герой") { Score = 500 };
+player.Update();           // Из GameEntity (abstract)
+player.TakeDamage(30);     // Из GameEntity (общая логика)
+player.SaveTo("save.dat"); // Из IStorable (интерфейс)
+player.Update();
+
+#!markdown
+
+## 7. Именование интерфейсов с I
+
+В C# интерфейсы **всегда** начинаются с буквы **I** (заглавная). Это соглашение, а не требование языка, но его нарушение считается плохой практикой.
+
+| Паттерн | Примеры |
+|---|---|
+| I + прилагательное | `IMovable`, `ISerializable`, `IDisposable`, `IComparable` |
+| I + существительное | `ILogger`, `IRepository`, `INotifier` |
+| I + "er" суффикс | `IReader`, `IWriter`, `IFormatter` |
+
+Стандартные интерфейсы .NET:
+- `IEnumerable<T>` -- перебор элементов (foreach)
+- `IComparable<T>` -- сравнение (сортировка)
+- `IEquatable<T>` -- равенство
+- `IDisposable` -- освобождение ресурсов
+- `ICloneable` -- клонирование
+
+#!csharp
+
+// Пример хорошего именования
+public interface IRepository<T>
+{
+    T GetById(int id);
+    IEnumerable<T> GetAll();
+    void Add(T entity);
+    void Update(T entity);
+    void Delete(int id);
+}
+
+public interface IValidator<T>
+{
+    bool IsValid(T entity);
+    IEnumerable<string> GetErrors(T entity);
+}
+
+// Конкретная реализация
+public class InMemoryUserRepository : IRepository<string>
+{
+    private readonly Dictionary<int, string> _users = new();
+    private int _nextId = 1;
+
+    public string GetById(int id) => _users.GetValueOrDefault(id, "Не найден");
+    public IEnumerable<string> GetAll() => _users.Values;
+    public void Add(string entity) { _users[_nextId++] = entity; }
+    public void Update(string entity) { /* ... */ }
+    public void Delete(int id) { _users.Remove(id); }
+}
+
+var repo = new InMemoryUserRepository();
+repo.Add("Алиса");
+repo.Add("Боб");
+repo.Add("Чарли");
+
+Console.WriteLine("Все пользователи:");
+foreach (var user in repo.GetAll())
+    Console.WriteLine($"  {user}");
+
+Console.WriteLine($"ID 2: {repo.GetById(2)}");
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Простой интерфейс (лёгкая)
+Создай интерфейс `IResizable` с методом `void Resize(double factor)` и свойством `(double Width, double Height) Size`. Реализуй в классах `Image` и `Window`. Создай массив IResizable[] и увеличь все в 2 раза.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Множественная реализация (лёгкая)
+Создай три интерфейса: `IReadable` (Read()), `IWritable` (Write(string)), `IDeletable` (Delete()). Создай класс `FileManager`, реализующий все три. Продемонстрируй использование через каждый интерфейс отдельно.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Явная реализация (средняя)
+Создай интерфейсы `IAnimal` (string Name, void Eat()) и `IRobot` (string Name, void Charge()). Создай `Cyborg`, реализующий оба. Свойство Name реализуй явно для каждого (животное имя vs серийный номер). Покажи разницу.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Default methods (средняя)
+Создай интерфейс `ICalculator` с обязательным `double Calculate(double a, double b)` и default методами: `double CalculateAndRound(double a, double b)` (округляет результат), `string CalculateFormatted(double a, double b)` (форматирует результат). Реализуй `Adder`, `Multiplier`, `Divider`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Интерфейс + абстрактный класс (средняя)
+Создай интерфейс `ILoggable` (void Log(string msg)). Создай abstract class `Service(string name)` с abstract void Execute(). Создай `EmailService : Service, ILoggable` и `DatabaseService : Service, ILoggable`. Каждый реализует и Execute(), и Log(). Продемонстрируй полиморфизм через оба типа.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Система плагинов (сложная)
+Создай интерфейс `IPlugin` с: `string Name`, `string Version`, `void Initialize()`, `void Execute(string input)`, `void Shutdown()`. Создай 3 плагина: `SpellChecker`, `WordCounter`, `Translator`. Создай класс `PluginManager`, который хранит список IPlugin, может AddPlugin(), RemovePlugin(), RunAll(string input), и вызывает Initialize/Execute/Shutdown в правильном порядке.
+
+#!csharp
+
+// Твой код здесь:

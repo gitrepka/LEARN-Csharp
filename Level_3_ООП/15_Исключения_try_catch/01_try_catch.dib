@@ -1,0 +1,529 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Исключения — try/catch/finally
+
+#!markdown
+
+## 1. Что такое исключение?
+
+**Исключение** (Exception) — это ошибка, которая возникает **во время выполнения** программы. Программа компилируется без ошибок, но при запуске что-то идёт не так.
+
+Примеры:
+```csharp
+int x = 10 / 0;                          // DivideByZeroException
+int[] arr = {1, 2, 3}; int v = arr[10];  // IndexOutOfRangeException
+string s = null; int len = s.Length;       // NullReferenceException
+int n = int.Parse("abc");                 // FormatException
+```
+
+Без обработки исключение **останавливает** всю программу с сообщением об ошибке. Это плохо: пользователь видит непонятный текст, данные теряются.
+
+**Обработка исключений** позволяет:
+- Перехватить ошибку и продолжить работу
+- Показать пользователю понятное сообщение
+- Записать ошибку в лог для разработчика
+- Корректно завершить работу (закрыть файлы, соединения)
+
+#!markdown
+
+## 2. Блок try — "попробуй выполнить"
+
+**`try`** — оборачивает код, который **может** вызвать исключение:
+
+```csharp
+try
+{
+    // потенциально опасный код
+    int result = 10 / 0;  // здесь возникнет исключение
+    Console.WriteLine(result); // эта строка НЕ выполнится
+}
+```
+
+Как только внутри `try` возникает исключение:
+1. Выполнение блока `try` **прекращается** (оставшийся код пропускается)
+2. Управление передаётся в блок `catch`
+
+**Важно:** `try` без `catch` или `finally` не скомпилируется. Нужен хотя бы один из них.
+
+#!csharp
+
+// Без try/catch — программа упадёт
+// int result = 10 / 0;  // раскомментируй — увидишь ошибку
+
+// С try/catch — программа продолжит работу
+Console.WriteLine("Начало программы");
+
+try
+{
+    Console.WriteLine("Внутри try: до ошибки");
+    int result = 10 / 0;  // исключение!
+    Console.WriteLine("Внутри try: после ошибки"); // НЕ выполнится!
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Поймали ошибку: {ex.Message}");
+}
+
+Console.WriteLine("Программа продолжает работу!");
+
+#!markdown
+
+### Попробуй сам: оберни в `try/catch` код, который обращается к несуществующему индексу массива (`arr[100]`). Выведи сообщение об ошибке
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Блок catch — обработка исключения
+
+**`catch`** перехватывает исключение и позволяет его обработать:
+
+```csharp
+try
+{
+    // опасный код
+}
+catch (Exception ex)    // ex — переменная с информацией об ошибке
+{
+    // обработка ошибки
+    Console.WriteLine(ex.Message);    // текст ошибки
+    Console.WriteLine(ex.GetType()); // тип исключения
+    Console.WriteLine(ex.StackTrace); // где произошла ошибка
+}
+```
+
+**Свойства объекта Exception:**
+
+| Свойство | Описание |
+|---|---|
+| `Message` | Текст ошибки (человекочитаемый) |
+| `GetType()` | Тип исключения (`DivideByZeroException` и т.д.) |
+| `StackTrace` | Стек вызовов — где именно произошла ошибка |
+| `InnerException` | Вложенное исключение (если есть) |
+| `Source` | Имя сборки, где произошла ошибка |
+
+#!csharp
+
+try
+{
+    string text = "не число";
+    int number = int.Parse(text);
+}
+catch (Exception ex)
+{
+    Console.WriteLine("=== Информация об исключении ===");
+    Console.WriteLine($"Тип:      {ex.GetType().Name}");
+    Console.WriteLine($"Сообщение: {ex.Message}");
+    Console.WriteLine($"Источник:  {ex.Source}");
+    Console.WriteLine($"\nStack Trace:\n{ex.StackTrace}");
+}
+
+#!markdown
+
+### Попробуй сам: оберни в `try/catch` вызов `int.Parse("12.5")` (это вызовет FormatException — int не может парсить дробные числа). Выведи тип ошибки и сообщение
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. finally — выполнится в любом случае
+
+**`finally`** — блок, который выполнится **всегда**: и если ошибка произошла, и если нет.
+
+```csharp
+try
+{
+    // код, который может упасть
+}
+catch (Exception ex)
+{
+    // обработка ошибки
+}
+finally
+{
+    // выполнится ВСЕГДА
+    // Здесь закрывают файлы, соединения, освобождают ресурсы
+}
+```
+
+**Порядок выполнения:**
+
+| Сценарий | try | catch | finally |
+|---|---|---|---|
+| Ошибки нет | Выполняется полностью | Пропускается | Выполняется |
+| Ошибка есть | До строки с ошибкой | Выполняется | Выполняется |
+
+**Когда нужен finally:**
+- Закрыть файл
+- Закрыть соединение с базой данных
+- Освободить ресурсы
+- Любая "уборка", которая должна произойти в любом случае
+
+#!csharp
+
+// Сценарий 1: ошибки нет
+Console.WriteLine("=== Сценарий 1: без ошибки ===");
+try
+{
+    Console.WriteLine("try: выполняется");
+    int result = 10 / 2; // ОК
+    Console.WriteLine($"try: результат = {result}");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"catch: {ex.Message}"); // НЕ выполнится
+}
+finally
+{
+    Console.WriteLine("finally: выполняется ВСЕГДА");
+}
+
+Console.WriteLine();
+
+// Сценарий 2: ошибка есть
+Console.WriteLine("=== Сценарий 2: с ошибкой ===");
+try
+{
+    Console.WriteLine("try: выполняется");
+    int result = 10 / 0; // ОШИБКА
+    Console.WriteLine("try: эта строка пропущена");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"catch: {ex.Message}");
+}
+finally
+{
+    Console.WriteLine("finally: выполняется ВСЕГДА");
+}
+
+#!markdown
+
+### Попробуй сам: напиши код, который пытается открыть массив по неверному индексу. В `finally` выведи "Очистка ресурсов завершена". Убедись, что `finally` выполняется и при ошибке, и без неё
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Множественные catch — от конкретного к общему
+
+Можно ловить **разные типы** исключений разными блоками `catch`:
+
+```csharp
+try
+{
+    // код
+}
+catch (DivideByZeroException ex)    // самый конкретный
+{
+    Console.WriteLine("Деление на ноль!");
+}
+catch (FormatException ex)           // конкретный
+{
+    Console.WriteLine("Неверный формат!");
+}
+catch (Exception ex)                 // самый общий — ловит ВСЁ
+{
+    Console.WriteLine($"Другая ошибка: {ex.Message}");
+}
+```
+
+**Правило порядка:** от **конкретного** к **общему**!
+
+```csharp
+// НЕПРАВИЛЬНО — не скомпилируется!
+catch (Exception ex) { }           // общий первым
+catch (FormatException ex) { }     // конкретный вторым — никогда не сработает!
+
+// ПРАВИЛЬНО
+catch (FormatException ex) { }     // конкретный первым
+catch (Exception ex) { }           // общий последним
+```
+
+C# проверяет блоки `catch` **сверху вниз** и использует **первый подходящий**.
+
+#!csharp
+
+void ProcessInput(string input)
+{
+    try
+    {
+        int number = int.Parse(input);
+        int result = 100 / number;
+        int[] arr = { 1, 2, 3 };
+        Console.WriteLine($"  Результат: {result}, arr[{number}] = {arr[number]}");
+    }
+    catch (FormatException)
+    {
+        Console.WriteLine($"  FormatException: '{input}' — это не число!");
+    }
+    catch (DivideByZeroException)
+    {
+        Console.WriteLine($"  DivideByZeroException: деление на ноль!");
+    }
+    catch (IndexOutOfRangeException ex)
+    {
+        Console.WriteLine($"  IndexOutOfRangeException: {ex.Message}");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"  Неизвестная ошибка: {ex.GetType().Name} — {ex.Message}");
+    }
+}
+
+Console.WriteLine("Тест разных ошибок:");
+ProcessInput("2");     // ОК
+ProcessInput("abc");   // FormatException
+ProcessInput("0");     // DivideByZeroException
+ProcessInput("10");    // IndexOutOfRangeException
+
+#!markdown
+
+### Попробуй сам: напиши метод, который принимает строку, парсит в int, потом делит 100 на это число. Обработай отдельно `FormatException` и `DivideByZeroException`. Протестируй с "5", "abc", "0"
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Фильтры when
+
+С C# 6 можно добавлять **условия** к блокам `catch` с помощью **`when`**:
+
+```csharp
+catch (Exception ex) when (ex.Message.Contains("overflow"))
+{
+    // сработает только если сообщение содержит "overflow"
+}
+
+catch (HttpRequestException ex) when (ex.StatusCode == 404)
+{
+    // сработает только для ошибки 404
+}
+```
+
+**Зачем?** Позволяет ловить один тип исключения, но с **разной обработкой** в зависимости от деталей.
+
+**Важно:** `when` проверяется **до** входа в catch-блок. Если условие `false`, этот catch пропускается, и проверяется следующий.
+
+#!csharp
+
+void ProcessNumber(int value)
+{
+    try
+    {
+        if (value < 0) throw new ArgumentException($"Значение {value} отрицательное");
+        if (value > 100) throw new ArgumentException($"Значение {value} слишком большое");
+        if (value == 0) throw new ArgumentException("Значение равно нулю");
+
+        Console.WriteLine($"  Значение {value} — ОК");
+    }
+    catch (ArgumentException ex) when (ex.Message.Contains("отрицательное"))
+    {
+        Console.WriteLine($"  Фильтр 'отрицательное': {ex.Message}");
+    }
+    catch (ArgumentException ex) when (ex.Message.Contains("слишком большое"))
+    {
+        Console.WriteLine($"  Фильтр 'слишком большое': {ex.Message}");
+    }
+    catch (ArgumentException ex)
+    {
+        Console.WriteLine($"  Остальные ArgumentException: {ex.Message}");
+    }
+}
+
+ProcessNumber(50);   // ОК
+ProcessNumber(-5);   // отрицательное
+ProcessNumber(200);  // слишком большое
+ProcessNumber(0);    // остальные
+
+// Практический пример: логирование без перехвата
+Console.WriteLine("\n--- Логирование через when ---");
+try
+{
+    int.Parse("abc");
+}
+catch (Exception ex) when (LogError(ex)) // LogError всегда возвращает false
+{
+    // Этот блок НИКОГДА не выполнится
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  Обработано: {ex.Message}");
+}
+
+bool LogError(Exception ex)
+{
+    Console.WriteLine($"  [LOG] {ex.GetType().Name}: {ex.Message}");
+    return false; // false = этот catch НЕ перехватывает, идём дальше
+}
+
+#!markdown
+
+### Попробуй сам: создай метод, который бросает `ArgumentException` с разными сообщениями для разных входных данных. Используй `when` для раздельной обработки
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. Иерархия Exception и распространённые исключения
+
+Все исключения наследуются от класса `Exception`:
+
+```
+Exception (базовый класс)
+├── SystemException
+│   ├── NullReferenceException      — обращение к null
+│   ├── ArgumentException           — неверный аргумент
+│   │   ├── ArgumentNullException   — аргумент null
+│   │   └── ArgumentOutOfRangeException — аргумент вне диапазона
+│   ├── InvalidOperationException   — недопустимая операция
+│   ├── FormatException             — неверный формат
+│   ├── IndexOutOfRangeException    — выход за границы массива
+│   ├── DivideByZeroException       — деление на ноль
+│   ├── InvalidCastException        — невозможное приведение типов
+│   ├── OverflowException           — переполнение
+│   ├── StackOverflowException      — переполнение стека (бесконечная рекурсия)
+│   ├── OutOfMemoryException        — нехватка памяти
+│   └── NotImplementedException     — метод не реализован
+├── ApplicationException           — пользовательские исключения (устарел)
+└── IOException                    — ошибки ввода-вывода
+    ├── FileNotFoundException       — файл не найден
+    └── DirectoryNotFoundException  — директория не найдена
+```
+
+### Самые распространённые:
+
+| Исключение | Когда возникает | Пример |
+|---|---|---|
+| `NullReferenceException` | Обращение к `null` | `string s = null; s.Length;` |
+| `ArgumentException` | Неверный аргумент метода | `new List<int>(-1)` |
+| `ArgumentNullException` | Аргумент `null` | `string.IsNullOrEmpty(null)` — нет, но свои методы |
+| `InvalidOperationException` | Операция не допустима в текущем состоянии | `Dequeue()` на пустой очереди |
+| `FormatException` | Неверный формат строки | `int.Parse("abc")` |
+| `IndexOutOfRangeException` | Индекс за пределами массива | `arr[100]` |
+| `KeyNotFoundException` | Ключ не найден в словаре | `dict["нет такого"]` |
+| `FileNotFoundException` | Файл не существует | `File.ReadAllText("нет.txt")` |
+
+#!csharp
+
+// Демонстрация распространённых исключений
+void TryAndShow(string name, Action action)
+{
+    try
+    {
+        action();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"{name,-35} → {ex.GetType().Name}");
+    }
+}
+
+Console.WriteLine($"{"Ситуация",-35} → {"Тип исключения"}");
+Console.WriteLine(new string('-', 70));
+
+TryAndShow("null.Length",                  () => { string s = null; _ = s.Length; });
+TryAndShow("int.Parse(\"abc\")",           () => int.Parse("abc"));
+TryAndShow("10 / 0",                       () => { int a = 0; _ = 10 / a; });
+TryAndShow("arr[100]",                     () => { int[] a = {1}; _ = a[100]; });
+TryAndShow("dict[\"нет\"]",               () => { var d = new Dictionary<string,int>(); _ = d["нет"]; });
+TryAndShow("new Queue<int>().Dequeue()",   () => new Queue<int>().Dequeue());
+TryAndShow("(string)(object)42",           () => { object o = 42; string s = (string)o; });
+
+#!markdown
+
+### Попробуй сам: напиши 3-4 примера кода, каждый из которых вызывает **разное** исключение. Оберни каждый в `try/catch` и выведи тип ошибки
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Безопасный калькулятор (лёгкая)
+Напиши метод `SafeDivide(string a, string b)`, который парсит две строки в числа и делит первое на второе. Обработай `FormatException` и `DivideByZeroException` отдельно. Протестируй: ("10", "2"), ("abc", "2"), ("10", "0").
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Безопасный доступ к массиву (лёгкая)
+Создай массив из 5 элементов. Напиши метод `SafeGet(int[] arr, int index)`, который возвращает элемент по индексу. Если индекс неверный — верни -1 и выведи предупреждение. Протестируй с индексами 0, 3, 10, -1.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Обработка списка строк (средняя)
+Дан `List<string> { "10", "abc", "20", "", "30", "0", "40" }`. Парси каждую строку в int, дели 100 на результат. Обработай ошибки для каждой строки отдельно (программа не должна останавливаться). Выведи: "строка → результат" или "строка → ошибка: ...".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: try/catch/finally с ресурсом (средняя)
+Смоделируй работу с "ресурсом": создай переменную `bool isOpen = false`. В `try` "открой" ресурс (`isOpen = true`), сделай операцию (которая может упасть). В `finally` "закрой" ресурс (`isOpen = false`). Убедись, что ресурс закрывается и при успехе, и при ошибке.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Множественные catch с when (сложная)
+Напиши метод `ValidateAge(string input)`, который парсит строку в возраст. Обработай:
+- `FormatException` — "не число"
+- `ArgumentException` when отрицательный — "возраст не может быть отрицательным"
+- `ArgumentException` when > 150 — "нереальный возраст"
+- Успех — "Возраст: N лет"
+
+Используй `throw new ArgumentException(...)` для проверки диапазона.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Определи тип исключения (сложная)
+Напиши метод `WhatException(int code)`, который в зависимости от `code` (1-6) выполняет разные "опасные" операции (деление на ноль, null reference, формат, индекс, ключ словаря, приведение типа). Перехвати исключение общим `catch (Exception ex)` и выведи: номер, тип исключения и сообщение. Вызови для всех кодов.
+
+#!csharp
+
+// Твой код здесь:

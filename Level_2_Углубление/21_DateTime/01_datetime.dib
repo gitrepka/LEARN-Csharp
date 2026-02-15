@@ -1,0 +1,380 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: DateTime — работа с датами и временем
+
+#!markdown
+
+## 1. Получение текущей даты и времени
+
+**`DateTime`** — struct для работы с датой и временем.
+
+```csharp
+DateTime.Now     // текущие дата и время (локальные)
+DateTime.UtcNow  // текущие дата и время (UTC / GMT)
+DateTime.Today   // только дата (время = 00:00:00)
+```
+
+#!csharp
+
+Console.WriteLine($"DateTime.Now:    {DateTime.Now}");
+Console.WriteLine($"DateTime.UtcNow: {DateTime.UtcNow}");
+Console.WriteLine($"DateTime.Today:  {DateTime.Today}");
+
+Console.WriteLine($"\nТолько дата: {DateTime.Now.ToShortDateString()}");
+Console.WriteLine($"Только время: {DateTime.Now.ToShortTimeString()}");
+Console.WriteLine($"Длинный формат: {DateTime.Now.ToLongDateString()}");
+
+#!markdown
+
+### Попробуй сам: выведи текущую дату и время в трёх форматах: коротком, длинном, и своём кастомном (например, "15 февраля 2026, 14:30").
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Создание DateTime — new DateTime()
+
+Можно создать конкретную дату:
+
+```csharp
+// год, месяц, день
+var date = new DateTime(2026, 2, 15);
+
+// год, месяц, день, часы, минуты, секунды
+var dateTime = new DateTime(2026, 2, 15, 14, 30, 0);
+```
+
+**Значение по умолчанию** (default) — `01.01.0001 00:00:00`.
+
+| Конструктор | Пример |
+|---|---|
+| `DateTime(year, month, day)` | `new DateTime(2026, 12, 31)` |
+| `DateTime(year, month, day, hour, min, sec)` | `new DateTime(2026, 12, 31, 23, 59, 59)` |
+
+#!csharp
+
+// Создание конкретных дат
+var birthday = new DateTime(2000, 5, 15);
+var newYear = new DateTime(2027, 1, 1);
+var moonLanding = new DateTime(1969, 7, 20, 20, 17, 0);
+
+Console.WriteLine($"День рождения:    {birthday:dd.MM.yyyy}");
+Console.WriteLine($"Новый год:        {newYear:dd.MM.yyyy}");
+Console.WriteLine($"Высадка на Луну:  {moonLanding:dd.MM.yyyy HH:mm}");
+
+// Значение по умолчанию
+DateTime empty = default;
+Console.WriteLine($"\nDefault DateTime: {empty}");
+
+#!markdown
+
+### Попробуй сам: создай DateTime для своего дня рождения. Создай DateTime для какой-нибудь исторической даты. Выведи обе в формате "dd MMMM yyyy года".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Свойства DateTime
+
+DateTime имеет множество **свойств** для извлечения компонентов:
+
+| Свойство | Описание | Пример |
+|---|---|---|
+| `Year` | Год | 2026 |
+| `Month` | Месяц (1-12) | 2 |
+| `Day` | День (1-31) | 15 |
+| `Hour` | Час (0-23) | 14 |
+| `Minute` | Минута (0-59) | 30 |
+| `Second` | Секунда (0-59) | 45 |
+| `DayOfWeek` | День недели | Saturday |
+| `DayOfYear` | День года (1-366) | 46 |
+| `Date` | Только дата (время = 00:00) | 15.02.2026 |
+| `TimeOfDay` | Только время (TimeSpan) | 14:30:45 |
+| `Ticks` | Кол-во 100-нс интервалов | ... |
+
+#!csharp
+
+DateTime now = DateTime.Now;
+
+Console.WriteLine($"Год:           {now.Year}");
+Console.WriteLine($"Месяц:         {now.Month}");
+Console.WriteLine($"День:          {now.Day}");
+Console.WriteLine($"Час:           {now.Hour}");
+Console.WriteLine($"Минута:        {now.Minute}");
+Console.WriteLine($"Секунда:       {now.Second}");
+Console.WriteLine($"Миллисекунда:  {now.Millisecond}");
+Console.WriteLine($"День недели:   {now.DayOfWeek}");
+Console.WriteLine($"День года:     {now.DayOfYear}");
+Console.WriteLine($"Дата:          {now.Date}");
+Console.WriteLine($"Время:         {now.TimeOfDay}");
+
+// Практичное использование
+Console.WriteLine($"\nСегодня {(now.DayOfWeek == System.DayOfWeek.Saturday || now.DayOfWeek == System.DayOfWeek.Sunday ? "выходной!" : "рабочий день.")}");
+
+#!csharp
+
+// DayOfWeek — перечисление
+DateTime date = new DateTime(2026, 2, 15);
+Console.WriteLine($"15.02.2026 — {date.DayOfWeek}");  // Sunday
+
+// Проверка — високосный год?
+Console.WriteLine($"\n2024 — високосный? {DateTime.IsLeapYear(2024)}");  // True
+Console.WriteLine($"2026 — високосный? {DateTime.IsLeapYear(2026)}");  // False
+
+// Дней в месяце
+Console.WriteLine($"\nДней в феврале 2024: {DateTime.DaysInMonth(2024, 2)}");  // 29
+Console.WriteLine($"Дней в феврале 2026: {DateTime.DaysInMonth(2026, 2)}");  // 28
+
+#!markdown
+
+### Попробуй сам: выведи номер текущего дня в году, день недели, и сколько дней осталось до конца года.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Арифметика дат — AddDays(), AddHours() и другие
+
+DateTime **неизменяемый** (struct). Все методы `Add*` возвращают **новый** DateTime:
+
+```csharp
+DateTime now = DateTime.Now;
+DateTime tomorrow = now.AddDays(1);        // +1 день
+DateTime nextWeek = now.AddDays(7);        // +7 дней
+DateTime twoHoursLater = now.AddHours(2);  // +2 часа
+DateTime lastMonth = now.AddMonths(-1);    // -1 месяц (отрицательное значение)
+```
+
+| Метод | Описание |
+|---|---|
+| `AddYears(n)` | +/- лет |
+| `AddMonths(n)` | +/- месяцев |
+| `AddDays(n)` | +/- дней |
+| `AddHours(n)` | +/- часов |
+| `AddMinutes(n)` | +/- минут |
+| `AddSeconds(n)` | +/- секунд |
+
+#!csharp
+
+DateTime now = DateTime.Now;
+
+Console.WriteLine($"Сейчас:            {now:dd.MM.yyyy HH:mm}");
+Console.WriteLine($"Завтра:            {now.AddDays(1):dd.MM.yyyy}");
+Console.WriteLine($"Через неделю:      {now.AddDays(7):dd.MM.yyyy}");
+Console.WriteLine($"Через месяц:       {now.AddMonths(1):dd.MM.yyyy}");
+Console.WriteLine($"Через год:         {now.AddYears(1):dd.MM.yyyy}");
+Console.WriteLine($"Вчера:             {now.AddDays(-1):dd.MM.yyyy}");
+Console.WriteLine($"3 часа назад:      {now.AddHours(-3):HH:mm}");
+
+// Цепочка
+DateTime event1 = now.AddDays(30).AddHours(10).AddMinutes(30);
+Console.WriteLine($"\nСобытие через 30д 10ч 30мин: {event1:dd.MM.yyyy HH:mm}");
+
+#!markdown
+
+### Попробуй сам: вычисли и выведи: дату через 100 дней от сегодня, дату 1000 дней назад, дату через 18 месяцев.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Разница дат — TimeSpan
+
+**Разность** двух DateTime даёт **`TimeSpan`** — промежуток времени:
+
+```csharp
+DateTime start = new DateTime(2026, 1, 1);
+DateTime end = new DateTime(2026, 12, 31);
+TimeSpan diff = end - start;   // TimeSpan
+
+Console.WriteLine(diff.Days);         // 364
+Console.WriteLine(diff.TotalHours);   // 8736
+```
+
+| Свойство TimeSpan | Описание |
+|---|---|
+| `Days` | Целые дни |
+| `Hours` | Часы (0-23) |
+| `Minutes` | Минуты (0-59) |
+| `TotalDays` | Всего дней (дробное) |
+| `TotalHours` | Всего часов (дробное) |
+| `TotalMinutes` | Всего минут (дробное) |
+| `TotalSeconds` | Всего секунд (дробное) |
+
+#!csharp
+
+// Разница между датами
+DateTime birthday = new DateTime(2000, 5, 15);
+DateTime now = DateTime.Now;
+
+TimeSpan age = now - birthday;
+
+Console.WriteLine($"Дата рождения: {birthday:dd.MM.yyyy}");
+Console.WriteLine($"Сейчас:        {now:dd.MM.yyyy}");
+Console.WriteLine($"\nПрошло:");
+Console.WriteLine($"  Дней:    {age.Days}");
+Console.WriteLine($"  Часов:   {age.TotalHours:N0}");
+Console.WriteLine($"  Минут:   {age.TotalMinutes:N0}");
+Console.WriteLine($"  Секунд:  {age.TotalSeconds:N0}");
+
+int years = (int)(age.Days / 365.25);
+Console.WriteLine($"  Примерно лет: {years}");
+
+// Обратный отсчёт до Нового года
+DateTime newYear = new DateTime(now.Year + 1, 1, 1);
+TimeSpan toNewYear = newYear - now;
+Console.WriteLine($"\nДо Нового года: {toNewYear.Days} дней, {toNewYear.Hours} часов, {toNewYear.Minutes} минут");
+
+#!markdown
+
+### Попробуй сам: вычисли, сколько дней прошло с начала текущего года. Вычисли, сколько дней до твоего ближайшего дня рождения.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. TimeSpan — создание и арифметика
+
+**Создание TimeSpan:**
+```csharp
+TimeSpan.FromHours(2.5)       // 2 часа 30 минут
+TimeSpan.FromMinutes(90)      // 1 час 30 минут
+TimeSpan.FromDays(7)          // 7 дней
+new TimeSpan(2, 30, 0)        // 2 часа 30 минут 0 секунд
+new TimeSpan(1, 2, 30, 0)    // 1 день 2 часа 30 минут
+```
+
+**Арифметика:**
+```csharp
+TimeSpan a = TimeSpan.FromHours(3);
+TimeSpan b = TimeSpan.FromMinutes(45);
+TimeSpan sum = a + b;       // 3:45:00
+TimeSpan diff = a - b;      // 2:15:00
+
+DateTime now = DateTime.Now;
+DateTime later = now + TimeSpan.FromHours(5);  // через 5 часов
+```
+
+#!csharp
+
+// Создание TimeSpan разными способами
+TimeSpan t1 = TimeSpan.FromHours(2.5);
+TimeSpan t2 = TimeSpan.FromMinutes(90);
+TimeSpan t3 = new TimeSpan(1, 30, 0);        // 1ч 30мин 0сек
+TimeSpan t4 = new TimeSpan(2, 5, 30, 0);     // 2 дня 5ч 30мин
+
+Console.WriteLine($"2.5 часа:       {t1}");
+Console.WriteLine($"90 минут:       {t2}");
+Console.WriteLine($"1:30:00:        {t3}");
+Console.WriteLine($"2д 5ч 30мин:    {t4}");
+
+// Арифметика TimeSpan
+TimeSpan work = TimeSpan.FromHours(8);
+TimeSpan lunch = TimeSpan.FromMinutes(60);
+TimeSpan actualWork = work - lunch;
+Console.WriteLine($"\nРабочий день: {work}");
+Console.WriteLine($"Обед:         {lunch}");
+Console.WriteLine($"Чистая работа: {actualWork} ({actualWork.TotalHours} часов)");
+
+// Умножение
+TimeSpan weekWork = actualWork * 5;
+Console.WriteLine($"За неделю:    {weekWork} ({weekWork.TotalHours} часов)");
+
+// Добавление к DateTime
+DateTime start = DateTime.Today.AddHours(9);  // 9:00 утра
+DateTime end = start + work;
+Console.WriteLine($"\nНачало: {start:HH:mm}, Конец: {end:HH:mm}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **`DateTime.Now`** / **`UtcNow`** / **`Today`** — получить текущую дату/время
+2. **`new DateTime(year, month, day)`** — создать конкретную дату
+3. **Свойства:** Year, Month, Day, Hour, DayOfWeek, DayOfYear
+4. **`AddDays()`**, **`AddMonths()`**, **`AddHours()`** — арифметика дат
+5. **Разница** DateTime1 - DateTime2 = **TimeSpan**
+6. **`TimeSpan.FromHours()`** — создание промежутка времени
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Возраст в днях (лёгкая)
+Создай дату рождения. Вычисли, сколько тебе полных дней, часов, минут. Выведи всё.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Дни недели месяца (лёгкая)
+Для текущего месяца выведи все даты, которые приходятся на понедельник. Формат: "dd.MM.yyyy — Monday".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Обратный отсчёт (средняя)
+Создай метод `string Countdown(DateTime target)`, который возвращает: "X дней, Y часов, Z минут до события" (или "Событие уже прошло"). Проверь с несколькими датами.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Рабочие дни (средняя)
+Создай метод `int WorkDays(DateTime start, DateTime end)`, который считает количество рабочих дней (пн-пт) между двумя датами. Проверь с текущим месяцем.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Календарь на месяц (сложная)
+Создай метод `void PrintCalendar(int year, int month)`, который выводит календарь в виде таблицы (Пн Вт Ср Чт Пт Сб Вс). Дни начинаются в правильном столбце. Протестируй для февраля 2026.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Таймер рабочего дня (сложная)
+Создай класс `WorkDay` со свойствами Start (DateTime) и End (DateTime). Методы: Duration() → TimeSpan, OvertimeHours(double standardHours = 8) → double, BreakTime(TimeSpan lunch) → TimeSpan нетто. Создай несколько рабочих дней и вычисли переработки за неделю.
+
+#!csharp
+
+// Твой код здесь:

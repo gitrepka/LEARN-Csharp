@@ -1,0 +1,489 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Продвинутые конструкторы и новые возможности C#
+
+#!markdown
+
+## Обзор
+
+В этом уроке мы изучим современные способы инициализации объектов в C#:
+- **Primary constructors** (C# 12)
+- **Required свойства** (C# 11)
+- **Init-only сеттеры**
+- **Цепочка конструкторов** `this()`
+- **Static конструкторы**
+- **File-scoped типы** (C# 11)
+
+#!markdown
+
+## 1. Primary Constructors (C# 12)
+
+**Primary constructor** -- параметры прямо в объявлении класса, как у record:
+
+```csharp
+// Раньше (обычный конструктор)
+public class Person
+{
+    private string _name;
+    private int _age;
+
+    public Person(string name, int age)
+    {
+        _name = name;
+        _age = age;
+    }
+}
+
+// C# 12 (primary constructor)
+public class Person(string name, int age)
+{
+    // name и age доступны как параметры во всём классе
+}
+```
+
+**Важные отличия от record:**
+- Record автоматически создаёт **свойства** из параметров
+- Primary constructor в class создаёт **параметры** (как в методе), не свойства!
+- Нужно явно создавать свойства, если они нужны
+
+#!csharp
+
+// Primary constructor -- параметры доступны во всём теле класса
+public class Logger(string prefix)
+{
+    // prefix -- это параметр, НЕ свойство
+    // Но можно использовать его для инициализации свойств
+
+    public void Log(string message)
+    {
+        Console.WriteLine($"[{prefix}] {DateTime.Now:HH:mm:ss} {message}");
+    }
+}
+
+var logger = new Logger("APP");
+logger.Log("Запуск приложения");
+logger.Log("Загрузка данных");
+
+// Если нужно свойство -- создай его вручную
+public class UserService(string connectionString, int timeout)
+{
+    // Создаём свойства из параметров
+    public string ConnectionString { get; } = connectionString;
+    public int Timeout { get; } = timeout;
+
+    public void Connect()
+    {
+        // Можно использовать и параметры напрямую
+        Console.WriteLine($"Подключение к {connectionString} (таймаут: {timeout}с)");
+    }
+}
+
+var service = new UserService("Server=localhost", 30);
+service.Connect();
+Console.WriteLine($"Свойство: {service.ConnectionString}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Calculator(double initialValue)` с primary constructor. Добавь методы `Add(double n)`, `Multiply(double n)`, `GetResult()`, которые используют параметр `initialValue`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Required свойства (C# 11)
+
+Ключевое слово **`required`** заставляет задать свойство при создании объекта. Даже без конструктора!
+
+```csharp
+public class User
+{
+    public required string Name { get; set; }
+    public required string Email { get; set; }
+    public int Age { get; set; }  // необязательное
+}
+
+// Обязательно указать Name и Email
+var user = new User { Name = "Алиса", Email = "alice@mail.ru" };
+
+// Ошибка компиляции! Не указан Name
+// var bad = new User { Email = "test@test.ru" };
+```
+
+Это решает проблему "забыл инициализировать свойство" без написания конструктора.
+
+#!csharp
+
+public class Config
+{
+    public required string DatabaseHost { get; set; }
+    public required int DatabasePort { get; set; }
+    public required string DatabaseName { get; set; }
+
+    // Необязательные -- есть значения по умолчанию
+    public int MaxConnections { get; set; } = 10;
+    public int TimeoutSeconds { get; set; } = 30;
+    public bool UseSSL { get; set; } = true;
+}
+
+// Обязательные поля нужно указать
+var config = new Config
+{
+    DatabaseHost = "localhost",
+    DatabasePort = 5432,
+    DatabaseName = "myapp",
+    // Необязательные можно не указывать (будут значения по умолчанию)
+    MaxConnections = 20  // но можно и переопределить
+};
+
+Console.WriteLine($"Host: {config.DatabaseHost}");
+Console.WriteLine($"Port: {config.DatabasePort}");
+Console.WriteLine($"DB: {config.DatabaseName}");
+Console.WriteLine($"MaxConn: {config.MaxConnections}");
+Console.WriteLine($"Timeout: {config.TimeoutSeconds}");
+Console.WriteLine($"SSL: {config.UseSSL}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Order` с required свойствами `OrderId`, `CustomerName`, `Total` и необязательными `Note` (string, default "") и `Priority` (int, default 0). Создай заказ и выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Init-only сеттеры
+
+**`init`** -- сеттер, который работает **только при инициализации** объекта. После создания свойство нельзя менять:
+
+```csharp
+public class Point
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+}
+
+var p = new Point { X = 3, Y = 5 };
+// p.X = 10;  // Ошибка! init-only
+```
+
+Сравнение трёх вариантов:
+
+| Вариант | Можно задать при создании | Можно менять потом |
+|---|---|---|
+| `get; set;` | Да | Да |
+| `get; init;` | Да | **Нет** |
+| `get;` (только get) | Только через конструктор | **Нет** |
+
+#!csharp
+
+public class Employee
+{
+    // Только через конструктор
+    public int Id { get; }
+
+    // При инициализации (конструктор ИЛИ object initializer)
+    public required string Name { get; init; }
+    public required string Department { get; init; }
+
+    // Можно менять когда угодно
+    public string Status { get; set; } = "Active";
+
+    public Employee(int id)
+    {
+        Id = id;
+    }
+}
+
+var emp = new Employee(1) { Name = "Иван", Department = "IT" };
+Console.WriteLine($"#{emp.Id} {emp.Name} ({emp.Department}) -- {emp.Status}");
+
+// emp.Name = "Пётр";        // Ошибка! init-only
+// emp.Department = "HR";     // Ошибка! init-only
+emp.Status = "Отпуск";       // OK -- обычный set
+Console.WriteLine($"#{emp.Id} {emp.Name} ({emp.Department}) -- {emp.Status}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Passport` с init-only свойствами `Series`, `Number`, `IssuedDate` и обычным set свойством `IsValid`. Создай паспорт и попробуй изменить свойства -- убедись, что init-only не позволяет.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Цепочка конструкторов -- this()
+
+Когда у класса **несколько конструкторов**, один может вызывать другой через **`this()`**:
+
+```csharp
+public class Rectangle
+{
+    public double Width { get; }
+    public double Height { get; }
+
+    // Основной конструктор
+    public Rectangle(double width, double height)
+    {
+        Width = width;
+        Height = height;
+    }
+
+    // Вызывает основной -- квадрат
+    public Rectangle(double side) : this(side, side) { }
+
+    // Вызывает основной -- по умолчанию
+    public Rectangle() : this(1, 1) { }
+}
+```
+
+`this(...)` вызывается **до** тела конструктора. Это позволяет избежать дублирования кода.
+
+#!csharp
+
+public class ConnectionString
+{
+    public string Host { get; }
+    public int Port { get; }
+    public string Database { get; }
+    public string User { get; }
+    public string Password { get; }
+
+    // Полный конструктор
+    public ConnectionString(string host, int port, string database, string user, string password)
+    {
+        Host = host;
+        Port = port;
+        Database = database;
+        User = user;
+        Password = password;
+        Console.WriteLine($"  [Полный конструктор] {this}");
+    }
+
+    // Без пароля -- вызывает полный
+    public ConnectionString(string host, int port, string database, string user)
+        : this(host, port, database, user, "") { }
+
+    // Только хост и БД -- дефолтные порт и пользователь
+    public ConnectionString(string host, string database)
+        : this(host, 5432, database, "postgres", "") { }
+
+    // Localhost
+    public ConnectionString(string database)
+        : this("localhost", database) { }
+
+    public override string ToString()
+        => $"Host={Host};Port={Port};DB={Database};User={User}";
+}
+
+Console.WriteLine("Создание через разные конструкторы:");
+var c1 = new ConnectionString("mydb");
+var c2 = new ConnectionString("server.com", "production");
+var c3 = new ConnectionString("server.com", 3306, "mydb", "admin", "secret");
+
+#!markdown
+
+### Попробуй сам: создай класс `Email(string to, string subject, string body, string from, bool isHtml)` с тремя конструкторами: полный, без isHtml (по умолчанию false), только to и subject (body = "", from = "noreply@app.com").
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Static конструкторы
+
+**Static конструктор** вызывается **один раз** при первом обращении к классу. Используется для инициализации **статических** полей:
+
+```csharp
+public class AppConfig
+{
+    public static string Version { get; }
+    public static DateTime StartTime { get; }
+
+    // Static конструктор -- без параметров, без модификатора доступа
+    static AppConfig()
+    {
+        Version = "1.0.0";
+        StartTime = DateTime.Now;
+        Console.WriteLine("Static конструктор вызван!");
+    }
+}
+```
+
+Особенности:
+- Вызывается **автоматически** (нельзя вызвать явно)
+- Вызывается **ровно один раз** за время жизни программы
+- **Нет параметров** и **нет модификатора доступа**
+- Вызывается **до** первого обращения к любому члену класса
+
+#!csharp
+
+public class IdGenerator
+{
+    private static int _nextId;
+    private static readonly Random _random;
+
+    // Static конструктор -- инициализация статических полей
+    static IdGenerator()
+    {
+        _random = new Random();
+        _nextId = _random.Next(1000, 9999);
+        Console.WriteLine($"[Static] Генератор инициализирован, начальный ID: {_nextId}");
+    }
+
+    // Обычный конструктор
+    public IdGenerator()
+    {
+        Console.WriteLine("[Instance] Создан новый экземпляр");
+    }
+
+    public static int NextId() => _nextId++;
+}
+
+Console.WriteLine("До создания объекта...");
+Console.WriteLine($"ID: {IdGenerator.NextId()}");  // Static конструктор вызывается здесь
+Console.WriteLine($"ID: {IdGenerator.NextId()}");
+Console.WriteLine($"ID: {IdGenerator.NextId()}");
+
+var gen = new IdGenerator();  // Static конструктор НЕ вызывается повторно!
+
+#!markdown
+
+### Попробуй сам: создай класс `AppInfo` со static свойствами `MachineName`, `OSVersion`, `StartupTime`. Static конструктор должен инициализировать их значениями из `Environment.MachineName`, `Environment.OSVersion`, `DateTime.Now`. Выведи информацию.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. File-scoped типы (C# 11)
+
+Модификатор **`file`** ограничивает видимость типа **одним файлом**. Тип невидим из других файлов, даже из того же namespace.
+
+```csharp
+// Этот класс видим только в текущем файле!
+file class InternalHelper
+{
+    public static string Format(string s) => s.Trim().ToUpper();
+}
+```
+
+Полезно для:
+- Вспомогательных классов, используемых только в одном файле
+- Избежания конфликтов имён
+- Source generators
+
+**Примечание:** в .dib-ноутбуке `file` не работает (одна ячейка != один файл), но важно знать этот модификатор для реальных проектов.
+
+Сводная таблица модификаторов доступа типов:
+
+| Модификатор | Видимость |
+|---|---|
+| `public` | Везде |
+| `internal` | В пределах сборки (проекта) |
+| `file` | Только в текущем файле |
+| `private` (вложенный) | Только в содержащем классе |
+
+#!csharp
+
+// В ноутбуке мы не можем продемонстрировать file class в действии,
+// но покажем концепцию
+
+// Представь: файл UserService.cs
+// file class UserValidator  -- видим ТОЛЬКО в UserService.cs
+// {
+//     public static bool IsValid(string name) => !string.IsNullOrEmpty(name);
+// }
+//
+// public class UserService
+// {
+//     public void CreateUser(string name)
+//     {
+//         if (UserValidator.IsValid(name))  // OK -- тот же файл
+//             Console.WriteLine($"Создан: {name}");
+//     }
+// }
+
+// В другом файле:
+// UserValidator.IsValid("test");  // Ошибка! file class не виден
+
+// Для демонстрации: обычный internal класс
+internal class Helper
+{
+    public static string Sanitize(string input) => input.Trim().ToLower();
+}
+
+Console.WriteLine(Helper.Sanitize("  HELLO  "));
+
+Console.WriteLine("\nВ реальном проекте file class используется для:");
+Console.WriteLine("  - Вспомогательных классов в одном файле");
+Console.WriteLine("  - Source generators");
+Console.WriteLine("  - Избежания конфликтов имён между файлами");
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Primary constructor (лёгкая)
+Создай класс `Greeter(string name, string language)` с primary constructor. Добавь метод `Greet()`, который выводит приветствие: если language == "ru" -> "Привет, {name}!", если "en" -> "Hello, {name}!".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Required + init (лёгкая)
+Создай класс `Product` с required init свойствами `Name`, `Price` и необязательным `Description` (default "Нет описания"). Создай три продукта с помощью object initializer и выведи их.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Цепочка конструкторов (средняя)
+Создай класс `LogEntry` с полями: DateTime Timestamp, string Level, string Message, string Source, Exception? Error. Создай 4 конструктора с цепочкой this(): (1) полный, (2) без Error, (3) только Level + Message, (4) только Message (Level = "INFO"). Протестируй все.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Static конструктор (средняя)
+Создай класс `CurrencyConverter` со static словарём курсов валют (USD, EUR, GBP к рублю). Static конструктор заполняет словарь. Метод `static decimal Convert(decimal amount, string from, string to)` конвертирует валюту. Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Комбинация всех техник (сложная)
+Создай систему конфигурации: класс `AppSettings` с required свойствами (AppName, Version), init свойствами (Debug, LogLevel), static свойством Instance (singleton через static конструктор), и вложенным классом `DatabaseSettings` с primary constructor. Продемонстрируй использование всех возможностей.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Builder pattern (сложная)
+Создай класс `HttpRequest` с init-only свойствами (Url, Method, Headers, Body, Timeout). Создай класс `HttpRequestBuilder` с методами `.SetUrl()`, `.SetMethod()`, `.AddHeader()`, `.SetBody()`, `.SetTimeout()`, `.Build()`. Каждый метод возвращает this (fluent). Используй builder для создания GET и POST запросов.
+
+#!csharp
+
+// Твой код здесь:

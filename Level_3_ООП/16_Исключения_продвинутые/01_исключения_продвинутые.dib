@@ -1,0 +1,644 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Исключения — продвинутые техники
+
+#!markdown
+
+## 1. throw — бросание исключений
+
+Исключения можно не только **ловить**, но и **бросать** самому с помощью `throw`:
+
+```csharp
+throw new Exception("Что-то пошло не так");
+throw new ArgumentException("Имя не может быть пустым");
+throw new InvalidOperationException("Операция невозможна в текущем состоянии");
+```
+
+**Зачем бросать исключения?** Чтобы сообщить вызывающему коду о проблеме, которую ваш метод **не может** решить сам.
+
+```csharp
+void SetAge(int age)
+{
+    if (age < 0)
+        throw new ArgumentException("Возраст не может быть отрицательным");
+    if (age > 150)
+        throw new ArgumentException("Нереальный возраст");
+    // ... установить возраст
+}
+```
+
+Когда метод бросает исключение:
+1. Выполнение метода **прекращается**
+2. Исключение **поднимается** по стеку вызовов
+3. Первый подходящий `catch` его перехватит
+4. Если никто не перехватил — программа упадёт
+
+#!csharp
+
+// Метод, который бросает исключения при неверных данных
+void CreateUser(string name, int age)
+{
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя не может быть пустым", nameof(name));
+
+    if (age < 0 || age > 150)
+        throw new ArgumentOutOfRangeException(nameof(age), $"Возраст {age} вне допустимого диапазона (0-150)");
+
+    Console.WriteLine($"  Пользователь создан: {name}, {age} лет");
+}
+
+// Тестируем
+string[] names = { "Анна", "", "Пётр", "Ира" };
+int[] ages = { 25, 30, -5, 200 };
+
+for (int i = 0; i < names.Length; i++)
+{
+    try
+    {
+        CreateUser(names[i], ages[i]);
+    }
+    catch (ArgumentException ex)
+    {
+        Console.WriteLine($"  ОШИБКА: {ex.GetType().Name} — {ex.Message}");
+    }
+}
+
+#!markdown
+
+### Попробуй сам: напиши метод `Withdraw(decimal balance, decimal amount)`, который бросает `ArgumentException` если `amount <= 0` и `InvalidOperationException` если `amount > balance`. Протестируй с разными значениями
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. throw; vs throw ex; — сохранение стека вызовов
+
+При перебрасывании исключения есть **критическая разница**:
+
+| Запись | Что делает | Stack Trace |
+|---|---|---|
+| `throw;` | Перебрасывает исходное исключение | **Сохраняется** — видно, где ошибка возникла |
+| `throw ex;` | Бросает исключение как **новое** | **Теряется** — видно только место throw ex |
+
+```csharp
+// ПРАВИЛЬНО — сохраняет оригинальный стек
+catch (Exception ex)
+{
+    LogError(ex);   // залогировали
+    throw;          // пробросили дальше с оригинальным стеком
+}
+
+// НЕПРАВИЛЬНО — теряет информацию о месте ошибки
+catch (Exception ex)
+{
+    LogError(ex);
+    throw ex;       // стек вызовов потерян!
+}
+```
+
+**Правило:** Всегда используй `throw;` (без переменной), если хочешь пробросить исключение дальше. `throw ex;` — почти никогда не нужен.
+
+#!csharp
+
+void MethodA()
+{
+    int[] arr = { 1, 2, 3 };
+    _ = arr[10]; // ошибка здесь, на этой строке
+}
+
+void MethodB_Correct()
+{
+    try { MethodA(); }
+    catch (Exception ex)
+    {
+        Console.WriteLine("MethodB: логирую и пробрасываю...");
+        throw;  // throw; — сохраняет стек
+    }
+}
+
+void MethodB_Wrong()
+{
+    try { MethodA(); }
+    catch (Exception ex)
+    {
+        Console.WriteLine("MethodB: логирую и пробрасываю...");
+        throw ex;  // throw ex; — теряет стек
+    }
+}
+
+// Сравнение
+Console.WriteLine("=== throw; (правильно) ===");
+try { MethodB_Correct(); }
+catch (Exception ex)
+{
+    Console.WriteLine($"Stack Trace содержит MethodA? {ex.StackTrace.Contains("MethodA")}");
+    // Стек показывает, что ошибка в MethodA
+}
+
+Console.WriteLine("\n=== throw ex; (неправильно) ===");
+try { MethodB_Wrong(); }
+catch (Exception ex)
+{
+    Console.WriteLine($"Stack Trace содержит MethodA? {ex.StackTrace.Contains("MethodA")}");
+    // Стек потерян — показывает только MethodB_Wrong
+}
+
+#!markdown
+
+### Попробуй сам: создай цепочку из 3 методов (C вызывает B, B вызывает A). В A бросай исключение. В B перехвати и переброcь через `throw;`. В C перехвати и выведи StackTrace. Убедись, что видно все 3 метода
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Кастомные исключения
+
+Можно создавать **свои типы** исключений, наследуя от `Exception`:
+
+```csharp
+// Минимальный кастомный Exception
+class InsufficientFundsException : Exception
+{
+    public decimal Balance { get; }
+    public decimal Amount { get; }
+
+    public InsufficientFundsException(decimal balance, decimal amount)
+        : base($"Недостаточно средств. Баланс: {balance}, запрошено: {amount}")
+    {
+        Balance = balance;
+        Amount = amount;
+    }
+}
+```
+
+**Рекомендации по кастомным исключениям:**
+1. Наследуйся от `Exception` (не от `ApplicationException`)
+2. Название заканчивается на `Exception`
+3. Добавляй свойства с полезной информацией
+4. Передавай `message` в базовый конструктор через `: base(message)`
+5. В реальных проектах добавляй конструктор с `innerException`
+
+**Когда создавать свой Exception:**
+- Стандартные исключения **не описывают** вашу ситуацию
+- Нужно передать **дополнительную информацию** (например, баланс, ID)
+- Нужно ловить **именно вашу ошибку** отдельным catch
+
+#!csharp
+
+// Кастомное исключение
+class InsufficientFundsException : Exception
+{
+    public decimal Balance { get; }
+    public decimal Amount { get; }
+
+    public InsufficientFundsException(decimal balance, decimal amount)
+        : base($"Недостаточно средств. Баланс: {balance:F2}₽, запрошено: {amount:F2}₽")
+    {
+        Balance = balance;
+        Amount = amount;
+    }
+}
+
+class NegativeAmountException : Exception
+{
+    public NegativeAmountException(decimal amount)
+        : base($"Сумма не может быть отрицательной: {amount:F2}₽") { }
+}
+
+// Использование
+class BankAccount
+{
+    public string Owner { get; }
+    public decimal Balance { get; private set; }
+
+    public BankAccount(string owner, decimal balance)
+    {
+        Owner = owner;
+        Balance = balance;
+    }
+
+    public void Withdraw(decimal amount)
+    {
+        if (amount <= 0)
+            throw new NegativeAmountException(amount);
+        if (amount > Balance)
+            throw new InsufficientFundsException(Balance, amount);
+
+        Balance -= amount;
+        Console.WriteLine($"  Снято {amount:F2}₽. Остаток: {Balance:F2}₽");
+    }
+}
+
+// Тестирование
+BankAccount account = new BankAccount("Анна", 1000);
+decimal[] amounts = { 300, -50, 500, 800 };
+
+foreach (decimal amount in amounts)
+{
+    Console.WriteLine($"\nПопытка снять {amount:F2}₽:");
+    try
+    {
+        account.Withdraw(amount);
+    }
+    catch (NegativeAmountException ex)
+    {
+        Console.WriteLine($"  ОШИБКА: {ex.Message}");
+    }
+    catch (InsufficientFundsException ex)
+    {
+        Console.WriteLine($"  ОШИБКА: {ex.Message}");
+        Console.WriteLine($"  Не хватает: {ex.Amount - ex.Balance:F2}₽");
+    }
+}
+
+#!markdown
+
+### Попробуй сам: создай кастомное исключение `InvalidEmailException` со свойством `Email`. Напиши метод `ValidateEmail(string email)`, который бросает его, если email не содержит "@". Протестируй
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Guard Clauses — защитные проверки
+
+**Guard clause** — это проверка входных данных **в начале метода** с выбросом исключения при неверных данных. Это делает код чище и безопаснее.
+
+**Без guard clauses** (вложенность):
+```csharp
+void Process(string name, int age, string email)
+{
+    if (name != null)
+    {
+        if (age >= 0)
+        {
+            if (email.Contains("@"))
+            {
+                // ... наконец-то основная логика
+            }
+        }
+    }
+}
+```
+
+**С guard clauses** (плоско и читаемо):
+```csharp
+void Process(string name, int age, string email)
+{
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя обязательно", nameof(name));
+    if (age < 0)
+        throw new ArgumentOutOfRangeException(nameof(age));
+    if (!email.Contains("@"))
+        throw new ArgumentException("Неверный email", nameof(email));
+
+    // основная логика — без вложенности
+}
+```
+
+**Преимущества:**
+- Проверки собраны в начале — сразу видно требования
+- Нет глубокой вложенности
+- Метод "быстро падает" при неверных данных (fail fast)
+
+#!csharp
+
+// Пример метода с guard clauses
+void RegisterStudent(string name, int age, string email, List<string> courses)
+{
+    // Guard clauses — все проверки в начале
+    if (string.IsNullOrWhiteSpace(name))
+        throw new ArgumentException("Имя не может быть пустым", nameof(name));
+
+    if (age < 16 || age > 100)
+        throw new ArgumentOutOfRangeException(nameof(age),
+            $"Возраст {age} вне допустимого диапазона (16-100)");
+
+    if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+        throw new ArgumentException("Неверный формат email", nameof(email));
+
+    if (courses == null || courses.Count == 0)
+        throw new ArgumentException("Нужен хотя бы один курс", nameof(courses));
+
+    // Основная логика — чистая, без проверок
+    Console.WriteLine($"  Студент зарегистрирован: {name}, {age} лет, {email}");
+    Console.WriteLine($"  Курсы: {string.Join(", ", courses)}");
+}
+
+// Тестирование
+var testCases = new (string name, int age, string email, List<string> courses)[]
+{
+    ("Анна", 20, "anna@mail.ru", new List<string> { "C#", "SQL" }),
+    ("", 20, "test@mail.ru", new List<string> { "C#" }),
+    ("Пётр", 10, "petr@mail.ru", new List<string> { "C#" }),
+    ("Ира", 22, "bad-email", new List<string> { "Python" }),
+    ("Олег", 25, "oleg@mail.ru", new List<string>()),
+};
+
+foreach (var (name, age, email, courses) in testCases)
+{
+    Console.WriteLine($"\nРегистрация: name='{name}', age={age}, email='{email}'");
+    try
+    {
+        RegisterStudent(name, age, email, courses);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"  ОШИБКА [{ex.GetType().Name}]: {ex.Message}");
+    }
+}
+
+#!markdown
+
+### Попробуй сам: напиши метод `CreateProduct(string name, decimal price, int quantity)` с guard clauses: имя не пустое, цена > 0, количество >= 0. Протестируй с валидными и невалидными данными
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Try-паттерн (TryParse, TryGetValue)
+
+**Try-паттерн** — это альтернатива исключениям для ожидаемых ошибок. Вместо исключения метод возвращает `bool` и результат через `out`.
+
+**Сравнение подходов:**
+
+| Подход | Код | При неудаче |
+|---|---|---|
+| Исключение | `int n = int.Parse("abc");` | Бросает `FormatException` |
+| Try-паттерн | `int.TryParse("abc", out int n);` | Возвращает `false`, n = 0 |
+
+Try-паттерн уже встроен во многие типы:
+
+```csharp
+// Парсинг
+int.TryParse("123", out int number);           // true, number = 123
+double.TryParse("3.14", out double pi);        // true, pi = 3.14
+DateTime.TryParse("2024-01-01", out DateTime d); // true
+
+// Коллекции
+dict.TryGetValue("key", out var value);        // true если ключ есть
+queue.TryDequeue(out var item);                // true если очередь не пуста
+```
+
+### Свой Try-метод
+
+```csharp
+bool TryDivide(int a, int b, out int result)
+{
+    if (b == 0)
+    {
+        result = 0;
+        return false;
+    }
+    result = a / b;
+    return true;
+}
+```
+
+#!csharp
+
+// Встроенные Try-методы
+Console.WriteLine("=== int.TryParse ===");
+string[] inputs = { "42", "abc", "3.14", "", "999" };
+
+foreach (string input in inputs)
+{
+    if (int.TryParse(input, out int number))
+        Console.WriteLine($"  '{input}' → {number}");
+    else
+        Console.WriteLine($"  '{input}' → не число");
+}
+
+// Dictionary TryGetValue
+Console.WriteLine("\n=== TryGetValue ===");
+Dictionary<string, int> ages = new Dictionary<string, int>
+{
+    ["Анна"] = 25, ["Пётр"] = 30
+};
+
+string[] names = { "Анна", "Олег", "Пётр" };
+foreach (string name in names)
+{
+    if (ages.TryGetValue(name, out int age))
+        Console.WriteLine($"  {name}: {age} лет");
+    else
+        Console.WriteLine($"  {name}: не найден");
+}
+
+// Свой Try-метод
+Console.WriteLine("\n=== Свой TryDivide ===");
+bool TryDivide(int a, int b, out double result)
+{
+    if (b == 0) { result = 0; return false; }
+    result = (double)a / b;
+    return true;
+}
+
+(int a, int b)[] pairs = { (10, 3), (10, 0), (7, 2) };
+foreach (var (a, b) in pairs)
+{
+    if (TryDivide(a, b, out double res))
+        Console.WriteLine($"  {a} / {b} = {res:F2}");
+    else
+        Console.WriteLine($"  {a} / {b} = невозможно (деление на ноль)");
+}
+
+#!markdown
+
+### Попробуй сам: напиши метод `bool TryParseAge(string input, out int age)`, который проверяет: 1) строка — число, 2) число от 0 до 150. Если оба условия — `true` + возраст, иначе `false`. Протестируй с разными строками
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Когда бросать исключения, а когда возвращать bool?
+
+Это один из самых важных вопросов проектирования. Вот чёткие правила:
+
+### Используй **исключения** когда:
+- Ошибка **неожиданная** и **необычная**
+- Вызывающий код **не может** проверить условие заранее
+- Ошибка **критическая** — продолжение работы бессмысленно
+
+```csharp
+// Исключение — файл ДОЛЖЕН существовать, но его нет
+File.ReadAllText("config.json");  // FileNotFoundException
+
+// Исключение — неверные данные от программиста (баг)
+void SetName(string name)
+{
+    if (name == null) throw new ArgumentNullException(nameof(name));
+}
+```
+
+### Используй **Try-паттерн / bool** когда:
+- Неудача — **ожидаемый** сценарий
+- Вызывающий код хочет **проверить** возможность
+- Производительность важна (исключения медленные!)
+
+```csharp
+// Try-паттерн — пользователь МОЖЕТ ввести не число
+if (int.TryParse(userInput, out int number)) { ... }
+
+// Bool — файл МОЖЕТ не существовать
+if (File.Exists(path)) { ... }
+```
+
+### Таблица принятия решения:
+
+| Вопрос | Исключение | Try-паттерн / bool |
+|---|---|---|
+| Это ожидаемая ситуация? | Нет | **Да** |
+| Пользовательский ввод? | Нет | **Да** (ввод может быть любым) |
+| Баг программиста? | **Да** (ArgumentNull) | Нет |
+| Внешний ресурс недоступен? | **Да** (IOException) | Иногда (TryConnect) |
+| Часто ли это происходит? | Редко | **Часто** |
+| Критическая ошибка? | **Да** | Нет |
+
+#!csharp
+
+// Пример: два подхода к одной задаче
+
+// Подход 1: Исключения (для программистов — "данные ДОЛЖНЫ быть верными")
+class UserService_Exceptions
+{
+    public void Register(string email, string password)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email обязателен");
+        if (!email.Contains("@"))
+            throw new ArgumentException("Неверный формат email");
+        if (password.Length < 6)
+            throw new ArgumentException("Пароль слишком короткий");
+
+        Console.WriteLine($"  [Exceptions] Зарегистрирован: {email}");
+    }
+}
+
+// Подход 2: Try-паттерн (для UI — "ввод МОЖЕТ быть неверным")
+class UserService_TryPattern
+{
+    public bool TryRegister(string email, string password, out string error)
+    {
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(email))
+        { error = "Email обязателен"; return false; }
+
+        if (!email.Contains("@"))
+        { error = "Неверный формат email"; return false; }
+
+        if (password.Length < 6)
+        { error = "Пароль слишком короткий"; return false; }
+
+        Console.WriteLine($"  [TryPattern] Зарегистрирован: {email}");
+        return true;
+    }
+}
+
+// Использование подхода с исключениями
+var service1 = new UserService_Exceptions();
+Console.WriteLine("=== Подход с исключениями ===");
+try { service1.Register("anna@mail.ru", "password123"); }
+catch (Exception ex) { Console.WriteLine($"  Ошибка: {ex.Message}"); }
+try { service1.Register("bad-email", "123"); }
+catch (Exception ex) { Console.WriteLine($"  Ошибка: {ex.Message}"); }
+
+// Использование Try-паттерна
+var service2 = new UserService_TryPattern();
+Console.WriteLine("\n=== Подход с Try-паттерном ===");
+if (!service2.TryRegister("anna@mail.ru", "password123", out string err1))
+    Console.WriteLine($"  Ошибка: {err1}");
+if (!service2.TryRegister("bad-email", "123", out string err2))
+    Console.WriteLine($"  Ошибка: {err2}");
+
+#!markdown
+
+### Попробуй сам: напиши класс `Calculator` с двумя методами: `Divide(int a, int b)` — бросает исключение при делении на ноль, и `TryDivide(int a, int b, out double result)` — возвращает `false`. Покажи использование обоих подходов
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Кастомное исключение (лёгкая)
+Создай `TemperatureOutOfRangeException` с полем `Temperature`. Бросай его в методе `SetTemperature(double temp)` если temp < -273.15 (абсолютный ноль) или > 1000. Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Guard clauses (лёгкая)
+Напиши метод `SendMessage(string from, string to, string text)` с guard clauses: from и to не пустые, text не пустой и не длиннее 500 символов, from != to. Протестируй все проверки.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: TryParse конвертер (средняя)
+Напиши метод `bool TryConvertTemperature(string input, string fromUnit, out double result)`. Метод парсит строку в число и конвертирует: "C" → "F" (формула: F = C * 9/5 + 32), "F" → "C". Если строка не число или единица неизвестна — вернуть false. Не использовать исключения.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: throw vs throw ex (средняя)
+Создай цепочку из 4 методов: `Level1()` → `Level2()` → `Level3()` → `Level4()`. В Level4 брось исключение. В Level2 перехвати и переброcь через `throw;`. Поймай в Level1 и выведи StackTrace. Повтори с `throw ex;` и сравни, что теряется.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Валидация с кастомными исключениями (сложная)
+Создай систему валидации заказа. Кастомные исключения: `EmptyCartException`, `InvalidQuantityException` (с полем Quantity), `OutOfStockException` (с полями ProductName и Requested). Метод `ValidateOrder` проверяет: корзина не пуста, все количества > 0, всё в наличии (используй словарь наличия). Протестируй все сценарии.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Try-паттерн для парсинга JSON-подобной строки (сложная)
+Напиши метод `bool TryParseKeyValue(string input, out string key, out string value)`, который парсит строку формата `"key=value"`. Правила: строка не пустая, содержит ровно один `=`, ключ и значение не пустые. Протестируй: `"name=Анна"`, `"age="`, `"=value"`, `"noequals"`, `"a=b=c"`, `""`.
+
+#!csharp
+
+// Твой код здесь:

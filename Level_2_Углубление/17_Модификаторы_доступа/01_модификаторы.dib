@@ -1,0 +1,519 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Модификаторы доступа и readonly/const
+
+#!markdown
+
+## 1. public — доступен отовсюду
+
+**`public`** — член класса доступен из **любого кода**:
+
+```csharp
+class Dog
+{
+    public string Name;      // доступно отовсюду
+    public void Bark() { }   // доступно отовсюду
+}
+
+Dog d = new Dog();
+d.Name = "Бобик";     // ✓ — public
+d.Bark();              // ✓ — public
+```
+
+**Когда использовать:** для **интерфейса** класса — то, что другой код должен видеть и использовать (свойства, публичные методы).
+
+#!csharp
+
+class Calculator
+{
+    // Публичные методы — интерфейс класса
+    public double Add(double a, double b) => a + b;
+    public double Subtract(double a, double b) => a - b;
+    public double Multiply(double a, double b) => a * b;
+    public double Divide(double a, double b)
+    {
+        if (b == 0) throw new DivideByZeroException();
+        return a / b;
+    }
+}
+
+var calc = new Calculator();
+Console.WriteLine(calc.Add(10, 3));       // 13
+Console.WriteLine(calc.Divide(10, 3));    // 3.333...
+
+#!markdown
+
+## 2. private — доступен только внутри класса
+
+**`private`** — член доступен **только внутри** того же класса:
+
+```csharp
+class Dog
+{
+    private int energy = 100;    // только внутри Dog
+
+    public void Run()
+    {
+        energy -= 10;            // ✓ — внутри класса можно
+        Console.WriteLine($"Энергия: {energy}");
+    }
+}
+
+Dog d = new Dog();
+d.Run();                         // ✓ — Run публичный
+// d.energy = 50;                // ✗ ОШИБКА! energy — private
+```
+
+**Когда использовать:** для **внутренней реализации** — поля, вспомогательные методы, детали, которые не нужны снаружи.
+
+**Правило:** если не уверен — делай **private**. Это **по умолчанию** для членов класса (если модификатор не указан).
+
+#!csharp
+
+class BankAccount
+{
+    // PRIVATE — внутренние данные
+    private double balance;
+    private List<string> history = new();
+
+    // PUBLIC — интерфейс
+    public string Owner { get; }
+    public double Balance => balance;
+
+    public BankAccount(string owner, double initial)
+    {
+        Owner = owner;
+        balance = initial;
+        Log($"Счёт создан, баланс: {balance:C}");
+    }
+
+    public void Deposit(double amount)
+    {
+        balance += amount;
+        Log($"Пополнение: +{amount:C}");
+    }
+
+    public void Withdraw(double amount)
+    {
+        if (amount > balance) throw new InvalidOperationException("Недостаточно средств");
+        balance -= amount;
+        Log($"Снятие: -{amount:C}");
+    }
+
+    public void PrintHistory()
+    {
+        Console.WriteLine($"История операций ({Owner}):");
+        foreach (var entry in history)
+            Console.WriteLine($"  {entry}");
+    }
+
+    // PRIVATE метод — внутренний, для своих нужд
+    private void Log(string message)
+    {
+        history.Add($"[{DateTime.Now:HH:mm:ss}] {message}");
+    }
+}
+
+var acc = new BankAccount("Анна", 1000);
+acc.Deposit(500);
+acc.Withdraw(200);
+acc.PrintHistory();
+// acc.Log("хак");    // ОШИБКА! Log — private
+// acc.balance = 0;   // ОШИБКА! balance — private
+
+#!markdown
+
+### Попробуй сам: создай класс `SecretBox` с private полем `secret` (string) и public методами SetSecret(string) и GetHint() (возвращает первую букву + "***"). Убедись, что secret недоступен снаружи.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. internal — доступен внутри сборки
+
+**`internal`** — доступен внутри **текущей сборки** (проекта), но не из других проектов:
+
+```csharp
+internal class Helper    // весь класс — internal
+{
+    internal void DoWork() { }
+}
+```
+
+**Это модификатор по умолчанию для классов** (если не указать — класс будет internal).
+
+| Модификатор | Внутри класса | Тот же проект | Другой проект |
+|---|---|---|---|
+| `public` | Да | Да | Да |
+| `internal` | Да | Да | Нет |
+| `private` | Да | Нет | Нет |
+
+#!csharp
+
+// internal — по умолчанию для классов в .NET
+// В Polyglot Notebook все классы в одной "сборке",
+// поэтому internal работает как public здесь
+
+internal class DatabaseHelper
+{
+    internal string ConnectionString { get; set; }
+
+    internal void Connect()
+    {
+        Console.WriteLine($"Подключение к: {ConnectionString}");
+    }
+}
+
+var db = new DatabaseHelper();
+db.ConnectionString = "Server=localhost;Database=test";
+db.Connect();
+
+// В реальном проекте: internal классы видны только внутри своего проекта
+// Это полезно для библиотек — скрываешь внутренние классы от пользователей
+
+#!markdown
+
+## 4. protected — доступен в классе и наследниках
+
+**`protected`** — доступен внутри класса и в **классах-наследниках** (подробнее — в теме наследования):
+
+```csharp
+class Animal
+{
+    protected int energy = 100;    // доступно наследникам
+
+    public void Status()
+    {
+        Console.WriteLine($"Энергия: {energy}");
+    }
+}
+
+class Dog : Animal    // Dog наследует Animal
+{
+    public void Run()
+    {
+        energy -= 20;   // ✓ — protected доступно наследникам
+    }
+}
+```
+
+| Модификатор | Свой класс | Наследник | Тот же проект | Другой проект |
+|---|---|---|---|---|
+| `public` | Да | Да | Да | Да |
+| `protected` | Да | Да | Нет | Нет |
+| `internal` | Да | Нет* | Да | Нет |
+| `private` | Да | Нет | Нет | Нет |
+| `protected internal` | Да | Да | Да | Нет |
+
+*internal недоступен наследникам из других сборок
+
+#!csharp
+
+class Animal
+{
+    protected string name;
+    protected int health;
+
+    public Animal(string name, int health)
+    {
+        this.name = name;
+        this.health = health;
+    }
+
+    public void ShowStatus()
+    {
+        Console.WriteLine($"{name}: HP={health}");
+    }
+}
+
+class Cat : Animal
+{
+    public Cat(string name) : base(name, 80)
+    { }
+
+    public void Scratch()
+    {
+        // protected поля доступны в наследнике
+        Console.WriteLine($"{name} царапается!");  // ✓
+    }
+}
+
+var cat = new Cat("Мурка");
+cat.ShowStatus();
+cat.Scratch();
+// cat.name = "Хак";   // ОШИБКА! protected недоступен снаружи
+
+#!markdown
+
+### Попробуй сам: создай класс `Vehicle` с protected полем speed и public методом GetSpeed(). Создай класс `Car : Vehicle` с методом Accelerate(), который увеличивает speed. Проверь, что speed недоступен снаружи, но доступен в Car.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Правило: поля private, свойства public
+
+**Золотое правило инкапсуляции:**
+
+```csharp
+// ПЛОХО — открытые поля
+class Bad
+{
+    public string Name;
+    public int Age;
+}
+
+// ХОРОШО — инкапсуляция
+class Good
+{
+    private string name;      // private поле
+    public string Name        // public свойство с валидацией
+    {
+        get => name;
+        set => name = value ?? throw new ArgumentNullException();
+    }
+
+    public int Age { get; set; }   // автосвойство (private backing field создаётся автоматически)
+}
+```
+
+**Почему:**
+1. **Валидация** — контролируешь, что записывается
+2. **Гибкость** — можно изменить реализацию без изменения интерфейса
+3. **Отладка** — можно поставить breakpoint в set
+4. **Совместимость** — свойства работают с data binding, интерфейсами
+
+#!csharp
+
+class Player
+{
+    // Private поля — внутренняя кухня
+    private int health;
+    private int maxHealth;
+    private List<string> inventory = new();
+
+    // Public свойства — контролируемый доступ
+    public string Name { get; }
+
+    public int Health
+    {
+        get => health;
+        private set => health = Math.Clamp(value, 0, maxHealth);
+    }
+
+    public int MaxHealth => maxHealth;
+
+    public bool IsAlive => Health > 0;
+
+    public int InventoryCount => inventory.Count;
+
+    public Player(string name, int maxHealth)
+    {
+        Name = name;
+        this.maxHealth = maxHealth;
+        Health = maxHealth;
+    }
+
+    public void TakeDamage(int damage)
+    {
+        Health -= damage;
+        Console.WriteLine($"{Name} получил {damage} урона → HP: {Health}/{MaxHealth}");
+    }
+
+    public void Heal(int amount)
+    {
+        Health += amount;
+        Console.WriteLine($"{Name} восстановил {amount} HP → HP: {Health}/{MaxHealth}");
+    }
+
+    public void PickUp(string item)
+    {
+        inventory.Add(item);
+        Console.WriteLine($"{Name} подобрал: {item}");
+    }
+}
+
+var player = new Player("Герой", 100);
+player.TakeDamage(30);
+player.Heal(10);
+player.TakeDamage(90);   // Health не станет < 0
+player.Heal(999);         // Health не станет > maxHealth
+player.PickUp("Меч");
+Console.WriteLine($"Предметов: {player.InventoryCount}");
+
+#!markdown
+
+## 6. readonly и const — неизменяемые данные
+
+**`const`** — константа времени компиляции. Значение **встраивается** в код:
+
+```csharp
+const double PI = 3.14159265;
+const int MAX_SIZE = 100;
+const string APP_NAME = "MyApp";
+```
+
+**`readonly`** — можно задать **только в конструкторе** или при объявлении:
+
+```csharp
+class Circle
+{
+    public readonly double Radius;    // задаётся в конструкторе
+
+    public Circle(double radius)
+    {
+        Radius = radius;   // ✓ — в конструкторе можно
+    }
+
+    public void Resize()
+    {
+        // Radius = 10;   // ✗ ОШИБКА! readonly нельзя менять после конструктора
+    }
+}
+```
+
+| | `const` | `readonly` |
+|---|---|---|
+| Когда задаётся | При компиляции | В конструкторе или объявлении |
+| Может быть | Только примитивы и string | Любой тип |
+| static? | Всегда static (неявно) | Может быть instance или static |
+| Когда использовать | Математические константы, фиксированные настройки | Значения, известные при создании объекта |
+
+#!csharp
+
+class GameConfig
+{
+    // const — известно при компиляции, одинаково для всех
+    public const int MAX_PLAYERS = 4;
+    public const double GRAVITY = 9.81;
+    public const string VERSION = "1.0.0";
+
+    // readonly — задаётся при создании, разное для разных объектов
+    public readonly string ServerName;
+    public readonly DateTime CreatedAt;
+    public readonly int MaxLevel;
+
+    public GameConfig(string server, int maxLevel)
+    {
+        ServerName = server;
+        CreatedAt = DateTime.Now;
+        MaxLevel = maxLevel;
+        // После конструктора readonly поля нельзя менять
+    }
+
+    public void Print()
+    {
+        Console.WriteLine($"Сервер: {ServerName}");
+        Console.WriteLine($"Создан: {CreatedAt:HH:mm:ss}");
+        Console.WriteLine($"Макс. уровень: {MaxLevel}");
+        Console.WriteLine($"Макс. игроков: {MAX_PLAYERS} (const)");
+        Console.WriteLine($"Гравитация: {GRAVITY} (const)");
+        Console.WriteLine($"Версия: {VERSION} (const)");
+    }
+}
+
+// const доступен без создания объекта (он static)
+Console.WriteLine($"MAX_PLAYERS = {GameConfig.MAX_PLAYERS}");
+
+var config = new GameConfig("EU-West", 60);
+config.Print();
+// config.ServerName = "другой";   // ОШИБКА! readonly
+// GameConfig.GRAVITY = 0;          // ОШИБКА! const
+
+#!markdown
+
+### Попробуй сам: создай класс `MathConstants` с const полями: PI, E (число Эйлера), GOLDEN_RATIO (золотое сечение). Обращайся к ним через имя класса: `MathConstants.PI`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## ИТОГО:
+
+| Модификатор | Доступ |
+|---|---|
+| `public` | Отовсюду |
+| `private` | Только внутри класса (по умолчанию для членов) |
+| `protected` | Внутри класса + наследники |
+| `internal` | Внутри сборки/проекта (по умолчанию для классов) |
+| `readonly` | Можно задать только при объявлении или в конструкторе |
+| `const` | Константа времени компиляции, всегда static |
+
+**Правило инкапсуляции:** поля — private, доступ — через public свойства.
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Инкапсуляция (лёгкая)
+Создай класс `Person` с private полями name и age. Public свойства Name и Age с валидацией (имя не пустое, возраст 0-150). Конструктор принимает оба значения.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Константы (лёгкая)
+Создай класс `Physics` с const: SPEED_OF_LIGHT (299792458 м/с), PLANCK (6.626e-34), BOLTZMANN (1.381e-23). Выведи значения через имя класса.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: readonly ID (средняя)
+Создай класс `Order` с readonly полями: Id (Guid), CreatedAt (DateTime). Конструктор генерирует Id через Guid.NewGuid() и устанавливает CreatedAt = DateTime.Now. Свойство Status — public с private set. Создай 3 заказа и выведи их Id.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Полная инкапсуляция (средняя)
+Создай класс `Stack` (стек) с private массивом и счётчиком. Public методы: Push(int), Pop() → int, Peek() → int, Count (свойство), IsEmpty (свойство). Размер стека задаётся в конструкторе. Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: protected наследование (сложная)
+Создай класс `Shape` с protected полем name и public методом GetName(). Наследники: `Circle` (с Radius и Area()), `Square` (с Side и Area()). Каждый наследник устанавливает name в конструкторе. Создай объекты обоих типов.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Класс с полной защитой (сложная)
+Создай класс `PasswordVault` с private Dictionary (логин → пароль). Public методы: Register(login, password), Authenticate(login, password) → bool, ChangePassword(login, oldPass, newPass) → bool. Все пароли хранятся в «зашифрованном» виде (просто разверни строку). Протестируй все сценарии.
+
+#!csharp
+
+// Твой код здесь:

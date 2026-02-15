@@ -1,0 +1,542 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Наследование -- основы
+
+#!markdown
+
+## Что такое наследование?
+
+**Наследование** -- один из четырёх столпов ООП. Это механизм, позволяющий создать **новый класс на основе существующего**.
+
+Аналогия из жизни:
+- **Животное** (базовый класс) -- имеет имя, возраст, умеет есть, спать
+- **Собака** (производный класс) -- всё то же + умеет лаять
+- **Кошка** (производный класс) -- всё то же + умеет мурлыкать
+
+Собака **наследует** всё от Животного и **добавляет** своё поведение.
+
+Терминология:
+- **Базовый класс** (base class, родитель, суперкласс) -- от кого наследуют
+- **Производный класс** (derived class, наследник, подкласс) -- кто наследует
+
+#!markdown
+
+## 1. Синтаксис: class Derived : Base
+
+```csharp
+// Базовый класс
+class Animal
+{
+    public string Name { get; set; }
+    public void Eat() => Console.WriteLine($"{Name} ест");
+}
+
+// Производный класс -- наследует от Animal
+class Dog : Animal
+{
+    // Dog автоматически имеет Name и Eat()!
+    public void Bark() => Console.WriteLine($"{Name} лает: Гав!");
+}
+```
+
+Символ `:` означает "наследует от". В C# класс может наследовать **только от одного** класса (одиночное наследование).
+
+#!csharp
+
+// Базовый класс
+public class Animal
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+
+    public void Eat() => Console.WriteLine($"{Name} ест");
+    public void Sleep() => Console.WriteLine($"{Name} спит");
+    public void Info() => Console.WriteLine($"{Name}, возраст: {Age}");
+}
+
+// Производный класс Dog
+public class Dog : Animal
+{
+    public string Breed { get; set; }  // Своё свойство
+    public void Bark() => Console.WriteLine($"{Name} лает: Гав-гав!");
+}
+
+// Производный класс Cat
+public class Cat : Animal
+{
+    public bool IsIndoor { get; set; }
+    public void Purr() => Console.WriteLine($"{Name} мурлычет");
+}
+
+// Использование
+var dog = new Dog { Name = "Рекс", Age = 3, Breed = "Овчарка" };
+dog.Info();     // Наследовано от Animal
+dog.Eat();      // Наследовано от Animal
+dog.Bark();     // Собственный метод Dog
+Console.WriteLine($"Порода: {dog.Breed}");
+
+Console.WriteLine();
+
+var cat = new Cat { Name = "Мурка", Age = 5, IsIndoor = true };
+cat.Info();
+cat.Sleep();
+cat.Purr();
+
+#!markdown
+
+### Попробуй сам: создай базовый класс `Vehicle` (Name, Speed, метод Move()) и два производных: `Car` (Doors) и `Bicycle` (HasBell). Создай объекты и вызови методы.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Что наследуется, а что нет
+
+| Наследуется | НЕ наследуется |
+|---|---|
+| public методы | Конструкторы |
+| public свойства | private члены (но они **существуют**!) |
+| protected методы/свойства | static конструкторы |
+| internal (в пределах сборки) | |
+
+**Важно:** private члены базового класса **существуют** в наследнике, но наследник не может к ним обратиться напрямую. Они доступны через public/protected методы базового класса.
+
+```csharp
+class Base
+{
+    public int PublicField = 1;      // Доступен в наследнике
+    protected int ProtectedField = 2; // Доступен в наследнике
+    private int _privateField = 3;    // НЕ доступен в наследнике
+
+    public int GetPrivate() => _privateField;  // Но можно через метод
+}
+```
+
+`protected` -- золотая середина: **скрыт** от внешнего кода, но **доступен** наследникам.
+
+#!csharp
+
+public class BankAccount
+{
+    public string Owner { get; set; }
+    protected decimal Balance { get; set; }  // Виден наследникам
+    private string _secretPin = "1234";       // НЕ виден наследникам
+
+    public BankAccount(string owner, decimal initialBalance)
+    {
+        Owner = owner;
+        Balance = initialBalance;
+    }
+
+    public void ShowBalance() => Console.WriteLine($"Баланс {Owner}: {Balance:C}");
+}
+
+public class SavingsAccount : BankAccount
+{
+    public decimal InterestRate { get; set; }
+
+    public SavingsAccount(string owner, decimal balance, decimal rate)
+        : base(owner, balance)  // Вызов конструктора базового класса
+    {
+        InterestRate = rate;
+    }
+
+    public void AddInterest()
+    {
+        // Balance доступен -- он protected!
+        decimal interest = Balance * InterestRate;
+        Balance += interest;
+        Console.WriteLine($"Начислены проценты: {interest:C}");
+
+        // _secretPin НЕ доступен -- он private!
+        // Console.WriteLine(_secretPin);  // Ошибка компиляции!
+    }
+}
+
+var savings = new SavingsAccount("Алиса", 10000, 0.05m);
+savings.ShowBalance();     // Наследовано от BankAccount
+savings.AddInterest();     // Собственный метод
+savings.ShowBalance();
+
+#!markdown
+
+### Попробуй сам: создай базовый класс `Shape` с protected свойством `Color` и public методом `Describe()`. Создай производный класс `Circle` с радиусом и методом `Area()`, который использует protected Color. Убедись, что Color не доступен снаружи.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. base -- обращение к базовому классу
+
+Ключевое слово **`base`** позволяет обратиться к членам **базового класса** из производного:
+
+- `base.Method()` -- вызвать метод базового класса
+- `base.Property` -- обратиться к свойству базового класса
+- `base(args)` -- вызвать конструктор базового класса
+
+```csharp
+class Animal
+{
+    public string Name { get; set; }
+    public void Speak() => Console.WriteLine($"{Name} издаёт звук");
+}
+
+class Dog : Animal
+{
+    public void Speak()
+    {
+        base.Speak();  // Вызываем версию из Animal
+        Console.WriteLine($"{Name} лает!");  // Добавляем своё
+    }
+}
+```
+
+#!csharp
+
+public class Logger
+{
+    public string Prefix { get; set; }
+
+    public void Log(string message)
+    {
+        Console.WriteLine($"[{Prefix}] {message}");
+    }
+}
+
+public class TimestampLogger : Logger
+{
+    public void Log(string message)
+    {
+        // Дополняем базовую логику
+        Console.Write($"{DateTime.Now:HH:mm:ss} ");
+        base.Log(message);  // Вызываем Log из Logger
+    }
+}
+
+public class ColorLogger : Logger
+{
+    public ConsoleColor Color { get; set; } = ConsoleColor.Green;
+
+    public void Log(string message)
+    {
+        var oldColor = Console.ForegroundColor;
+        Console.ForegroundColor = Color;
+        base.Log(message);
+        Console.ForegroundColor = oldColor;
+    }
+}
+
+var logger = new TimestampLogger { Prefix = "APP" };
+logger.Log("Приложение запущено");
+logger.Log("Загрузка данных");
+
+#!markdown
+
+### Попробуй сам: создай базовый класс `Notification` с методом `Send(string message)`, который выводит "Уведомление: {message}". Создай `EmailNotification`, который через base.Send() сначала вызывает базовый метод, а затем добавляет "Отправлено на email".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. base() -- вызов конструктора базового класса
+
+Если базовый класс имеет конструктор **с параметрами**, производный класс **обязан** его вызвать через `base(...)`:
+
+```csharp
+class Animal
+{
+    public string Name { get; }
+
+    public Animal(string name)  // Конструктор с параметром
+    {
+        Name = name;
+    }
+}
+
+class Dog : Animal
+{
+    public string Breed { get; }
+
+    // ОБЯЗАТЕЛЬНО вызвать base(name)!
+    public Dog(string name, string breed) : base(name)
+    {
+        Breed = breed;
+    }
+}
+```
+
+Порядок вызова: сначала конструктор **базового** класса (base), потом тело конструктора **производного**.
+
+#!csharp
+
+public class Person
+{
+    public string Name { get; }
+    public int Age { get; }
+
+    public Person(string name, int age)
+    {
+        Name = name;
+        Age = age;
+        Console.WriteLine($"  [Person] Создан: {name}, {age} лет");
+    }
+}
+
+public class Student : Person
+{
+    public string University { get; }
+    public double GPA { get; set; }
+
+    // Вызываем конструктор Person через base
+    public Student(string name, int age, string university)
+        : base(name, age)
+    {
+        University = university;
+        Console.WriteLine($"  [Student] Университет: {university}");
+    }
+}
+
+public class GraduateStudent : Student
+{
+    public string Thesis { get; }
+
+    // Цепочка: GraduateStudent -> Student -> Person
+    public GraduateStudent(string name, int age, string university, string thesis)
+        : base(name, age, university)
+    {
+        Thesis = thesis;
+        Console.WriteLine($"  [GraduateStudent] Тема: {thesis}");
+    }
+}
+
+Console.WriteLine("Создание GraduateStudent:");
+var grad = new GraduateStudent("Иван", 24, "МГУ", "Нейросети");
+Console.WriteLine($"\nРезультат: {grad.Name}, {grad.Age}, {grad.University}, тема: {grad.Thesis}");
+
+#!markdown
+
+### Попробуй сам: создай иерархию: `Shape(string color)` -> `Rectangle(string color, double w, double h)` -> `Square(string color, double side)`. Каждый конструктор через base() вызывает предыдущий. Square передаёт side как w и h в Rectangle.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Virtual и Override -- переопределение методов
+
+**`virtual`** -- помечает метод в базовом классе как "можно переопределить".
+**`override`** -- переопределяет virtual-метод в производном классе.
+
+```csharp
+class Animal
+{
+    public virtual string Speak() => "...";  // virtual -- можно переопределить
+}
+
+class Dog : Animal
+{
+    public override string Speak() => "Гав!";  // override -- переопределяем
+}
+
+class Cat : Animal
+{
+    public override string Speak() => "Мяу!";
+}
+```
+
+Без virtual/override -- метод производного класса **скрывает** (hiding), а не переопределяет метод базового. Это **плохая практика** (подробнее в следующем уроке).
+
+#!csharp
+
+public class Shape
+{
+    public string Color { get; set; }
+
+    public Shape(string color) { Color = color; }
+
+    // virtual -- наследники МОГУТ переопределить
+    public virtual double Area() => 0;
+    public virtual string Describe() => $"Фигура ({Color})";
+}
+
+public class Circle : Shape
+{
+    public double Radius { get; set; }
+
+    public Circle(string color, double radius) : base(color)
+    {
+        Radius = radius;
+    }
+
+    // override -- ПЕРЕОПРЕДЕЛЯЕМ метод базового класса
+    public override double Area() => Math.PI * Radius * Radius;
+    public override string Describe() => $"Круг ({Color}), R={Radius}";
+}
+
+public class RectangleShape : Shape
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    public RectangleShape(string color, double w, double h) : base(color)
+    {
+        Width = w;
+        Height = h;
+    }
+
+    public override double Area() => Width * Height;
+    public override string Describe() => $"Прямоугольник ({Color}), {Width}x{Height}";
+}
+
+// Используем
+Shape[] shapes = {
+    new Circle("красный", 5),
+    new RectangleShape("синий", 4, 6),
+    new Circle("зелёный", 3),
+};
+
+foreach (var shape in shapes)
+{
+    // Вызывается ПЕРЕОПРЕДЕЛЁННЫЙ метод -- полиморфизм!
+    Console.WriteLine($"{shape.Describe()}, площадь: {shape.Area():F2}");
+}
+
+#!markdown
+
+### Попробуй сам: создай базовый класс `Employee` с virtual методом `decimal CalculateSalary()` (возвращает 0). Создай два наследника: `FullTimeEmployee` (оклад) и `Freelancer` (часы * ставка). Переопредели CalculateSalary(). Создай массив Employee[] и выведи зарплату каждого.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. Иерархия наследования -- всё вместе
+
+В C# **все классы** неявно наследуют от `System.Object`. Это корень иерархии:
+
+```
+Object
+  ├── Animal
+  │     ├── Dog
+  │     └── Cat
+  ├── Shape
+  │     ├── Circle
+  │     └── Rectangle
+  └── string, int, ... (всё!)
+```
+
+Методы, унаследованные от Object:
+- `ToString()` -- строковое представление
+- `Equals(object)` -- сравнение
+- `GetHashCode()` -- хеш-код
+- `GetType()` -- тип объекта
+
+Все эти методы -- `virtual`, поэтому их можно `override`:
+
+#!csharp
+
+public class Product
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+
+    public Product(string name, decimal price)
+    {
+        Name = name;
+        Price = price;
+    }
+
+    // Переопределяем ToString() от Object
+    public override string ToString() => $"{Name} ({Price:C})";
+
+    // Переопределяем Equals() от Object
+    public override bool Equals(object? obj)
+    {
+        if (obj is Product other)
+            return Name == other.Name && Price == other.Price;
+        return false;
+    }
+
+    // Если переопределяем Equals, нужно переопределить и GetHashCode
+    public override int GetHashCode() => HashCode.Combine(Name, Price);
+}
+
+var p1 = new Product("Молоко", 89.90m);
+var p2 = new Product("Молоко", 89.90m);
+var p3 = new Product("Хлеб", 45.00m);
+
+Console.WriteLine(p1);                          // Молоко (89,90 ₽) -- ToString()
+Console.WriteLine($"p1 == p2: {p1.Equals(p2)}"); // true -- Equals()
+Console.WriteLine($"p1 == p3: {p1.Equals(p3)}"); // false
+Console.WriteLine($"Тип: {p1.GetType()}");        // Product -- GetType()
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Простое наследование (лёгкая)
+Создай класс `Fruit` (Name, Color, Weight) и два наследника: `Apple` (Variety -- сорт) и `Banana` (IsRipe). Создай объекты и выведи информацию.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Protected и base (лёгкая)
+Создай класс `Counter` с protected полем `_count`, методами `Increment()`, `GetCount()`. Создай `DoubleCounter : Counter`, который переопределяет Increment() так, чтобы увеличивать на 2 (используй base). Продемонстрируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Цепочка конструкторов (средняя)
+Создай иерархию: `Gadget(string name)` -> `Phone(string name, string os)` -> `Smartphone(string name, string os, bool hasNFC)`. Каждый уровень добавляет своё свойство и вызывает base(). Создай Smartphone и выведи все свойства.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Virtual/Override (средняя)
+Создай базовый класс `Discount` с virtual методом `decimal Apply(decimal price)` (возвращает price без скидки). Создай наследников: `PercentDiscount` (процент), `FixedDiscount` (фиксированная сумма), `BuyOneGetOneFree` (цена / 2). Протестируй на цене 1000.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: ToString + Equals (средняя)
+Создай класс `Coordinate(double Lat, double Lon)` с переопределёнными ToString() (формат "55.75N, 37.62E"), Equals() (сравнение с точностью 0.001) и GetHashCode(). Протестируй сравнение.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Зоопарк (сложная)
+Создай иерархию: `Animal` (Name, Age, virtual Speak(), virtual Describe()). Наследники: `Mammal` (добавляет FurColor), `Bird` (добавляет CanFly), `Fish` (добавляет WaterType). Конкретные животные: `Dog : Mammal`, `Parrot : Bird`, `Shark : Fish` -- каждый переопределяет Speak() и Describe(). Создай "зоопарк" (массив Animal[]) из 6 животных и выведи информацию о каждом.
+
+#!csharp
+
+// Твой код здесь:

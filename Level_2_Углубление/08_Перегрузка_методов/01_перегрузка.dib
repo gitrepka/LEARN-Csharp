@@ -1,0 +1,316 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Перегрузка методов (Method Overloading)
+
+#!markdown
+
+## 1. Что такое перегрузка методов?
+
+**Перегрузка** (overloading) — это возможность создать **несколько методов с одинаковым именем**, но с **разными параметрами**.
+
+Зачем? Представь: у тебя есть метод `Print()`. Ты хочешь, чтобы он мог выводить:
+- строку
+- число
+- строку и число вместе
+
+Без перегрузки пришлось бы писать `PrintString()`, `PrintInt()`, `PrintStringAndInt()` — некрасиво и неудобно.
+
+С перегрузкой — просто `Print()` с разными параметрами:
+
+```csharp
+void Print(string text)    { ... }
+void Print(int number)     { ... }
+void Print(string text, int number) { ... }
+```
+
+**Компилятор сам определяет**, какую версию вызвать, по типам и количеству аргументов.
+
+#!csharp
+
+// Простой пример перегрузки
+void Greet()
+{
+    Console.WriteLine("Привет!");
+}
+
+void Greet(string name)
+{
+    Console.WriteLine($"Привет, {name}!");
+}
+
+void Greet(string name, int age)
+{
+    Console.WriteLine($"Привет, {name}! Тебе {age} лет.");
+}
+
+// Компилятор выбирает нужную версию:
+Greet();                    // → Привет!
+Greet("Анна");              // → Привет, Анна!
+Greet("Анна", 25);          // → Привет, Анна! Тебе 25 лет.
+
+#!markdown
+
+### Попробуй сам: создай три перегрузки метода `Show()`: без параметров (выводит "---"), с одним string, с двумя string. Вызови все три.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Перегрузка по типу параметров
+
+Методы могут отличаться **типами** параметров при одинаковом количестве:
+
+```csharp
+double Square(int x)    → принимает int
+double Square(double x) → принимает double
+```
+
+Компилятор смотрит на тип аргумента и вызывает подходящую версию.
+
+**Важно:** возвращаемый тип **НЕ** участвует в перегрузке!
+
+```csharp
+int    Calc(int x)   { return x; }
+double Calc(int x)   { return x; }  // ОШИБКА! Параметры одинаковые!
+```
+
+| Что можно менять | Пример |
+|---|---|
+| Количество параметров | `F()` vs `F(int x)` |
+| Типы параметров | `F(int x)` vs `F(double x)` |
+| Порядок типов | `F(int x, string s)` vs `F(string s, int x)` |
+| **Нельзя**: только возвращаемый тип | `int F()` vs `double F()` — ошибка |
+
+#!csharp
+
+// Перегрузка по типу
+double Area(double radius)
+{
+    return Math.PI * radius * radius;   // площадь круга
+}
+
+double Area(double width, double height)
+{
+    return width * height;              // площадь прямоугольника
+}
+
+double Area(double a, double b, double c)
+{
+    // площадь треугольника по формуле Герона
+    double s = (a + b + c) / 2;
+    return Math.Sqrt(s * (s - a) * (s - b) * (s - c));
+}
+
+Console.WriteLine($"Круг:          {Area(5.0):F2}");
+Console.WriteLine($"Прямоугольник: {Area(4.0, 6.0):F2}");
+Console.WriteLine($"Треугольник:   {Area(3.0, 4.0, 5.0):F2}");
+
+#!markdown
+
+### Попробуй сам: создай перегрузки метода `Max()` — одна принимает два int, другая три int. Каждая возвращает максимальное значение. Проверь обе.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Как компилятор выбирает перегрузку (Resolution)
+
+Когда ты вызываешь перегруженный метод, компилятор выполняет **разрешение перегрузки** (overload resolution):
+
+1. Ищет **точное совпадение** типов
+2. Если нет — ищет **неявное преобразование** (int → double, например)
+3. Если подходит несколько — **ошибка компиляции** (ambiguous call)
+
+```csharp
+void Test(int x)    { Console.WriteLine("int"); }
+void Test(double x) { Console.WriteLine("double"); }
+
+Test(5);       // → "int"     (точное совпадение)
+Test(5.0);     // → "double"  (точное совпадение)
+Test(5.0f);    // → "double"  (float → double неявно)
+```
+
+**Цепочка неявных преобразований числовых типов:**
+```
+byte → short → int → long → float → double → decimal
+```
+
+#!csharp
+
+// Демонстрация разрешения перегрузки
+void Show(int x)    { Console.WriteLine($"int:    {x}"); }
+void Show(double x) { Console.WriteLine($"double: {x}"); }
+void Show(string x) { Console.WriteLine($"string: {x}"); }
+
+Show(42);       // int — точное совпадение
+Show(3.14);     // double — точное совпадение
+Show("текст");  // string — точное совпадение
+
+byte b = 10;
+Show(b);        // int — byte неявно приводится к int
+
+long big = 999;
+Show(big);      // double — long неявно приводится к double (нет перегрузки для long)
+
+#!markdown
+
+### Попробуй сам: создай перегрузки `Info(int x)`, `Info(string s)`, `Info(bool b)`. Вызови: `Info(10)`, `Info("test")`, `Info(true)`. Какая версия вызовется для каждого?
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Перегрузка в стандартной библиотеке
+
+Перегрузка используется **повсеместно** в C#. Ты уже её использовал!
+
+```csharp
+// Console.WriteLine — перегружен для всех типов:
+Console.WriteLine();              // без параметров
+Console.WriteLine("Привет");     // string
+Console.WriteLine(42);           // int
+Console.WriteLine(3.14);         // double
+Console.WriteLine(true);         // bool
+
+// Math.Max — перегружен:
+Math.Max(5, 10);                 // int, int
+Math.Max(5.5, 10.3);            // double, double
+
+// int.Parse / Convert.ToInt32 — тоже перегружены
+```
+
+**Совет:** в IDE наведи курсор на метод и увидишь: «N overloads» — количество перегрузок.
+
+| Метод | Примеры перегрузок |
+|---|---|
+| `Console.WriteLine` | 18 перегрузок! |
+| `Math.Max` | int, long, float, double, decimal |
+| `Math.Abs` | int, long, float, double, decimal |
+| `string.Substring` | `(int start)` и `(int start, int length)` |
+
+#!csharp
+
+// Перегрузки стандартной библиотеки в действии
+Console.WriteLine(Math.Max(10, 20));         // int версия
+Console.WriteLine(Math.Max(10.5, 20.3));     // double версия
+
+string text = "Привет, мир!";
+Console.WriteLine(text.Substring(8));        // одна перегрузка: с начала до конца
+Console.WriteLine(text.Substring(0, 6));     // другая: с позиции и длиной
+
+Console.WriteLine(Math.Round(3.14159));      // без знаков после запятой
+Console.WriteLine(Math.Round(3.14159, 2));   // 2 знака после запятой
+
+#!markdown
+
+## ИТОГО:
+
+1. **Перегрузка** — несколько методов с одним именем, но разными параметрами
+2. Можно менять **количество**, **типы** и **порядок** параметров
+3. **Нельзя** перегружать только по возвращаемому типу
+4. Компилятор выбирает перегрузку автоматически (overload resolution)
+5. Если точного совпадения нет — используется неявное преобразование
+6. Перегрузка широко используется в стандартной библиотеке C#
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Сложение (лёгкая)
+Создай перегрузки метода `Add()`:
+- `Add(int a, int b)` — возвращает сумму двух int
+- `Add(double a, double b)` — возвращает сумму двух double
+- `Add(string a, string b)` — возвращает конкатенацию строк через пробел
+
+Проверь все три версии.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Форматированный вывод (лёгкая)
+Создай перегрузки `PrintFormatted()`:
+- Без параметров → выводит пустую строку
+- `(string text)` → выводит `=== text ===`
+- `(string text, int width)` → выводит text, дополненный символами `=` до указанной ширины
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Среднее значение (средняя)
+Создай перегрузки `Average()`:
+- `(int a, int b)` — среднее двух чисел (double)
+- `(int a, int b, int c)` — среднее трёх чисел
+- `(int[] numbers)` — среднее массива чисел
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Создание строки описания (средняя)
+Создай перегрузки `Describe()`:
+- `(string name)` → "Имя: name"
+- `(string name, int age)` → "Имя: name, Возраст: age"
+- `(string name, int age, string city)` → "Имя: name, Возраст: age, Город: city"
+
+Вызови все три и выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Повторение строки (сложная)
+Создай перегрузки `Repeat()`:
+- `(string text)` → повторяет текст 2 раза (по умолчанию)
+- `(string text, int count)` → повторяет text count раз
+- `(char symbol, int count)` → повторяет символ count раз
+
+Каждая возвращает string. Выведи: `Repeat("Ха")`, `Repeat("Ха", 5)`, `Repeat('*', 20)`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Мини-калькулятор (сложная)
+Создай перегрузки `Calc()`:
+- `(int a, int b)` → возвращает a + b
+- `(int a, int b, char op)` → выполняет операцию op (+, -, *, /) и возвращает double
+- `(double a, double b, char op)` → то же самое, но для double
+
+Проверь: `Calc(10, 3)`, `Calc(10, 3, '/')`, `Calc(10.5, 3.2, '*')`.
+
+#!csharp
+
+// Твой код здесь:

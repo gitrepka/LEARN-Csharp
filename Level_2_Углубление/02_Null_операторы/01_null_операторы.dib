@@ -1,0 +1,384 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Null-операторы — элегантная работа с null
+
+#!markdown
+
+## 1. Оператор ?? (null-coalescing — оператор объединения с null)
+
+Оператор **`??`** возвращает **левый операнд**, если он **не null**, иначе — **правый**:
+
+```csharp
+значение ?? значениеПоУмолчанию
+```
+
+**Как это работает:**
+
+```csharp
+string name = null;
+string displayName = name ?? "Аноним";
+Console.WriteLine(displayName);  // "Аноним" (name был null)
+
+string name2 = "Алексей";
+string displayName2 = name2 ?? "Аноним";
+Console.WriteLine(displayName2); // "Алексей" (name2 не null)
+```
+
+**С Nullable типами:**
+
+```csharp
+int? score = null;
+int finalScore = score ?? 0;       // 0 (score был null)
+
+int? score2 = 95;
+int finalScore2 = score2 ?? 0;     // 95 (score2 не null)
+```
+
+**Сравнение ?? и if/else:**
+
+```csharp
+// Без оператора ??
+string result;
+if (name != null)
+    result = name;
+else
+    result = "Аноним";
+
+// С оператором ?? — одна строка!
+string result = name ?? "Аноним";
+```
+
+**Цепочка ?? — несколько вариантов:**
+
+```csharp
+string firstName = null;
+string nickname = null;
+string email = "user@mail.ru";
+
+// Берём первое не-null значение
+string display = firstName ?? nickname ?? email ?? "Неизвестный";
+Console.WriteLine(display);  // "user@mail.ru"
+```
+
+#!markdown
+
+### Попробуй сам: создай `string? city = null;` и `int? age = null;`. Используя `??`, выведи город (или "не указан") и возраст (или 0)
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Оператор ?. (null-conditional — оператор условного доступа к null)
+
+Оператор **`?.`** обращается к свойству или методу **только если объект не null**. Если null — возвращает `null` вместо ошибки:
+
+```csharp
+объект?.Свойство
+объект?.Метод()
+```
+
+**Проблема без `?.`:**
+
+```csharp
+string name = null;
+int length = name.Length;    // NullReferenceException!
+```
+
+**Решение с `?.`:**
+
+```csharp
+string name = null;
+int? length = name?.Length;   // null (не ошибка!)
+Console.WriteLine(length);    // (пусто)
+
+string name2 = "Алексей";
+int? length2 = name2?.Length; // 7
+Console.WriteLine(length2);   // 7
+```
+
+**Обрати внимание:** результат `?.` всегда **Nullable** (`int?`, а не `int`), потому что может быть null.
+
+**С методами:**
+
+```csharp
+string text = null;
+string upper = text?.ToUpper();     // null (не ошибка!)
+string trimmed = text?.Trim();      // null
+
+string text2 = "  привет  ";
+string upper2 = text2?.ToUpper();   // "  ПРИВЕТ  "
+string trimmed2 = text2?.Trim();    // "привет"
+```
+
+**С массивами и индексаторами — `?[]`:**
+
+```csharp
+int[] numbers = null;
+int? first = numbers?[0];   // null (не ошибка!)
+
+int[] numbers2 = {10, 20, 30};
+int? first2 = numbers2?[0]; // 10
+```
+
+#!markdown
+
+### Попробуй сам: создай `string? message = null;`. Используя `?.`, попробуй получить Length, вызвать ToUpper(), вызвать Contains("hello"). Выведи результаты. Затем присвой message строку и повтори
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Комбинация ?. и ?? — мощная пара
+
+Часто `?.` и `??` используют **вместе**: `?.` для безопасного доступа, `??` для значения по умолчанию:
+
+```csharp
+string name = null;
+
+// Без операторов:
+int length;
+if (name != null)
+    length = name.Length;
+else
+    length = 0;
+
+// С операторами — одна строка!
+int length = name?.Length ?? 0;
+```
+
+**Ещё примеры:**
+
+```csharp
+string text = null;
+
+string upper = text?.ToUpper() ?? "НЕТ ТЕКСТА";
+Console.WriteLine(upper);  // "НЕТ ТЕКСТА"
+
+string text2 = "привет";
+string upper2 = text2?.ToUpper() ?? "НЕТ ТЕКСТА";
+Console.WriteLine(upper2); // "ПРИВЕТ"
+```
+
+**С массивами:**
+
+```csharp
+string[] names = null;
+
+int count = names?.Length ?? 0;
+Console.WriteLine($"Элементов: {count}");  // Элементов: 0
+
+string first = names?[0] ?? "пусто";
+Console.WriteLine(first);  // "пусто"
+```
+
+#!markdown
+
+### Попробуй сам: создай `int[] numbers = null;`. Используя `?.` и `??`, безопасно получи: длину массива (или 0), первый элемент (или -1). Затем присвой numbers реальный массив и проверь снова
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Оператор ??= (null-coalescing assignment — присваивание с объединением null)
+
+Оператор **`??=`** присваивает значение **только если переменная равна null**:
+
+```csharp
+переменная ??= значение;
+// Эквивалент:
+// if (переменная == null) переменная = значение;
+```
+
+**Примеры:**
+
+```csharp
+string name = null;
+name ??= "Аноним";        // name был null → присвоили "Аноним"
+Console.WriteLine(name);   // "Аноним"
+
+name ??= "Другое имя";    // name уже не null → ничего не делаем
+Console.WriteLine(name);   // "Аноним" (не изменился!)
+```
+
+**Полезно для "ленивой" инициализации:**
+
+```csharp
+List<string> items = null;
+
+// Создаём список только когда он действительно нужен
+items ??= new List<string>();
+items.Add("первый элемент");
+```
+
+**Сравнение с обычной проверкой:**
+
+```csharp
+// Без ??=
+if (connection == null)
+{
+    connection = CreateNewConnection();
+}
+
+// С ??=  — одна строка!
+connection ??= CreateNewConnection();
+```
+
+#!markdown
+
+### Попробуй сам: создай `int? bonus = null;`. Используй `??=`, чтобы присвоить 100, если null. Выведи. Затем попробуй `??=` ещё раз с 200 — изменится ли?
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Цепочки ?. — глубокий доступ к вложенным свойствам
+
+Оператор `?.` особенно полезен при работе с **вложенными объектами**, где каждый уровень может быть null:
+
+```csharp
+// Без ?.  — много проверок:
+string city = null;
+if (user != null)
+{
+    if (user.Address != null)
+    {
+        if (user.Address.City != null)
+        {
+            city = user.Address.City;
+        }
+    }
+}
+
+// С ?. — одна строка:
+string city = user?.Address?.City;
+```
+
+**Пример с массивами строк:**
+
+```csharp
+string[] words = null;
+
+// Безопасно получить длину первого слова:
+int? firstWordLength = words?[0]?.Length;
+Console.WriteLine(firstWordLength);  // null
+
+words = new string[] { null, "привет", "мир" };
+int? len0 = words?[0]?.Length;   // null  (words[0] == null)
+int? len1 = words?[1]?.Length;   // 6     ("привет".Length)
+```
+
+**Оператор ! (null-forgiving — подавление предупреждения):**
+
+Оператор **`!`** говорит компилятору: "Я **уверен**, что здесь не null. Не предупреждай меня."
+
+```csharp
+string? name = GetName();   // может вернуть null
+// Компилятор предупреждает: "name может быть null"
+
+string? name2 = GetName();
+string safe = name2!;       // "Я гарантирую, что не null"
+// Компилятор молчит, но если реально null — будет ошибка в рантайме!
+```
+
+**Важно:** `!` **не защищает** от null. Он только убирает предупреждение компилятора. Используй его **только когда ты точно уверен**, что значение не null.
+
+#!markdown
+
+### Попробуй сам: создай массив `string?[] data = {null, "hello", null, "world"};`. Для каждого элемента безопасно выведи его длину, используя `?.` и `??`: "Элемент N: длина X" или "Элемент N: пусто"
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## ИТОГО:
+
+| Оператор | Название | Что делает | Пример |
+|---|---|---|---|
+| `??` | null-coalescing | Значение по умолчанию | `name ?? "Аноним"` |
+| `?.` | null-conditional | Безопасный доступ | `text?.Length` |
+| `??=` | null-coalescing assignment | Присвоить если null | `x ??= 10;` |
+| `!` | null-forgiving | Подавить предупреждение | `name!.Length` |
+| `?[]` | null-conditional index | Безопасный индекс | `arr?[0]` |
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Приветствие (лёгкая)
+Создай переменные: `string? firstName = null`, `string? lastName = "Иванов"`, `string? nickname = "cooluser"`. Используя `??`, сформируй приветствие: берём firstName, если null — lastName, если null — nickname, если всё null — "Гость". Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Безопасная статистика (средняя)
+Дан массив `string?[] words = {"Привет", null, "мир", null, "C#", "программирование", null};`. Используя `?.` и `??`, выведи для каждого слова: само слово (или "---"), его длину (или 0), слово в верхнем регистре (или "N/A").
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Настройки с умолчаниями (средняя)
+Создай переменные настроек (все nullable): `string? theme = null`, `int? fontSize = null`, `bool? darkMode = null`, `string? language = null`. Используя `??=`, задай значения по умолчанию: "light", 14, false, "ru". Выведи все настройки.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Обработка данных (средняя)
+Дан массив `int?[] data = {10, null, 30, null, 50, null, 70};`. Создай новый массив `int[]`, где каждый null заменён на 0 (используя `??`). Выведи оба массива и сумму нового.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Цепочка проверок (сложная)
+Создай массив `string?[]? lines = null;`. Безопасно (используя `?.`, `??`, `?[]`) выведи: количество строк (или 0), первую строку (или "нет строк"), длину первой строки (или -1). Затем присвой lines реальный массив `new string?[] {null, "test", "hello world"}` и повтори все проверки.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Универсальный форматировщик (сложная)
+Напиши метод `string FormatValue(string? label, int? value, string? suffix)`, который формирует строку вида "Label: 42 шт." Если label — null, используй "Значение". Если value — null, используй "N/A" вместо числа. Если suffix — null, не добавляй суффикс. Протестируй с разными комбинациями null/не-null.
+
+#!csharp
+
+// Твой код здесь:

@@ -1,0 +1,594 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Полиморфизм
+
+#!markdown
+
+## Что такое полиморфизм?
+
+**Полиморфизм** (от греч. "много форм") -- способность объектов разных типов **обрабатываться единообразно** через общий интерфейс.
+
+Аналогия: кнопка "Играть" в плеере. Ты нажимаешь одну кнопку, но:
+- Для MP3 файла -- декодирует MP3
+- Для видео -- показывает картинку и звук
+- Для стрима -- подключается к серверу
+
+Одно действие (Play), **разное поведение** в зависимости от типа.
+
+В C# полиморфизм реализуется через:
+1. **Наследование** (virtual/override)
+2. **Интерфейсы** (изучим позже)
+
+#!markdown
+
+## 1. Полиморфизм через наследование (virtual/override)
+
+Когда метод помечен `virtual` в базовом классе и `override` в производном, при вызове выполняется **версия метода того типа, которым объект был СОЗДАН**, а не типа переменной:
+
+```csharp
+Animal animal = new Dog();  // Переменная типа Animal, объект типа Dog
+animal.Speak();  // Вызывается Dog.Speak(), а не Animal.Speak()!
+```
+
+Это и есть **полиморфизм** -- "один интерфейс, много реализаций".
+
+#!csharp
+
+public abstract class Shape
+{
+    public abstract double Area();
+    public abstract string Name { get; }
+}
+
+public class Circle : Shape
+{
+    public double Radius { get; }
+    public Circle(double r) { Radius = r; }
+    public override double Area() => Math.PI * Radius * Radius;
+    public override string Name => "Круг";
+}
+
+public class Rectangle : Shape
+{
+    public double Width { get; }
+    public double Height { get; }
+    public Rectangle(double w, double h) { Width = w; Height = h; }
+    public override double Area() => Width * Height;
+    public override string Name => "Прямоугольник";
+}
+
+public class Triangle : Shape
+{
+    public double Base { get; }
+    public double Height { get; }
+    public Triangle(double b, double h) { Base = b; Height = h; }
+    public override double Area() => 0.5 * Base * Height;
+    public override string Name => "Треугольник";
+}
+
+// ПОЛИМОРФИЗМ: массив Shape[], но каждый элемент -- свой тип
+Shape[] shapes = {
+    new Circle(5),
+    new Rectangle(4, 6),
+    new Triangle(3, 8),
+    new Circle(2.5),
+};
+
+// Один и тот же код работает с РАЗНЫМИ типами!
+double totalArea = 0;
+foreach (Shape s in shapes)
+{
+    double area = s.Area();  // Вызывается метод КОНКРЕТНОГО типа
+    Console.WriteLine($"{s.Name}: площадь = {area:F2}");
+    totalArea += area;
+}
+Console.WriteLine($"\nОбщая площадь: {totalArea:F2}");
+
+#!markdown
+
+### Попробуй сам: создай abstract class `Animal` с abstract `string MakeSound()`. Создай Dog, Cat, Duck. Создай массив Animal[] из 5 животных и выведи звук каждого.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Переменная базового типа хранит потомка
+
+Это **ключевое свойство** полиморфизма -- переменная типа базового класса может хранить объект **любого** производного класса:
+
+```csharp
+Animal pet = new Dog("Рекс");    // Dog IS-A Animal
+Animal pet2 = new Cat("Мурка");  // Cat IS-A Animal
+// Dog is not a Cat, нельзя: Cat cat = new Dog();
+```
+
+Это работает потому, что наследование -- это отношение **"является"** (IS-A):
+- Собака **является** животным
+- Круг **является** фигурой
+- Каждый студент **является** человеком
+
+#!csharp
+
+public class Employee
+{
+    public string Name { get; set; }
+    public virtual decimal CalculatePay() => 0;
+}
+
+public class FullTimeEmployee : Employee
+{
+    public decimal MonthlySalary { get; set; }
+    public override decimal CalculatePay() => MonthlySalary;
+}
+
+public class Contractor : Employee
+{
+    public decimal HourlyRate { get; set; }
+    public int HoursWorked { get; set; }
+    public override decimal CalculatePay() => HourlyRate * HoursWorked;
+}
+
+public class Intern : Employee
+{
+    public decimal Stipend { get; set; }
+    public override decimal CalculatePay() => Stipend;
+}
+
+// Все хранятся как Employee -- полиморфизм!
+Employee[] staff = {
+    new FullTimeEmployee { Name = "Алиса", MonthlySalary = 150000 },
+    new Contractor { Name = "Боб", HourlyRate = 2000, HoursWorked = 80 },
+    new Intern { Name = "Чарли", Stipend = 30000 },
+    new FullTimeEmployee { Name = "Диана", MonthlySalary = 200000 },
+};
+
+// Единообразная обработка
+decimal totalPayroll = 0;
+foreach (Employee emp in staff)
+{
+    decimal pay = emp.CalculatePay();  // Полиморфный вызов
+    Console.WriteLine($"{emp.Name}: {pay:N0} руб.");
+    totalPayroll += pay;
+}
+Console.WriteLine($"\nОбщий ФОТ: {totalPayroll:N0} руб.");
+
+#!markdown
+
+### Попробуй сам: создай список `List<Employee>` из 3 сотрудников разных типов. Найди того, кто получает больше всех (через цикл или LINQ).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Проверка типа: is
+
+Оператор **`is`** проверяет, является ли объект экземпляром указанного типа:
+
+```csharp
+Animal animal = new Dog();
+if (animal is Dog)          // true -- animal на самом деле Dog
+if (animal is Animal)       // true -- Dog IS-A Animal
+if (animal is Cat)          // false -- Dog не является Cat
+if (animal is object)       // true -- всё наследует от object
+```
+
+С C# 7+ можно **совместить проверку и приведение** (pattern matching):
+
+```csharp
+if (animal is Dog dog)
+{
+    // dog уже приведён к типу Dog!
+    dog.Bark();
+}
+```
+
+#!csharp
+
+public abstract class Vehicle
+{
+    public string Name { get; set; }
+    public abstract void Start();
+}
+
+public class Car : Vehicle
+{
+    public int Doors { get; set; }
+    public override void Start() => Console.WriteLine($"{Name}: Врум-врум!");
+}
+
+public class Bicycle : Vehicle
+{
+    public bool HasGears { get; set; }
+    public override void Start() => Console.WriteLine($"{Name}: Кручу педали!");
+}
+
+public class Boat : Vehicle
+{
+    public string FuelType { get; set; }
+    public override void Start() => Console.WriteLine($"{Name}: Буль-буль!");
+}
+
+Vehicle[] vehicles = {
+    new Car { Name = "Toyota", Doors = 4 },
+    new Bicycle { Name = "Trek", HasGears = true },
+    new Boat { Name = "Yamaha", FuelType = "Бензин" },
+    new Car { Name = "Tesla", Doors = 4 },
+};
+
+foreach (var v in vehicles)
+{
+    v.Start();  // Полиморфный вызов
+
+    // Проверка типа с pattern matching
+    if (v is Car car)
+        Console.WriteLine($"  Это машина с {car.Doors} дверьми");
+    else if (v is Bicycle bike)
+        Console.WriteLine($"  Это велосипед, передачи: {(bike.HasGears ? "да" : "нет")}");
+    else if (v is Boat boat)
+        Console.WriteLine($"  Это лодка, топливо: {boat.FuelType}");
+
+    Console.WriteLine();
+}
+
+// Подсчёт по типам
+int cars = vehicles.Count(v => v is Car);
+int bikes = vehicles.Count(v => v is Bicycle);
+Console.WriteLine($"Машин: {cars}, велосипедов: {bikes}");
+
+#!markdown
+
+### Попробуй сам: создай массив object[] из разных типов: int, string, double, bool. Пройди по массиву и через `is` определи тип каждого элемента, выведи "Число: ...", "Строка: ...", "Дробное: ...", "Логическое: ...".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Приведение типов: as и явное (Type)cast
+
+### as -- безопасное приведение
+Возвращает `null`, если приведение невозможно:
+
+```csharp
+Animal animal = new Dog();
+Dog? dog = animal as Dog;     // dog = Dog объект
+Cat? cat = animal as Cat;     // cat = null (не Cat!)
+```
+
+### (Type) -- явное приведение
+Бросает **InvalidCastException**, если приведение невозможно:
+
+```csharp
+Animal animal = new Dog();
+Dog dog = (Dog)animal;      // OK
+Cat cat = (Cat)animal;      // InvalidCastException!
+```
+
+| Способ | При неудаче | Использование |
+|---|---|---|
+| `is` | Возвращает false | Проверка типа |
+| `is T variable` | Возвращает false | Проверка + приведение |
+| `as T` | Возвращает null | Безопасное приведение |
+| `(T)obj` | Бросает исключение | Когда уверен в типе |
+
+#!csharp
+
+public class Animal
+{
+    public string Name { get; set; }
+    public virtual void Speak() => Console.WriteLine($"{Name}: ...");
+}
+
+public class Dog : Animal
+{
+    public void Fetch() => Console.WriteLine($"{Name} приносит палку!");
+    public override void Speak() => Console.WriteLine($"{Name}: Гав!");
+}
+
+public class Cat : Animal
+{
+    public void Purr() => Console.WriteLine($"{Name} мурлычет");
+    public override void Speak() => Console.WriteLine($"{Name}: Мяу!");
+}
+
+Animal animal = new Dog { Name = "Рекс" };
+
+// Способ 1: is + pattern matching (рекомендуется!)
+if (animal is Dog d1)
+{
+    d1.Fetch();  // OK
+}
+
+// Способ 2: as (безопасно, но нужна проверка на null)
+Dog? d2 = animal as Dog;
+if (d2 != null)
+{
+    d2.Fetch();  // OK
+}
+
+Cat? c1 = animal as Cat;
+Console.WriteLine($"animal as Cat: {(c1 == null ? "null" : "объект")}");  // null
+
+// Способ 3: (Type) -- ОПАСНО, если тип неправильный
+Dog d3 = (Dog)animal;  // OK, animal действительно Dog
+d3.Fetch();
+
+try
+{
+    Cat c2 = (Cat)animal;  // ОШИБКА!
+}
+catch (InvalidCastException ex)
+{
+    Console.WriteLine($"\nОшибка: {ex.Message}");
+}
+
+// РЕКОМЕНДАЦИЯ: используй is с pattern matching
+Console.WriteLine("\n--- Рекомендуемый подход ---");
+if (animal is Dog goodDog)
+    goodDog.Fetch();
+else
+    Console.WriteLine("Это не собака");
+
+#!markdown
+
+### Попробуй сам: создай массив Animal[] из Dog и Cat. Пройди по нему и вызови Fetch() только для собак и Purr() только для кошек. Используй `is` с pattern matching.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. typeof(), GetType() и их различия
+
+### typeof() -- получить Type **по имени типа** (во время компиляции)
+```csharp
+Type t = typeof(string);  // System.String
+Type t2 = typeof(int);    // System.Int32
+```
+
+### GetType() -- получить Type **у объекта** (во время выполнения)
+```csharp
+object obj = "hello";
+Type t = obj.GetType();   // System.String
+```
+
+### Различия: is vs typeof vs GetType
+
+```csharp
+Dog dog = new Dog();
+Animal animal = dog;
+
+animal is Dog         // true -- Dog IS-A Dog
+animal is Animal      // true -- Dog IS-A Animal (проверяет иерархию!)
+
+animal.GetType() == typeof(Dog)     // true -- точный тип Dog
+animal.GetType() == typeof(Animal)  // false -- точный тип НЕ Animal!
+```
+
+| | `is` | `GetType() == typeof()` |
+|---|---|---|
+| **Проверяет** | Иерархию (IS-A) | Точный тип |
+| **Dog is Animal** | true | false |
+| **Dog is Dog** | true | true |
+
+#!csharp
+
+public class Base { }
+public class Middle : Base { }
+public class Derived : Middle { }
+
+var obj = new Derived();
+
+// is -- проверяет иерархию
+Console.WriteLine("=== is (проверяет иерархию) ===");
+Console.WriteLine($"obj is Derived: {obj is Derived}");  // true
+Console.WriteLine($"obj is Middle:  {obj is Middle}");    // true
+Console.WriteLine($"obj is Base:    {obj is Base}");      // true
+Console.WriteLine($"obj is object:  {obj is object}");    // true
+
+// GetType() == typeof() -- проверяет ТОЧНЫЙ тип
+Console.WriteLine("\n=== GetType() == typeof() (точный тип) ===");
+Console.WriteLine($"obj == Derived: {obj.GetType() == typeof(Derived)}");  // true
+Console.WriteLine($"obj == Middle:  {obj.GetType() == typeof(Middle)}");    // false!
+Console.WriteLine($"obj == Base:    {obj.GetType() == typeof(Base)}");      // false!
+
+// typeof -- информация о типе
+Console.WriteLine("\n=== typeof ===");
+Console.WriteLine($"typeof(int).Name: {typeof(int).Name}");             // Int32
+Console.WriteLine($"typeof(string).FullName: {typeof(string).FullName}"); // System.String
+Console.WriteLine($"typeof(List<int>).Name: {typeof(List<int>).Name}");   // List`1
+
+#!markdown
+
+### Попробуй сам: создай объект типа Derived. Проверь его через `is` и через `GetType() == typeof()` для каждого уровня иерархии. Убедись, что `is` возвращает true для всех предков, а GetType -- только для точного типа.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. is vs typeof vs GetType -- когда что использовать
+
+| Ситуация | Что использовать |
+|---|---|
+| "Является ли объект типом X или его наследником?" | `is` |
+| "Является ли объект **ТОЧНО** типом X?" | `GetType() == typeof(X)` |
+| "Проверить тип и получить переменную" | `is X variable` |
+| "Получить информацию о типе по имени" | `typeof(X)` |
+| "Получить тип объекта во время выполнения" | `obj.GetType()` |
+| "Безопасно привести к типу" | `is X variable` или `as X` |
+
+#!csharp
+
+public abstract class Notification
+{
+    public string Text { get; set; }
+}
+public class EmailNotification : Notification { public string To { get; set; } }
+public class SmsNotification : Notification { public string Phone { get; set; } }
+public class PushNotification : Notification { public string DeviceId { get; set; } }
+
+Notification[] notifications = {
+    new EmailNotification { Text = "Привет", To = "alice@mail.ru" },
+    new SmsNotification { Text = "Код: 1234", Phone = "+7-999-000-00-00" },
+    new PushNotification { Text = "Новое сообщение", DeviceId = "ABC123" },
+    new EmailNotification { Text = "Отчёт", To = "boss@company.ru" },
+};
+
+// Использование switch с pattern matching (самый современный подход!)
+foreach (var n in notifications)
+{
+    string info = n switch
+    {
+        EmailNotification e => $"Email -> {e.To}: {e.Text}",
+        SmsNotification s   => $"SMS -> {s.Phone}: {s.Text}",
+        PushNotification p  => $"Push -> {p.DeviceId}: {p.Text}",
+        _                   => $"Неизвестный тип: {n.Text}",
+    };
+    Console.WriteLine(info);
+}
+
+// Статистика по типам
+Console.WriteLine($"\nEmail: {notifications.Count(n => n is EmailNotification)}");
+Console.WriteLine($"SMS:   {notifications.Count(n => n is SmsNotification)}");
+Console.WriteLine($"Push:  {notifications.Count(n => n is PushNotification)}");
+
+#!markdown
+
+## 7. Полиморфизм в реальных сценариях
+
+Полиморфизм -- это не просто "вызвать разные методы". Это **дизайн-паттерн**, позволяющий:
+- Добавлять **новые типы без изменения** существующего кода
+- Писать **универсальные алгоритмы** для разных типов
+- Реализовать **принцип Open/Closed** (открыт для расширения, закрыт для изменения)
+
+```csharp
+// Добавить новую фигуру? Просто создай новый класс!
+// Метод CalculateTotalArea() менять НЕ нужно!
+double CalculateTotalArea(Shape[] shapes)
+{
+    return shapes.Sum(s => s.Area());
+}
+```
+
+#!csharp
+
+// Система обработки платежей -- реальный пример
+public abstract class PaymentProcessor
+{
+    public abstract bool ProcessPayment(decimal amount);
+    public abstract string ProviderName { get; }
+
+    // Шаблонный метод -- общая логика
+    public void HandlePayment(decimal amount, string description)
+    {
+        Console.WriteLine($"--- Оплата: {description} ---");
+        Console.WriteLine($"Провайдер: {ProviderName}");
+        Console.WriteLine($"Сумма: {amount:N2} руб.");
+
+        bool success = ProcessPayment(amount);  // Полиморфный вызов!
+
+        Console.WriteLine($"Результат: {(success ? "Успешно" : "Отказ")}");
+        Console.WriteLine();
+    }
+}
+
+public class CreditCardProcessor : PaymentProcessor
+{
+    public override string ProviderName => "Visa/MasterCard";
+    public override bool ProcessPayment(decimal amount) => amount <= 500000;
+}
+
+public class CryptoProcessor : PaymentProcessor
+{
+    public override string ProviderName => "Bitcoin";
+    public override bool ProcessPayment(decimal amount) => amount <= 1000000;
+}
+
+public class CashProcessor : PaymentProcessor
+{
+    public override string ProviderName => "Наличные";
+    public override bool ProcessPayment(decimal amount) => amount <= 100000;
+}
+
+// Один метод работает с ЛЮБЫМ процессором -- полиморфизм!
+PaymentProcessor[] processors = {
+    new CreditCardProcessor(),
+    new CryptoProcessor(),
+    new CashProcessor(),
+};
+
+foreach (var processor in processors)
+{
+    processor.HandlePayment(50000, "Покупка ноутбука");
+}
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Зоопарк звуков (лёгкая)
+Создай abstract class Animal с abstract string MakeSound(). Создай 4 наследника (Dog, Cat, Cow, Duck). Создай массив Animal[] из 6 животных и выведи звук каждого.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Проверка типов (лёгкая)
+Создай массив object[] из 8 элементов разных типов (int, string, double, bool, массив, null, DateTime, List). Пройди по массиву и через switch с pattern matching выведи тип и значение каждого элемента.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Система скидок (средняя)
+Создай abstract class `Discount` с abstract `decimal Apply(decimal price)` и `string Description`. Создай: `NoDiscount`, `PercentDiscount(int percent)`, `FixedDiscount(decimal amount)`, `MaxDiscount(Discount a, Discount b)` (выбирает большую скидку). Примени все к цене 10000.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: is и as (средняя)
+Создай иерархию: abstract `Media` -> `Song(Title, Artist, Duration)`, `Podcast(Title, Host, Episodes)`, `Audiobook(Title, Author, Chapters)`. Создай массив Media[]. Напиши метод, который через `is` подсчитывает общую продолжительность песен, общее число эпизодов подкастов и общее число глав аудиокниг.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Фигуры с сортировкой (средняя)
+Создай abstract Shape с Area(). Наследники: Circle, Rectangle, Triangle. Создай массив из 6 фигур. Отсортируй по площади (используй LINQ OrderBy). Выведи отсортированный список с названием типа (GetType().Name) и площадью.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Система уведомлений (сложная)
+Создай abstract class `NotificationChannel` с abstract `void Send(string to, string message)` и virtual `bool IsAvailable()`. Наследники: `EmailChannel`, `SmsChannel`, `PushChannel`, `TelegramChannel`. Создай класс `NotificationService`, который принимает массив каналов и метод `Broadcast(string to, string msg)` отправляет через ВСЕ доступные каналы. Имитируй, что SmsChannel недоступен. Продемонстрируй.
+
+#!csharp
+
+// Твой код здесь:

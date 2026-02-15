@@ -1,0 +1,436 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: StringBuilder — эффективная работа со строками
+
+#!markdown
+
+## 1. Проблема: строки неизменяемые (immutable)
+
+В C# строки (`string`) **неизменяемые**. Каждая операция создаёт **новый объект** в памяти:
+
+```csharp
+string s = "Привет";
+s += " мир";      // создаётся НОВАЯ строка "Привет мир"
+s += "!";          // создаётся ЕЩЁ одна строка "Привет мир!"
+```
+
+При каждом `+=` старая строка **выбрасывается**, новая **копируется**. Если делать это в цикле тысячи раз — это **очень медленно** и тратит много памяти.
+
+```csharp
+// Медленно! Каждая итерация создаёт новую строку
+string result = "";
+for (int i = 0; i < 10000; i++)
+{
+    result += i.ToString();   // 10000 копирований!
+}
+```
+
+#!csharp
+
+// Демонстрация проблемы: конкатенация в цикле
+using System.Diagnostics;
+
+// Способ 1: string += (медленный)
+var sw1 = Stopwatch.StartNew();
+string slow = "";
+for (int i = 0; i < 50000; i++)
+{
+    slow += "a";
+}
+sw1.Stop();
+Console.WriteLine($"string +=    : {sw1.ElapsedMilliseconds} мс, длина = {slow.Length}");
+
+// Способ 2: StringBuilder (быстрый) — забегая вперёд
+var sw2 = Stopwatch.StartNew();
+var sb = new System.Text.StringBuilder();
+for (int i = 0; i < 50000; i++)
+{
+    sb.Append("a");
+}
+string fast = sb.ToString();
+sw2.Stop();
+Console.WriteLine($"StringBuilder: {sw2.ElapsedMilliseconds} мс, длина = {fast.Length}");
+
+#!markdown
+
+### Попробуй сам: создай строку, конкатенируя числа от 1 до 100 через запятую с помощью `+=`. Просто посмотри, как это выглядит в коде — ощути «неудобность».
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. StringBuilder — создание и Append()
+
+**`StringBuilder`** — это **изменяемый** буфер строки. Он НЕ создаёт новые объекты при каждом добавлении.
+
+```csharp
+using System.Text;   // пространство имён для StringBuilder
+
+var sb = new StringBuilder();       // пустой
+var sb2 = new StringBuilder("Начало");  // с начальным текстом
+var sb3 = new StringBuilder(1000);  // с начальной ёмкостью
+```
+
+**`Append()`** — добавляет текст в конец:
+
+```csharp
+sb.Append("Привет");
+sb.Append(" ");
+sb.Append("мир");
+sb.Append('!');          // можно char
+sb.Append(42);           // можно число
+sb.AppendLine("строка"); // добавляет + перевод строки
+```
+
+#!csharp
+
+using System.Text;
+
+var sb = new StringBuilder();
+
+sb.Append("Привет");
+sb.Append(", ");
+sb.Append("мир");
+sb.Append('!');
+
+Console.WriteLine(sb);            // Привет, мир!
+Console.WriteLine(sb.Length);     // 13
+
+// AppendLine — добавляет с переводом строки
+sb.AppendLine();
+sb.AppendLine("Вторая строка");
+sb.AppendLine("Третья строка");
+Console.WriteLine(sb);
+
+#!csharp
+
+// Практичный пример: построение таблицы
+using System.Text;
+
+var sb = new StringBuilder();
+
+string[] names = {"Анна", "Пётр", "Мария"};
+int[] ages = {25, 30, 28};
+
+sb.AppendLine("╔════════════╦══════╗");
+sb.AppendLine("║ Имя        ║ Возр ║");
+sb.AppendLine("╠════════════╬══════╣");
+
+for (int i = 0; i < names.Length; i++)
+{
+    sb.AppendLine($"║ {names[i],-10} ║ {ages[i],4} ║");
+}
+
+sb.AppendLine("╚════════════╩══════╝");
+
+Console.WriteLine(sb);
+
+#!markdown
+
+### Попробуй сам: создай StringBuilder. С помощью Append/AppendLine построй список покупок: пронумерованные строки (1. Хлеб, 2. Молоко, и т.д.). Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Insert(), Remove(), Replace()
+
+**`Insert(index, text)`** — вставляет текст в указанную позицию:
+```csharp
+sb.Insert(0, "НАЧАЛО: ");   // вставить в начало
+sb.Insert(5, "ХХХ");        // вставить в позицию 5
+```
+
+**`Remove(start, length)`** — удаляет символы:
+```csharp
+sb.Remove(0, 5);   // удалить 5 символов с начала
+```
+
+**`Replace(old, new)`** — заменяет все вхождения:
+```csharp
+sb.Replace("кот", "пёс");    // заменить все "кот" на "пёс"
+sb.Replace('a', 'б');         // заменить символ
+```
+
+Все методы возвращают **тот же** `StringBuilder` — можно создавать **цепочки вызовов** (chaining):
+```csharp
+sb.Append("текст").Replace("а", "о").Insert(0, ">>> ");
+```
+
+#!csharp
+
+using System.Text;
+
+var sb = new StringBuilder("Привет, мир!");
+Console.WriteLine($"Начало:  {sb}");
+
+// Insert — вставка
+sb.Insert(8, "прекрасный ");
+Console.WriteLine($"Insert:  {sb}");  // Привет, прекрасный мир!
+
+// Replace — замена
+sb.Replace("мир", "мир C#");
+Console.WriteLine($"Replace: {sb}");  // Привет, прекрасный мир C#!
+
+// Remove — удаление
+sb.Remove(8, 12);   // удаляем "прекрасный "
+Console.WriteLine($"Remove:  {sb}");  // Привет, мир C#!
+
+// Цепочка вызовов (chaining)
+var result = new StringBuilder()
+    .Append("Один")
+    .Append(" + ")
+    .Append("Два")
+    .Replace("Два", "Три")
+    .Insert(0, ">>> ")
+    .ToString();
+
+Console.WriteLine($"Chain:   {result}");  // >>> Один + Три
+
+#!markdown
+
+### Попробуй сам: создай StringBuilder с текстом "Я учу JavaScript!". Замени "JavaScript" на "C#". Вставь в начало "2026: ". Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. ToString() — получение строки
+
+StringBuilder — это **не string**. Чтобы получить обычную строку, вызови **`ToString()`**:
+
+```csharp
+var sb = new StringBuilder("Привет");
+string result = sb.ToString();    // "Привет"
+```
+
+**Когда нужен ToString():**
+- Передача в метод, ожидающий `string`
+- Присваивание переменной типа `string`
+- Сравнение со строкой
+
+**Когда НЕ нужен:**
+- `Console.WriteLine(sb)` — вызывает ToString() автоматически
+- Интерполяция `$"{sb}"` — тоже автоматически
+
+#!csharp
+
+using System.Text;
+
+var sb = new StringBuilder();
+sb.Append("Привет, ");
+sb.Append("мир!");
+
+// ToString() для получения string
+string result = sb.ToString();
+Console.WriteLine(result);
+Console.WriteLine(result.ToUpper());       // ПРИВЕТ, МИР!
+Console.WriteLine(result.Contains("мир")); // True
+
+// Полезные свойства StringBuilder
+Console.WriteLine($"\nLength:   {sb.Length}");       // количество символов
+Console.WriteLine($"Capacity: {sb.Capacity}");       // ёмкость буфера
+Console.WriteLine($"[0]:      {sb[0]}");             // доступ по индексу: 'П'
+
+// Можно изменять символы по индексу!
+sb[0] = 'п';
+Console.WriteLine(sb);   // привет, мир!
+
+#!markdown
+
+### Попробуй сам: создай метод `string Repeat(string text, int count)`, который использует StringBuilder для повторения строки count раз. Верни результат через ToString().
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Когда string, когда StringBuilder?
+
+| Ситуация | Используй |
+|---|---|
+| Пара конкатенаций | `string` + `+` |
+| Интерполяция `$"..."` | `string` |
+| Конкатенация в **цикле** | **StringBuilder** |
+| Построение большого текста по частям | **StringBuilder** |
+| Множество замен/вставок | **StringBuilder** |
+| Неизменяемая строка | `string` |
+
+**Правило большого пальца:** если строишь строку в цикле или делаешь больше 5-6 конкатенаций — используй `StringBuilder`.
+
+```csharp
+// ✓ string — мало операций
+string greeting = "Привет, " + name + "! Тебе " + age + " лет.";
+
+// ✓ string — интерполяция
+string greeting2 = $"Привет, {name}! Тебе {age} лет.";
+
+// ✓ StringBuilder — цикл
+var sb = new StringBuilder();
+foreach (var item in items)
+    sb.AppendLine(item);
+
+// ✓ string.Join — если просто соединить массив
+string csv = string.Join(", ", items);   // быстрее чем цикл с +=
+```
+
+#!csharp
+
+using System.Text;
+
+// string.Join — ещё одна альтернатива (для простых случаев)
+string[] words = {"один", "два", "три", "четыре"};
+
+// string.Join — быстро и просто
+Console.WriteLine(string.Join(", ", words));
+Console.WriteLine(string.Join(" | ", words));
+
+// StringBuilder — для сложной логики
+var sb = new StringBuilder();
+for (int i = 0; i < words.Length; i++)
+{
+    if (i > 0) sb.Append(" → ");
+    sb.Append($"[{i}] {words[i].ToUpper()}");
+}
+Console.WriteLine(sb);
+
+#!markdown
+
+## 6. StringBuilder — свойства и дополнительные методы
+
+| Свойство / Метод | Описание |
+|---|---|
+| `Length` | Текущая длина строки |
+| `Capacity` | Размер буфера (может быть > Length) |
+| `sb[i]` | Доступ к символу по индексу |
+| `Append(value)` | Добавить в конец |
+| `AppendLine(value)` | Добавить + перевод строки |
+| `AppendFormat("{0}", x)` | Форматированное добавление |
+| `Insert(index, value)` | Вставить в позицию |
+| `Remove(start, length)` | Удалить символы |
+| `Replace(old, new)` | Заменить все вхождения |
+| `Clear()` | Очистить (Length = 0) |
+| `ToString()` | Получить string |
+
+#!csharp
+
+using System.Text;
+
+var sb = new StringBuilder("Привет!");
+
+Console.WriteLine($"Текст: {sb}");
+Console.WriteLine($"Длина: {sb.Length}");
+Console.WriteLine($"Ёмкость: {sb.Capacity}");
+
+// Clear — полная очистка
+sb.Clear();
+Console.WriteLine($"После Clear: Length={sb.Length}, Capacity={sb.Capacity}");
+
+// AppendFormat
+sb.AppendFormat("Сегодня {0:dd.MM.yyyy}, ", DateTime.Now);
+sb.AppendFormat("температура {0:F1}°C", 22.5);
+Console.WriteLine(sb);
+
+#!markdown
+
+## ИТОГО:
+
+1. **Строки неизменяемые** — каждый `+=` создаёт новый объект
+2. **`StringBuilder`** — изменяемый буфер, эффективен для построения строк
+3. **`Append()`** — добавить, **`Insert()`** — вставить, **`Remove()`** — удалить
+4. **`Replace()`** — заменить, **`ToString()`** — получить строку
+5. Методы можно **цепочить**: `sb.Append("a").Append("b").Replace("a", "x")`
+6. Используй StringBuilder, когда строишь строку в **цикле** или делаешь много модификаций
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Числа через запятую (лёгкая)
+С помощью StringBuilder создай строку: "1, 2, 3, ..., 50" (числа от 1 до 50 через запятую с пробелом). Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Пирамида (лёгкая)
+С помощью StringBuilder построй текстовую пирамиду из звёздочек высотой 5:
+```
+    *
+   ***
+  *****
+ *******
+*********
+```
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Генератор HTML-списка (средняя)
+Создай метод `string BuildHtmlList(string[] items)`, который через StringBuilder строит HTML:
+```html
+<ul>
+  <li>элемент1</li>
+  <li>элемент2</li>
+</ul>
+```
+Проверь с массивом {"Молоко", "Хлеб", "Масло"}.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Цензура (средняя)
+Создай метод `string Censor(string text, string[] badWords)`. Замени каждое «плохое слово» на звёздочки той же длины (слово "плохо" → "*****"). Используй StringBuilder и Replace. Проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Реверс слов (сложная)
+Создай метод `string ReverseWords(string text)`. Он переворачивает **каждое слово** в строке, но порядок слов сохраняет: "Привет мир" → "тевирП рим". Используй StringBuilder.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: CSV-генератор (сложная)
+Создай метод, который принимает `string[] headers` и `string[][] rows` (зубчатый массив строк данных). С помощью StringBuilder построй CSV-формат (значения через запятую, строки через перевод строки). Если значение содержит запятую — оберни его в кавычки. Выведи результат.
+
+#!csharp
+
+// Твой код здесь:

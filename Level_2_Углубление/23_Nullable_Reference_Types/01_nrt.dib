@@ -1,0 +1,320 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Nullable Reference Types (NRT)
+
+#!markdown
+
+## 1. Проблема: NullReferenceException
+
+**NullReferenceException** — одна из самых частых ошибок в C#. Она возникает при попытке использовать переменную, которая равна `null`:
+
+```csharp
+string name = null;
+Console.WriteLine(name.Length);   // NullReferenceException!
+```
+
+До C# 8 **любая ссылочная переменная** могла быть null, и компилятор **не предупреждал** об опасности.
+
+С C# 8+ появились **Nullable Reference Types (NRT)** — компилятор **предупреждает**, если ты можешь столкнуться с null.
+
+#!csharp
+
+// Классическая проблема — NullReferenceException
+string text = null;
+
+try
+{
+    Console.WriteLine(text.Length);   // ОШИБКА! text = null
+}
+catch (NullReferenceException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+    Console.WriteLine("Это NullReferenceException — одна из самых частых ошибок!");
+}
+
+#!markdown
+
+## 2. #nullable enable — включаем проверки
+
+**`#nullable enable`** включает проверку nullable reference types:
+
+```csharp
+#nullable enable
+
+string name = "Анна";    // не может быть null
+string? nickname = null;  // МОЖЕТ быть null (string? с вопросом)
+```
+
+После включения:
+- **`string`** — гарантированно **не null**
+- **`string?`** — **может быть null**
+- Компилятор выдаёт **предупреждения** при опасных операциях
+
+```csharp
+#nullable enable
+string name = null;       // Предупреждение! string не должен быть null
+string? maybe = null;     // OK — string? допускает null
+Console.WriteLine(maybe.Length);  // Предупреждение! maybe может быть null
+```
+
+#!csharp
+
+#nullable enable
+
+string name = "Анна";       // не null — безопасно
+string? nickname = null;    // nullable — может быть null
+
+Console.WriteLine($"Имя: {name}");
+Console.WriteLine($"Длина имени: {name.Length}");   // безопасно — name не null
+
+// Для nullable нужна проверка
+if (nickname != null)
+{
+    Console.WriteLine($"Ник: {nickname.Length}");    // безопасно после проверки
+}
+
+// Или с null-conditional оператором
+Console.WriteLine($"Ник: {nickname?.Length ?? 0}");  // 0 если null
+
+// Паттерн матчинг
+if (nickname is string nick)
+{
+    Console.WriteLine($"Ник: {nick}");
+}
+else
+{
+    Console.WriteLine("Ник не задан");
+}
+
+#!markdown
+
+### Попробуй сам: включи #nullable enable. Создай `string? email = null`. Попробуй обратиться к email.Length — увидь предупреждение. Исправь, добавив проверку на null.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Предупреждения компилятора и как с ними работать
+
+Компилятор генерирует предупреждения (не ошибки!):
+
+**CS8600** — преобразование null literal в non-nullable:
+```csharp
+string s = null;   // предупреждение CS8600
+```
+
+**CS8602** — возможное разыменование null:
+```csharp
+string? s = GetValue();
+Console.WriteLine(s.Length);   // предупреждение CS8602
+```
+
+**Способы устранения предупреждений:**
+
+```csharp
+// 1. Проверка на null
+if (s != null) Console.WriteLine(s.Length);
+
+// 2. Null-conditional ?.
+Console.WriteLine(s?.Length);
+
+// 3. Null-coalescing ??
+Console.WriteLine(s?.Length ?? 0);
+
+// 4. Null-forgiving ! (подавляет предупреждение — используй осторожно!)
+Console.WriteLine(s!.Length);   // "я знаю, что s не null"
+```
+
+#!csharp
+
+#nullable enable
+
+// Демонстрация предупреждений и способов их устранения
+string? GetUserName(bool exists)
+{
+    return exists ? "Анна" : null;
+}
+
+string? name = GetUserName(true);
+
+// Способ 1: if-проверка
+if (name != null)
+{
+    Console.WriteLine($"1. Длина: {name.Length}");  // после проверки — безопасно
+}
+
+// Способ 2: null-conditional + null-coalescing
+int length = name?.Length ?? 0;
+Console.WriteLine($"2. Длина: {length}");
+
+// Способ 3: паттерн матчинг
+if (name is { Length: > 0 } validName)
+{
+    Console.WriteLine($"3. Имя: {validName}");
+}
+
+// Способ 4: null-forgiving (!) — осторожно!
+// string definitelyNotNull = name!;  // подавляет предупреждение
+// Console.WriteLine(definitelyNotNull.Length);
+
+// Способ 5: ?? оператор для значения по умолчанию
+string displayName = name ?? "Аноним";
+Console.WriteLine($"5. Отображаемое имя: {displayName}");
+
+#!csharp
+
+#nullable enable
+
+// Практичный пример — метод с nullable параметрами
+void PrintGreeting(string name, string? title = null)
+{
+    if (title is not null)
+    {
+        Console.WriteLine($"Здравствуйте, {title} {name}!");
+    }
+    else
+    {
+        Console.WriteLine($"Привет, {name}!");
+    }
+}
+
+PrintGreeting("Анна");                    // Привет, Анна!
+PrintGreeting("Иванов", "г-н");           // Здравствуйте, г-н Иванов!
+PrintGreeting("Петрова", null);           // Привет, Петрова!
+
+#!markdown
+
+### Попробуй сам: создай метод `string? FindUser(int id)`, который возвращает имя для id=1 ("Анна"), id=2 ("Пётр"), и null для остальных. Вызови метод и безопасно обработай результат для id=1 и id=99.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. NRT vs Nullable Value Types (int?)
+
+**Не путай** два вида nullable:
+
+**Nullable Value Types** (`int?`, `double?`, `bool?`) — существуют с C# 2.0:
+```csharp
+int? age = null;      // Nullable<int> — обёртка вокруг int
+int? score = 42;
+int value = score ?? 0;   // распаковка с значением по умолчанию
+```
+
+**Nullable Reference Types** (`string?`, `Person?`) — появились в C# 8.0:
+```csharp
+#nullable enable
+string? name = null;   // NRT — это только АННОТАЦИЯ для компилятора
+```
+
+| | Nullable Value Type (`int?`) | Nullable Reference Type (`string?`) |
+|---|---|---|
+| Появился | C# 2.0 | C# 8.0 |
+| Что это | `Nullable<int>` — обёртка | Аннотация (только для компилятора) |
+| Занимает больше памяти | Да (+ 1 байт HasValue) | Нет (просто подсказка) |
+| Runtime проверки | Да (.HasValue, .Value) | Нет (только предупреждения) |
+| По умолчанию null | Нет (нужен `?`) | Да (до #nullable enable) |
+
+```csharp
+int? nullableInt = null;
+if (nullableInt.HasValue)    // ← runtime свойство
+    Console.WriteLine(nullableInt.Value);
+
+string? nullableString = null;
+// nullableString.HasValue   // ← НЕТ такого свойства! Это просто аннотация
+```
+
+#!csharp
+
+#nullable enable
+
+// Nullable value types (int?) — реальная обёртка Nullable<T>
+int? age = null;
+Console.WriteLine($"age = {age}");
+Console.WriteLine($"HasValue: {age.HasValue}");     // False
+Console.WriteLine($"GetValueOrDefault: {age.GetValueOrDefault()}");  // 0
+
+age = 25;
+Console.WriteLine($"\nage = {age}");
+Console.WriteLine($"HasValue: {age.HasValue}");     // True
+Console.WriteLine($"Value: {age.Value}");           // 25
+
+// Nullable reference types (string?) — только аннотация
+string? name = null;
+// name.HasValue — ОШИБКА! Нет такого свойства у string
+
+// Проверка через == null или is null
+if (name is null)
+{
+    Console.WriteLine("\nname is null");
+}
+
+// Оба используют ?? одинаково:
+int safeAge = age ?? 0;
+string safeName = name ?? "Аноним";
+Console.WriteLine($"\nsafeAge = {safeAge}, safeName = {safeName}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **NullReferenceException** — одна из самых частых ошибок в C#
+2. **`#nullable enable`** — включает проверку nullable reference types
+3. **`string`** = не null, **`string?`** = может быть null
+4. Компилятор выдаёт **предупреждения**, не ошибки
+5. Способы работы с null: `if`, `?.`, `??`, `!`, паттерн матчинг
+6. **`int?`** (Nullable<int>) — реальная обёртка, **`string?`** — только аннотация
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Безопасный доступ (лёгкая)
+Включи #nullable enable. Создай метод `int SafeLength(string? text)`, который возвращает длину строки или 0 если null. Проверь с "Привет" и null.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Поиск в массиве (лёгкая)
+Создай метод `string? FindByIndex(string[] arr, int index)`, который возвращает элемент или null если индекс вне границ. Обработай результат безопасно.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Nullable цепочка (средняя)
+Создай классы: `class Company { string? Name; Address? Address; }`, `class Address { string? City; string? Street; }`. Безопасно выведи: `company?.Address?.City ?? "Не указано"`. Проверь с полными и частично заполненными объектами.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Nullable vs Non-nullable (сложная)
+Создай класс `UserProfile` со свойствами: Name (string — обязательное), Email (string — обязательное), Phone (string? — необязательное), Bio (string? — необязательное). Конструктор принимает обязательные, остальные через свойства. Метод Print() безопасно выводит всё.
+
+#!csharp
+
+// Твой код здесь:

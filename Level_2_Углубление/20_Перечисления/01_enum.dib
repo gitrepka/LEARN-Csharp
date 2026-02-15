@@ -1,0 +1,511 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Перечисления (enum)
+
+#!markdown
+
+## 1. Что такое enum?
+
+**`enum`** (enumeration) — тип, представляющий **набор именованных констант**. Вместо «магических чисел» используются понятные имена.
+
+**Без enum:**
+```csharp
+int status = 2;   // Что значит 2? Непонятно!
+if (status == 0) { ... }   // 0 — это что?
+```
+
+**С enum:**
+```csharp
+enum OrderStatus { New, Processing, Shipped, Delivered, Cancelled }
+
+OrderStatus status = OrderStatus.Shipped;
+if (status == OrderStatus.Shipped) { ... }   // Читаемо!
+```
+
+#!csharp
+
+// Объявление enum
+enum Season { Spring, Summer, Autumn, Winter }
+
+enum DayOfWeek { Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday }
+
+// Использование
+Season now = Season.Winter;
+Console.WriteLine($"Сейчас: {now}");          // Winter
+
+DayOfWeek today = DayOfWeek.Saturday;
+Console.WriteLine($"Сегодня: {today}");       // Saturday
+
+// Switch по enum — очень удобно
+switch (now)
+{
+    case Season.Spring: Console.WriteLine("Весна — пора цветения"); break;
+    case Season.Summer: Console.WriteLine("Лето — время отдыха"); break;
+    case Season.Autumn: Console.WriteLine("Осень — листопад"); break;
+    case Season.Winter: Console.WriteLine("Зима — время чудес"); break;
+}
+
+#!markdown
+
+### Попробуй сам: создай enum `TrafficLight` с значениями Red, Yellow, Green. Создай переменную, используй switch для вывода действия ("Стой", "Внимание", "Иди").
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Числовые значения enum
+
+Каждый элемент enum — это **число**. По умолчанию: первый = 0, далее +1:
+
+```csharp
+enum Color { Red, Green, Blue }
+// Red = 0, Green = 1, Blue = 2
+```
+
+Можно задать **явно**:
+
+```csharp
+enum HttpStatus
+{
+    OK = 200,
+    NotFound = 404,
+    ServerError = 500
+}
+```
+
+Можно задать **базовый тип** (по умолчанию int):
+
+```csharp
+enum SmallEnum : byte { A, B, C }     // занимает 1 байт вместо 4
+enum BigEnum : long { X = 1000000000 }
+```
+
+#!csharp
+
+// Числовые значения по умолчанию
+enum Priority { Low, Medium, High, Critical }
+// Low=0, Medium=1, High=2, Critical=3
+
+Console.WriteLine($"Low = {(int)Priority.Low}");           // 0
+Console.WriteLine($"Medium = {(int)Priority.Medium}");     // 1
+Console.WriteLine($"Critical = {(int)Priority.Critical}"); // 3
+
+// Явные значения
+enum HttpStatus
+{
+    OK = 200,
+    Created = 201,
+    BadRequest = 400,
+    NotFound = 404,
+    ServerError = 500
+}
+
+HttpStatus response = HttpStatus.OK;
+Console.WriteLine($"\nHTTP {(int)response}: {response}");  // HTTP 200: OK
+
+response = HttpStatus.NotFound;
+Console.WriteLine($"HTTP {(int)response}: {response}");    // HTTP 404: NotFound
+
+#!csharp
+
+// Частично заданные значения
+enum ErrorCode
+{
+    None = 0,
+    Warning = 100,     // задано явно
+    Error,             // = 101 (автоматически +1)
+    Critical,          // = 102
+    Fatal = 200,       // задано явно
+    System             // = 201
+}
+
+Console.WriteLine($"None = {(int)ErrorCode.None}");         // 0
+Console.WriteLine($"Warning = {(int)ErrorCode.Warning}");   // 100
+Console.WriteLine($"Error = {(int)ErrorCode.Error}");       // 101
+Console.WriteLine($"Critical = {(int)ErrorCode.Critical}"); // 102
+Console.WriteLine($"Fatal = {(int)ErrorCode.Fatal}");       // 200
+Console.WriteLine($"System = {(int)ErrorCode.System}");     // 201
+
+#!markdown
+
+### Попробуй сам: создай enum `Planet` с значениями: Mercury=1, Venus=2, Earth=3, Mars=4, Jupiter=5, Saturn=6, Uranus=7, Neptune=8. Выведи каждую планету и её номер.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Преобразование enum <-> int
+
+**enum -> int** (приведение):
+```csharp
+int value = (int)Season.Summer;   // 1
+```
+
+**int -> enum** (приведение):
+```csharp
+Season s = (Season)2;   // Autumn
+```
+
+**Важно:** можно привести **любое** число, даже не существующее в enum! Компилятор не проверяет:
+```csharp
+Season weird = (Season)99;   // Не выдаст ошибку! Просто будет 99
+```
+
+Проверка корректности — `Enum.IsDefined()`:
+```csharp
+Enum.IsDefined(typeof(Season), 2);   // true (Autumn)
+Enum.IsDefined(typeof(Season), 99);  // false
+```
+
+#!csharp
+
+enum Difficulty { Easy, Normal, Hard, Extreme }
+
+// enum → int
+Difficulty diff = Difficulty.Hard;
+int numValue = (int)diff;
+Console.WriteLine($"{diff} = {numValue}");   // Hard = 2
+
+// int → enum
+int input = 3;
+Difficulty fromInt = (Difficulty)input;
+Console.WriteLine($"{input} = {fromInt}");   // 3 = Extreme
+
+// Проверка корректности
+Console.WriteLine($"\n2 — корректно? {Enum.IsDefined(typeof(Difficulty), 2)}");   // True
+Console.WriteLine($"99 — корректно? {Enum.IsDefined(typeof(Difficulty), 99)}");  // False
+
+// Безопасное преобразование
+int userInput = 99;
+if (Enum.IsDefined(typeof(Difficulty), userInput))
+{
+    Difficulty safe = (Difficulty)userInput;
+    Console.WriteLine($"Сложность: {safe}");
+}
+else
+{
+    Console.WriteLine($"Некорректное значение: {userInput}");
+}
+
+#!markdown
+
+### Попробуй сам: создай enum `Month` (January=1 ... December=12). Преобразуй число 7 в Month. Проверь, является ли число 13 допустимым значением Month.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. [Flags] — битовые флаги
+
+**`[Flags]`** позволяет **комбинировать** несколько значений enum через побитовое ИЛИ `|`:
+
+```csharp
+[Flags]
+enum Permissions
+{
+    None    = 0,       // 0000
+    Read    = 1,       // 0001
+    Write   = 2,       // 0010
+    Execute = 4,       // 0100
+    All     = Read | Write | Execute  // 0111 = 7
+}
+
+Permissions p = Permissions.Read | Permissions.Write;  // 0011 = 3
+```
+
+Значения должны быть **степенями двойки** (1, 2, 4, 8, 16...):
+
+| Значение | Двоичное | Описание |
+|---|---|---|
+| 0 | 0000 | Ничего |
+| 1 | 0001 | Read |
+| 2 | 0010 | Write |
+| 4 | 0100 | Execute |
+| 7 | 0111 | All (Read + Write + Execute) |
+
+#!csharp
+
+[Flags]
+enum FileAccess
+{
+    None    = 0,
+    Read    = 1,
+    Write   = 2,
+    Execute = 4,
+    All     = Read | Write | Execute
+}
+
+// Комбинация флагов
+FileAccess userPerms = FileAccess.Read | FileAccess.Write;
+Console.WriteLine($"Права: {userPerms}");            // Read, Write
+Console.WriteLine($"Число: {(int)userPerms}");       // 3
+
+// Проверка флага — HasFlag()
+Console.WriteLine($"\nЕсть Read?    {userPerms.HasFlag(FileAccess.Read)}");      // True
+Console.WriteLine($"Есть Execute? {userPerms.HasFlag(FileAccess.Execute)}");   // False
+
+// Добавление флага
+userPerms |= FileAccess.Execute;
+Console.WriteLine($"\nПосле добавления Execute: {userPerms}");    // Read, Write, Execute
+
+// Удаление флага
+userPerms &= ~FileAccess.Write;
+Console.WriteLine($"После удаления Write: {userPerms}");          // Read, Execute
+
+#!csharp
+
+[Flags]
+enum DaysOfWeek
+{
+    None      = 0,
+    Monday    = 1,
+    Tuesday   = 2,
+    Wednesday = 4,
+    Thursday  = 8,
+    Friday    = 16,
+    Saturday  = 32,
+    Sunday    = 64,
+    Weekdays  = Monday | Tuesday | Wednesday | Thursday | Friday,
+    Weekend   = Saturday | Sunday,
+    All       = Weekdays | Weekend
+}
+
+DaysOfWeek workDays = DaysOfWeek.Weekdays;
+DaysOfWeek mySchedule = DaysOfWeek.Monday | DaysOfWeek.Wednesday | DaysOfWeek.Friday;
+
+Console.WriteLine($"Рабочие дни: {workDays}");
+Console.WriteLine($"Мой график:  {mySchedule}");
+Console.WriteLine($"\nРаботаю в среду? {mySchedule.HasFlag(DaysOfWeek.Wednesday)}");  // True
+Console.WriteLine($"Работаю в субботу? {mySchedule.HasFlag(DaysOfWeek.Saturday)}");   // False
+
+#!markdown
+
+### Попробуй сам: создай [Flags] enum `Toppings` для пиццы: None=0, Cheese=1, Pepperoni=2, Mushrooms=4, Olives=8, Onions=16. Создай пиццу с несколькими топпингами. Проверь через HasFlag.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Enum.Parse(), TryParse() — строка в enum
+
+**`Enum.Parse()`** — преобразует строку в enum:
+```csharp
+Season s = (Season)Enum.Parse(typeof(Season), "Summer");
+// Или с generics:
+Season s = Enum.Parse<Season>("Summer");
+```
+
+**`Enum.TryParse()`** — безопасный вариант (не выбрасывает исключение):
+```csharp
+if (Enum.TryParse<Season>("Summer", out Season result))
+{
+    Console.WriteLine(result);   // Summer
+}
+```
+
+#!csharp
+
+enum Color { Red, Green, Blue, Yellow, Purple }
+
+// Parse — строка → enum
+Color c1 = Enum.Parse<Color>("Blue");
+Console.WriteLine($"Parse: {c1}");     // Blue
+
+// Parse с игнорированием регистра
+Color c2 = Enum.Parse<Color>("red", ignoreCase: true);
+Console.WriteLine($"Parse (ignore case): {c2}");   // Red
+
+// TryParse — безопасный
+if (Enum.TryParse<Color>("Green", out Color result))
+{
+    Console.WriteLine($"TryParse: {result}");   // Green
+}
+
+if (!Enum.TryParse<Color>("Orange", out _))
+{
+    Console.WriteLine("Orange — нет такого цвета в enum!");
+}
+
+#!markdown
+
+## 6. GetValues(), GetNames(), ToString()
+
+**`Enum.GetValues()`** — массив всех значений:
+```csharp
+foreach (Season s in Enum.GetValues(typeof(Season)))
+    Console.WriteLine(s);
+```
+
+**`Enum.GetNames()`** — массив имён как строк:
+```csharp
+string[] names = Enum.GetNames(typeof(Season));
+```
+
+**`ToString()`** — имя значения как строка:
+```csharp
+Season s = Season.Summer;
+Console.WriteLine(s.ToString());   // "Summer"
+```
+
+#!csharp
+
+enum Planet
+{
+    Mercury = 1, Venus, Earth, Mars,
+    Jupiter, Saturn, Uranus, Neptune
+}
+
+// GetValues — все значения
+Console.WriteLine("=== Все планеты ===");
+foreach (Planet p in Enum.GetValues(typeof(Planet)))
+{
+    Console.WriteLine($"  {p} (номер {(int)p})");
+}
+
+// GetNames — все имена как строки
+Console.WriteLine("\n=== Имена ===");
+string[] names = Enum.GetNames(typeof(Planet));
+Console.WriteLine(string.Join(", ", names));
+
+// Количество элементов
+Console.WriteLine($"\nВсего планет: {Enum.GetValues(typeof(Planet)).Length}");
+
+// ToString для вывода
+Planet myPlanet = Planet.Earth;
+Console.WriteLine($"\nМы живём на: {myPlanet.ToString()}");
+
+#!markdown
+
+## 7. Практические паттерны с enum
+
+enum часто используются в:
+- Состояниях (State): `GameState.Playing`, `GameState.Paused`
+- Направлениях: `Direction.Up`, `Direction.Right`
+- Типах: `LogLevel.Error`, `LogLevel.Warning`
+- Настройках: `SortOrder.Ascending`, `SortOrder.Descending`
+
+#!csharp
+
+// Практичный пример: конечный автомат (state machine)
+enum GameState { MainMenu, Playing, Paused, GameOver }
+
+GameState state = GameState.MainMenu;
+
+void ProcessInput(string input)
+{
+    switch (state)
+    {
+        case GameState.MainMenu:
+            if (input == "start") { state = GameState.Playing; Console.WriteLine("Игра началась!"); }
+            break;
+        case GameState.Playing:
+            if (input == "pause") { state = GameState.Paused; Console.WriteLine("Пауза"); }
+            if (input == "die")   { state = GameState.GameOver; Console.WriteLine("Game Over!"); }
+            break;
+        case GameState.Paused:
+            if (input == "resume") { state = GameState.Playing; Console.WriteLine("Продолжаем!"); }
+            break;
+        case GameState.GameOver:
+            if (input == "restart") { state = GameState.MainMenu; Console.WriteLine("Главное меню"); }
+            break;
+    }
+    Console.WriteLine($"  Состояние: {state}");
+}
+
+ProcessInput("start");     // MainMenu → Playing
+ProcessInput("pause");     // Playing → Paused
+ProcessInput("resume");    // Paused → Playing
+ProcessInput("die");       // Playing → GameOver
+ProcessInput("restart");   // GameOver → MainMenu
+
+#!markdown
+
+## ИТОГО:
+
+1. **`enum`** — набор именованных констант (вместо «магических чисел»)
+2. По умолчанию значения: 0, 1, 2... Можно задать **явно**
+3. **`(int)enum`** — приведение к числу, **`(Enum)int`** — обратно
+4. **`[Flags]`** — комбинация значений через `|`, проверка через `HasFlag()`
+5. **`Enum.Parse()`** / **`TryParse()`** — строка в enum
+6. **`Enum.GetValues()`** / **`GetNames()`** — получить все значения/имена
+7. enum идеален для состояний, направлений, типов, уровней
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Калькулятор операций (лёгкая)
+Создай enum `Operation` { Add, Subtract, Multiply, Divide }. Метод `double Calculate(double a, double b, Operation op)` использует switch. Проверь все операции.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Конвертер размеров (лёгкая)
+Создай enum `Size` { XS, S, M, L, XL, XXL }. Метод `string GetDescription(Size s)` возвращает текстовое описание ("Очень маленький", "Маленький", ...). Выведи все размеры с описаниями через GetValues.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Парсинг из строки (средняя)
+Создай enum `LogLevel` { Debug, Info, Warning, Error, Critical }. Метод `void Log(string level, string message)` парсит строку в enum через TryParse и выводит форматированное сообщение. Проверь с корректными и некорректными уровнями.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: [Flags] Роли пользователей (средняя)
+Создай [Flags] enum `Roles` { None=0, Viewer=1, Editor=2, Moderator=4, Admin=8 }. Метод `bool CanEdit(Roles role)`, `bool CanModerate(Roles role)`. Создай пользователя с несколькими ролями и проверь права.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Enum в классе (сложная)
+Создай enum `TaskStatus` { Todo, InProgress, Review, Done, Cancelled }. Класс `TaskItem` с Name, Status. Метод MoveNext() переводит задачу в следующий статус (Todo→InProgress→Review→Done). Метод Cancel() — в Cancelled. Создай несколько задач, продвигай их.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: [Flags] генератор (сложная)
+Создай [Flags] enum `Feature` для сайта: None=0, DarkMode=1, Notifications=2, Chat=4, Analytics=8, Premium=16, Admin=32. Метод `string DescribeFeatures(Feature f)` — описание всех включённых фич. Метод `int CountFeatures(Feature f)` — количество включённых. Продемонстрируй комбинации.
+
+#!csharp
+
+// Твой код здесь:

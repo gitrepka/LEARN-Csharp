@@ -1,0 +1,402 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Структуры (struct) — значимые типы
+
+#!markdown
+
+## 1. Что такое struct?
+
+**`struct`** — это **значимый тип** (value type), похожий на класс, но с важными отличиями.
+
+Объявление:
+```csharp
+struct Point
+{
+    public double X;
+    public double Y;
+}
+```
+
+Как и класс, struct может содержать:
+- Поля и свойства
+- Методы
+- Конструкторы
+
+**Главное отличие:** struct — **значимый тип**. Переменная хранит **сам объект**, а не ссылку на него.
+
+Примеры struct в .NET:
+- `int`, `double`, `bool`, `char` — все это struct!
+- `DateTime`, `TimeSpan`, `Guid`
+- `Vector2`, `Vector3` (в игровых движках)
+
+#!csharp
+
+struct Point
+{
+    public double X;
+    public double Y;
+
+    public Point(double x, double y)
+    {
+        X = x;
+        Y = y;
+    }
+
+    public double DistanceTo(Point other)
+    {
+        double dx = X - other.X;
+        double dy = Y - other.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    public override string ToString() => $"({X}, {Y})";
+}
+
+Point p1 = new Point(3, 4);
+Point p2 = new Point(0, 0);
+
+Console.WriteLine($"Точка 1: {p1}");
+Console.WriteLine($"Точка 2: {p2}");
+Console.WriteLine($"Расстояние: {p1.DistanceTo(p2):F2}");
+
+#!markdown
+
+### Попробуй сам: создай struct `Size` с полями Width и Height (int). Добавь свойство Area (вычисляемое). Создай два Size и выведи их площади.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Значимый тип — struct КОПИРУЕТСЯ
+
+**Ключевое отличие от класса:** при присваивании struct **копируется целиком**:
+
+```csharp
+Point a = new Point(1, 2);
+Point b = a;      // КОПИЯ! b — отдельный объект
+b.X = 99;
+
+Console.WriteLine(a.X);  // 1 — оригинал НЕ изменился!
+Console.WriteLine(b.X);  // 99
+```
+
+С классом было бы иначе:
+```csharp
+class PointClass { public double X, Y; }
+PointClass a = new PointClass { X = 1, Y = 2 };
+PointClass b = a;     // b — та же ССЫЛКА!
+b.X = 99;
+// a.X = 99 — изменился!
+```
+
+#!csharp
+
+// Демонстрация копирования struct
+struct Color
+{
+    public int R, G, B;
+
+    public Color(int r, int g, int b) => (R, G, B) = (r, g, b);
+    public override string ToString() => $"RGB({R}, {G}, {B})";
+}
+
+Color original = new Color(255, 0, 0);   // красный
+Color copy = original;                    // ПОЛНАЯ КОПИЯ
+
+copy.G = 255;   // меняем копию — делаем жёлтый
+
+Console.WriteLine($"Оригинал: {original}");   // RGB(255, 0, 0) — не изменился!
+Console.WriteLine($"Копия:    {copy}");         // RGB(255, 255, 0)
+
+Console.WriteLine("\n--- Сравнение с классом ---");
+
+// Класс — ссылочный тип
+class ColorClass
+{
+    public int R, G, B;
+    public ColorClass(int r, int g, int b) => (R, G, B) = (r, g, b);
+    public override string ToString() => $"RGB({R}, {G}, {B})";
+}
+
+ColorClass origClass = new ColorClass(255, 0, 0);
+ColorClass copyClass = origClass;   // та же ССЫЛКА!
+
+copyClass.G = 255;
+
+Console.WriteLine($"Оригинал (class): {origClass}");  // RGB(255, 255, 0) — ИЗМЕНИЛСЯ!
+Console.WriteLine($"Копия (class):    {copyClass}");   // RGB(255, 255, 0)
+
+#!markdown
+
+### Попробуй сам: создай struct `Vector2` (X, Y). Создай вектор a = (3, 4). Присвой b = a. Измени b.X = 10. Выведи оба — убедись, что a не изменился.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. struct vs class в памяти
+
+| | **struct** (значимый) | **class** (ссылочный) |
+|---|---|---|
+| Хранение | На **стеке** (или встроен в объект) | В **куче** (heap) |
+| Переменная содержит | **Само значение** | **Ссылку** (адрес) |
+| Присваивание | **Копирование** | Копирование **ссылки** |
+| null | **Нельзя** (если не Nullable) | Можно |
+| Наследование | **Нет** (только интерфейсы) | Да |
+| Конструктор без параметров | Автоматический (все поля = 0) | Можно определить |
+| Деструктор | **Нет** | Есть (finalizer) |
+| GC (сборщик мусора) | **Не нужен** (стек) | Нужен (куча) |
+
+**Стек** — быстрая память, автоматически очищается. Для мелких объектов это **быстрее**.
+
+**Куча** — управляемая память, нужен сборщик мусора (GC). Для больших объектов.
+
+```
+Стек:                    Куча:
+┌─────────────┐         ┌────────────────────┐
+│ Point p     │         │  Person obj        │
+│  X = 3.0    │    ┌───→│   Name = "Анна"    │
+│  Y = 4.0    │    │    │   Age = 25         │
+├─────────────┤    │    └────────────────────┘
+│ Person ref ─┼────┘
+└─────────────┘
+```
+
+#!csharp
+
+// struct — на стеке, быстрое копирование
+struct PointS { public float X, Y; }
+
+// class — в куче, через ссылку
+class PointC { public float X, Y; }
+
+// Создание массива struct — один непрерывный блок памяти
+PointS[] structArray = new PointS[1000];   // 1000 точек подряд в памяти
+
+// Создание массива class — массив ссылок + 1000 объектов в куче
+PointC[] classArray = new PointC[1000];
+for (int i = 0; i < 1000; i++)
+    classArray[i] = new PointC();          // каждый объект отдельно в куче
+
+Console.WriteLine("struct: данные хранятся в одном блоке памяти (быстрый доступ)");
+Console.WriteLine("class:  массив ссылок + отдельные объекты в куче (медленнее)");
+
+// struct нельзя null
+// PointS p = null;    // ОШИБКА!
+PointS? nullable = null;   // но можно Nullable<PointS>
+Console.WriteLine($"\nNullable struct: {nullable?.X}");
+
+#!markdown
+
+## 4. readonly struct — неизменяемая структура
+
+**`readonly struct`** гарантирует, что **ни одно поле** не может быть изменено после создания:
+
+```csharp
+readonly struct Point
+{
+    public double X { get; }    // только get!
+    public double Y { get; }
+
+    public Point(double x, double y) => (X, Y) = (x, y);
+}
+```
+
+**Преимущества:**
+- Потокобезопасность (нет мутаций)
+- Компилятор может оптимизировать
+- Используется с `in` параметрами без копирования
+
+#!csharp
+
+readonly struct Temperature
+{
+    public double Celsius { get; }
+    public double Fahrenheit => Celsius * 9.0 / 5 + 32;
+    public double Kelvin => Celsius + 273.15;
+
+    public Temperature(double celsius)
+    {
+        Celsius = celsius;
+    }
+
+    // Создание новых объектов вместо изменения
+    public Temperature Add(double degrees) => new Temperature(Celsius + degrees);
+    public Temperature Scale(double factor) => new Temperature(Celsius * factor);
+
+    public override string ToString() => $"{Celsius:F1}°C ({Fahrenheit:F1}°F, {Kelvin:F1}K)";
+}
+
+var t1 = new Temperature(100);
+var t2 = t1.Add(-50);       // возвращает НОВЫЙ объект
+var t3 = t1.Scale(0.5);     // t1 не изменяется!
+
+Console.WriteLine($"t1 = {t1}");
+Console.WriteLine($"t2 = {t2}");
+Console.WriteLine($"t3 = {t3}");
+
+// t1.Celsius = 0;   // ОШИБКА! readonly struct
+
+#!markdown
+
+### Попробуй сам: создай `readonly struct Money` с полями Amount (decimal) и Currency (string). Методы Add(Money other) и ToString(). Add должен проверять, что валюта совпадает.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Когда struct, когда class?
+
+**Используй struct когда:**
+1. Объект **маленький** (рекомендация: до 16 байт)
+2. Объект **неизменяемый** (или лучше сделать readonly)
+3. Объект **живёт недолго** (создаётся и уничтожается часто)
+4. Объект **представляет одно значение** (как число, точка, цвет)
+5. Нет наследования
+
+**Используй class когда:**
+1. Объект **большой** или **сложный**
+2. Нужна **мутабельность** (частое изменение полей)
+3. Нужно **наследование**
+4. Объект передаётся в **многие места** (ссылка дешевле копии)
+5. Нужен `null`
+
+| Пример | struct или class? |
+|---|---|
+| Точка (X, Y) | **struct** — маленькая, значение |
+| Цвет (R, G, B) | **struct** — маленький, значение |
+| Игрок (имя, HP, инвентарь) | **class** — сложный, мутабельный |
+| Дата/время | **struct** (DateTime) |
+| Список элементов | **class** (List<T>) |
+| Координата в 3D | **struct** (Vector3) |
+
+#!csharp
+
+// Хорошие примеры struct
+readonly struct Vector3
+{
+    public float X { get; }
+    public float Y { get; }
+    public float Z { get; }
+
+    public Vector3(float x, float y, float z) => (X, Y, Z) = (x, y, z);
+
+    public float Length => MathF.Sqrt(X * X + Y * Y + Z * Z);
+    public Vector3 Normalized => new(X / Length, Y / Length, Z / Length);
+    public static Vector3 operator +(Vector3 a, Vector3 b) => new(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
+    public override string ToString() => $"({X:F2}, {Y:F2}, {Z:F2})";
+}
+
+readonly struct Range2D
+{
+    public double Min { get; }
+    public double Max { get; }
+    public double Length => Max - Min;
+    public double Center => (Min + Max) / 2;
+
+    public Range2D(double min, double max)
+    {
+        Min = Math.Min(min, max);
+        Max = Math.Max(min, max);
+    }
+
+    public bool Contains(double value) => value >= Min && value <= Max;
+    public override string ToString() => $"[{Min:F1}, {Max:F1}]";
+}
+
+var v1 = new Vector3(1, 2, 3);
+var v2 = new Vector3(4, 5, 6);
+Console.WriteLine($"v1 + v2 = {v1 + v2}");
+
+var range = new Range2D(10, 50);
+Console.WriteLine($"Диапазон: {range}, длина: {range.Length}, центр: {range.Center}");
+Console.WriteLine($"25 в диапазоне? {range.Contains(25)}");
+Console.WriteLine($"60 в диапазоне? {range.Contains(60)}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **`struct`** — значимый тип, хранит **само значение** (не ссылку)
+2. При присваивании struct **копируется целиком**
+3. Хранится на **стеке** — быстрее, без GC
+4. **`readonly struct`** — все поля неизменяемые
+5. Struct для **маленьких неизменяемых значений** (Point, Color, DateTime)
+6. Class для **сложных мутабельных объектов** (Player, List, Window)
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: struct Fraction (лёгкая)
+Создай struct `Fraction` (Numerator, Denominator). Метод ToDouble() возвращает дробь как double. ToString() возвращает "N/D". Создай несколько дробей и выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Копирование struct (лёгкая)
+Создай struct `Settings` (Volume int, Brightness int). Создай original, скопируй в backup, измени original. Убедись, что backup не изменился.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: readonly struct RGB (средняя)
+Создай `readonly struct RGB` (byte R, G, B). Методы: Invert() → новый RGB(255-R, 255-G, 255-B), Mix(RGB other) → средний цвет, ToHex() → "#RRGGBB". Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: struct vs class эксперимент (средняя)
+Создай struct `PointS` и class `PointC` с одинаковыми полями (X, Y). Создай метод, который принимает PointS и пытается изменить его внутри. Создай такой же для PointC. Покажи разницу в поведении.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: struct Matrix2x2 (сложная)
+Создай `readonly struct Matrix2x2` (a11, a12, a21, a22). Методы: Determinant(), Transpose() → новая матрица, Multiply(Matrix2x2 other) → новая матрица, static Identity() → единичная матрица. Протестируй все операции.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: struct DateRange (сложная)
+Создай `readonly struct DateRange` (Start, End — DateTime). Свойства: Days (количество дней), Contains(DateTime date), Overlaps(DateRange other). Static метод ThisWeek() → текущая неделя. Протестируй с реальными датами.
+
+#!csharp
+
+// Твой код здесь:

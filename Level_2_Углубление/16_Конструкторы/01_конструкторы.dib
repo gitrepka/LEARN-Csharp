@@ -1,0 +1,541 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Конструкторы
+
+#!markdown
+
+## 1. Что такое конструктор?
+
+**Конструктор** — это специальный метод, который вызывается **при создании объекта** (`new`). Его задача — **инициализировать** объект.
+
+Особенности конструктора:
+- **Имя совпадает** с именем класса
+- **Нет возвращаемого типа** (даже void)
+- Вызывается **автоматически** при `new`
+
+```csharp
+class Dog
+{
+    public string Name;
+    public int Age;
+
+    // Конструктор
+    public Dog()
+    {
+        Name = "Без имени";
+        Age = 0;
+        Console.WriteLine("Собака создана!");
+    }
+}
+
+Dog d = new Dog();   // вызовется конструктор
+```
+
+#!csharp
+
+class Cat
+{
+    public string Name;
+    public string Color;
+    public int Age;
+
+    // Конструктор по умолчанию
+    public Cat()
+    {
+        Name = "Мурка";
+        Color = "серый";
+        Age = 1;
+        Console.WriteLine($"Создан кот: {Name}");
+    }
+
+    public void Info()
+    {
+        Console.WriteLine($"  {Name}, {Color}, {Age} лет");
+    }
+}
+
+Cat c1 = new Cat();   // "Создан кот: Мурка"
+c1.Info();
+
+Cat c2 = new Cat();   // ещё один — тот же конструктор
+c2.Name = "Барсик";   // меняем имя после создания
+c2.Info();
+
+#!markdown
+
+### Попробуй сам: создай класс `Counter` с полем Count. В конструкторе установи Count = 0 и выведи "Счётчик создан". Создай объект и проверь, что Count = 0.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Параметризованный конструктор
+
+Конструктор может принимать **параметры** для инициализации:
+
+```csharp
+class Dog
+{
+    public string Name;
+    public int Age;
+
+    public Dog(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+}
+
+Dog d = new Dog("Бобик", 3);   // передаём имя и возраст
+```
+
+**Важно:** если ты определил **хотя бы один** конструктор с параметрами, конструктор по умолчанию (без параметров) **перестаёт** генерироваться автоматически:
+
+```csharp
+Dog d = new Dog();   // ОШИБКА! Нет конструктора без параметров
+```
+
+#!csharp
+
+class Person
+{
+    public string Name;
+    public int Age;
+    public string City;
+
+    // Параметризованный конструктор
+    public Person(string name, int age, string city)
+    {
+        Name = name;
+        Age = age;
+        City = city;
+    }
+
+    public void Print()
+    {
+        Console.WriteLine($"{Name}, {Age} лет, {City}");
+    }
+}
+
+Person p1 = new Person("Анна", 25, "Москва");
+Person p2 = new Person("Пётр", 30, "Питер");
+
+p1.Print();
+p2.Print();
+
+// Person p3 = new Person();   // ОШИБКА! Нет конструктора без параметров
+
+#!markdown
+
+### Попробуй сам: создай класс `Book` с конструктором (string title, string author, int year). Создай 3 книги через конструктор и выведи информацию о каждой.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Перегрузка конструкторов — несколько вариантов
+
+Как и методы, конструкторы можно **перегружать** — создавать несколько с разными параметрами:
+
+```csharp
+class Dog
+{
+    public string Name;
+    public int Age;
+
+    public Dog()                        // без параметров
+    {
+        Name = "Без имени";
+        Age = 0;
+    }
+
+    public Dog(string name)             // только имя
+    {
+        Name = name;
+        Age = 0;
+    }
+
+    public Dog(string name, int age)    // имя + возраст
+    {
+        Name = name;
+        Age = age;
+    }
+}
+
+Dog d1 = new Dog();                 // "Без имени", 0
+Dog d2 = new Dog("Бобик");         // "Бобик", 0
+Dog d3 = new Dog("Рекс", 5);       // "Рекс", 5
+```
+
+#!csharp
+
+class Rectangle
+{
+    public double Width { get; set; }
+    public double Height { get; set; }
+
+    // Конструктор 1: без параметров (единичный квадрат)
+    public Rectangle()
+    {
+        Width = 1;
+        Height = 1;
+    }
+
+    // Конструктор 2: квадрат (одна сторона)
+    public Rectangle(double side)
+    {
+        Width = side;
+        Height = side;
+    }
+
+    // Конструктор 3: прямоугольник
+    public Rectangle(double width, double height)
+    {
+        Width = width;
+        Height = height;
+    }
+
+    public double Area => Width * Height;
+
+    public void Print()
+    {
+        Console.WriteLine($"  Прямоугольник {Width}x{Height}, площадь = {Area}");
+    }
+}
+
+Console.WriteLine("Без параметров:");
+new Rectangle().Print();
+
+Console.WriteLine("Квадрат 5x5:");
+new Rectangle(5).Print();
+
+Console.WriteLine("Прямоугольник 3x7:");
+new Rectangle(3, 7).Print();
+
+#!markdown
+
+### Попробуй сам: создай класс `Color` с полями R, G, B (int 0-255). Три конструктора: без параметров (чёрный 0,0,0), один параметр (оттенок серого: все компоненты равны), три параметра (R,G,B).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. this — ссылка на текущий объект
+
+**`this`** — ключевое слово, ссылающееся на **текущий объект**. Два применения:
+
+**1. Разрешение конфликта имён** (параметр совпадает с полем):
+
+```csharp
+class Dog
+{
+    public string Name;
+
+    public Dog(string Name)    // параметр Name совпадает с полем Name
+    {
+        this.Name = Name;      // this.Name — поле, Name — параметр
+    }
+}
+```
+
+**2. Вызов другого конструктора** через `this(...)`:
+
+```csharp
+class Dog
+{
+    public string Name;
+    public int Age;
+
+    public Dog(string name, int age)
+    {
+        this.Name = name;
+        this.Age = age;
+    }
+
+    public Dog(string name) : this(name, 0)    // вызывает конструктор выше
+    { }
+
+    public Dog() : this("Без имени", 0)         // тоже вызывает
+    { }
+}
+```
+
+Это позволяет **не дублировать** логику инициализации.
+
+#!csharp
+
+class Employee
+{
+    public string Name { get; set; }
+    public string Position { get; set; }
+    public double Salary { get; set; }
+
+    // Основной конструктор — вся логика здесь
+    public Employee(string name, string position, double salary)
+    {
+        this.Name = name;           // this разрешает конфликт имён
+        this.Position = position;
+        this.Salary = salary;
+    }
+
+    // Делегирующий конструктор — вызывает основной
+    public Employee(string name, string position) : this(name, position, 30000)
+    {
+        // Salary = 30000 по умолчанию
+    }
+
+    public Employee(string name) : this(name, "Стажёр", 20000)
+    {
+        // Стажёр с зарплатой 20000
+    }
+
+    public Employee() : this("Новый сотрудник")
+    {
+        // Полностью по умолчанию
+    }
+
+    public void Print()
+    {
+        Console.WriteLine($"  {Name} — {Position}, зарплата: {Salary:C}");
+    }
+}
+
+Console.WriteLine("4 способа создания:");
+new Employee("Анна", "Директор", 150000).Print();
+new Employee("Пётр", "Менеджер").Print();
+new Employee("Мария").Print();
+new Employee().Print();
+
+#!markdown
+
+### Попробуй сам: создай класс `Point` с полями x и y (double). Три конструктора: (x, y), (value) — обе координаты равны, () — точка в начале (0, 0). Используй `this(...)` для делегирования. Проверь все три.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Конструктор + валидация
+
+Конструктор — идеальное место для **проверки** входных данных:
+
+```csharp
+class Age
+{
+    public int Value { get; }
+
+    public Age(int value)
+    {
+        if (value < 0 || value > 150)
+            throw new ArgumentException($"Некорректный возраст: {value}");
+        Value = value;
+    }
+}
+```
+
+Если данные некорректны — **выбрасываем исключение** в конструкторе. Объект **не будет создан**.
+
+#!csharp
+
+class EmailAddress
+{
+    public string Value { get; }
+
+    public EmailAddress(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email не может быть пустым");
+        if (!email.Contains('@'))
+            throw new ArgumentException($"Некорректный email: {email}");
+
+        Value = email.Trim().ToLower();
+    }
+
+    public override string ToString() => Value;
+}
+
+// Корректный
+var email1 = new EmailAddress("  User@Example.COM  ");
+Console.WriteLine(email1);   // user@example.com
+
+// Некорректный
+try
+{
+    var email2 = new EmailAddress("не-email");
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"Ошибка: {ex.Message}");
+}
+
+#!markdown
+
+## 6. Инициализатор объекта — new Person { ... }
+
+**Инициализатор объекта** — альтернативный способ задать свойства при создании:
+
+```csharp
+var p = new Person { Name = "Анна", Age = 25, City = "Москва" };
+```
+
+Это **эквивалентно**:
+```csharp
+var p = new Person();
+p.Name = "Анна";
+p.Age = 25;
+p.City = "Москва";
+```
+
+Можно комбинировать с конструктором:
+```csharp
+var p = new Person("Анна") { Age = 25, City = "Москва" };
+```
+
+#!csharp
+
+class GameCharacter
+{
+    public string Name { get; set; }
+    public string Class { get; set; }
+    public int Level { get; set; } = 1;
+    public int Health { get; set; } = 100;
+    public int Attack { get; set; } = 10;
+
+    public void Print()
+    {
+        Console.WriteLine($"  {Name} [{Class}] Lv.{Level} HP:{Health} ATK:{Attack}");
+    }
+}
+
+// Инициализатор объекта — удобно и читаемо
+var hero = new GameCharacter
+{
+    Name = "Артас",
+    Class = "Паладин",
+    Level = 10,
+    Health = 500,
+    Attack = 75
+};
+
+var mage = new GameCharacter
+{
+    Name = "Джайна",
+    Class = "Маг",
+    Level = 8,
+    Attack = 120
+};
+
+// Level и Health используют значения по умолчанию для mage (кроме тех что задали)
+hero.Print();
+mage.Print();
+
+// Массив объектов с инициализаторами
+var enemies = new GameCharacter[]
+{
+    new GameCharacter { Name = "Гоблин", Class = "Моб", Health = 30, Attack = 5 },
+    new GameCharacter { Name = "Орк", Class = "Моб", Health = 80, Attack = 15 },
+    new GameCharacter { Name = "Дракон", Class = "Босс", Level = 20, Health = 1000, Attack = 200 }
+};
+
+Console.WriteLine("\nВраги:");
+foreach (var e in enemies)
+    e.Print();
+
+#!markdown
+
+### Попробуй сам: создай класс `Config` со свойствами: Host (string), Port (int), UseSSL (bool), Timeout (int). Используй инициализатор объекта для создания двух конфигураций: «продакшен» и «разработка».
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## ИТОГО:
+
+1. **Конструктор** — метод с именем класса, вызывается при `new`
+2. **Параметризованный** конструктор принимает аргументы для инициализации
+3. **Перегрузка** — несколько конструкторов с разными параметрами
+4. **`this`** — ссылка на текущий объект и вызов другого конструктора
+5. Конструктор — место для **валидации** данных
+6. **Инициализатор** `new X { Prop = value }` — удобная альтернатива
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Класс Time (лёгкая)
+Создай класс `Time` с полями Hours и Minutes. Конструктор принимает часы и минуты, проверяет корректность (0-23 и 0-59). Метод Display() выводит "HH:MM". Создай несколько объектов.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Перегрузка конструкторов (лёгкая)
+Создай класс `Message` с полями From, To, Text. Три конструктора: (from, to, text), (from, text) — To = "Все", (text) — From = "Система", To = "Все". Используй this для делегирования.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Класс с ID (средняя)
+Создай класс `User` с автоинкрементным Id (private static int nextId). Конструктор принимает имя. Каждый новый пользователь получает уникальный Id. Создай 5 пользователей и выведи их Id.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Конструктор копирования (средняя)
+Создай класс `Point3D` (X, Y, Z). Добавь конструктор, принимающий другой Point3D (конструктор копирования). Создай точку, скопируй её, измени копию — убедись, что оригинал не изменился.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Инициализатор + коллекция (сложная)
+Создай класс `Student` со свойствами Name, Age, Grade. Создай массив из 5 студентов через инициализаторы. Найди студента с лучшей оценкой и выведи его данные.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Класс-строитель (сложная)
+Создай класс `Pizza` со свойствами: Size, Crust, Toppings (string[]). Класс `PizzaBuilder` с методами: SetSize(string), SetCrust(string), AddTopping(string), Build() — возвращает Pizza. Каждый метод возвращает this (для цепочки вызовов).
+
+#!csharp
+
+// Твой код здесь:

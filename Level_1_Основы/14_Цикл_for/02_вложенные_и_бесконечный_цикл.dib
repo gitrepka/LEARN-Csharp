@@ -1,6 +1,6 @@
 #!meta
 
-{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"},{"name":"fsharp","languageName":"F#","aliases":["f#","fs"]},{"name":"html","languageName":"HTML"},{"name":"http","languageName":"HTTP"},{"name":"javascript","languageName":"JavaScript","aliases":["js"]},{"name":"mermaid","languageName":"Mermaid"},{"name":"pwsh","languageName":"PowerShell","aliases":["powershell"]},{"name":"value"}]}}
 
 #!markdown
 
@@ -64,7 +64,6 @@ for (int i = 1; i <= 2; i++)
 
 // Твой код здесь:
 
-
 #!markdown
 
 ## 3. Таблица умножения — классика вложенных циклов
@@ -98,7 +97,6 @@ for (int i = 1; i <= 9; i++)
 #!csharp
 
 // Твой код здесь:
-
 
 #!markdown
 
@@ -165,7 +163,6 @@ for (int row = 5; row >= 1; row--)
 
 // Твой код здесь:
 
-
 #!markdown
 
 ### Попробуй сам: нарисуй лесенку из чисел:
@@ -181,6 +178,14 @@ for (int row = 5; row >= 1; row--)
 
 // Твой код здесь:
 
+for (int i = 1; i <= 5; i++)       // Внешний цикл: номер строки (1..5)
+{
+    for (int j = 1; j <= i; j++)   // Внутренний цикл: числа от 1 до номера строки
+    {
+        Console.Write(j + " ");    // Выводим число + пробел (без перехода на новую строку)
+    }
+    Console.WriteLine();           // Переход на новую строку после завершения внутреннего цикла
+}
 
 #!markdown
 
@@ -277,7 +282,6 @@ for (int k = 0; ; k++)
 
 // Твой код здесь:
 
-
 #!markdown
 
 ## ИТОГО:
@@ -302,8 +306,15 @@ for (int k = 0; ; k++)
 
 #!csharp
 
-// Твой код здесь:
-
+for (int y = 0; y <= 3; y++)       // Строки (Y)
+{
+    for (int x = 0; x <= 3; x++)   // Столбцы (X)
+    {
+        (int x, int y) coord = (x, y);  // Создаём кортеж с координатами
+        Console.Write($"({coord.x},{coord.y}) ");
+    }
+    Console.WriteLine();  // Новая строка после завершения ряда
+}
 
 #!markdown
 
@@ -313,7 +324,6 @@ for (int k = 0; ; k++)
 #!csharp
 
 // Твой код здесь:
-
 
 #!markdown
 
@@ -332,7 +342,6 @@ for (int k = 0; ; k++)
 
 // Твой код здесь:
 
-
 #!markdown
 
 ## Задача 4: Рамка (средняя)
@@ -349,7 +358,6 @@ for (int k = 0; ; k++)
 #!csharp
 
 // Твой код здесь:
-
 
 #!markdown
 
@@ -368,7 +376,6 @@ for (int k = 0; ; k++)
 
 // Твой код здесь:
 
-
 #!markdown
 
 ## Задача 6: Простые числа (сложная)
@@ -377,7 +384,6 @@ for (int k = 0; ; k++)
 #!csharp
 
 // Твой код здесь:
-
 
 #!markdown
 
@@ -395,4 +401,3 @@ for (int k = 0; ; k++)
 #!csharp
 
 // Твой код здесь:
-

@@ -1,0 +1,316 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: params, значения по умолчанию, именованные аргументы
+
+#!markdown
+
+## 1. params — переменное количество аргументов
+
+**`params`** позволяет передавать **любое количество** аргументов одного типа. Внутри метода они становятся массивом.
+
+```csharp
+int Sum(params int[] numbers)
+{
+    int total = 0;
+    foreach (int n in numbers)
+        total += n;
+    return total;
+}
+
+Sum(1, 2);           // 3
+Sum(1, 2, 3, 4, 5);  // 15
+Sum();               // 0 (пустой массив)
+```
+
+Правила:
+- `params` — **только последний** параметр
+- Может быть только **один** `params` в методе
+- Можно передать и обычный массив: `Sum(new int[] {1, 2, 3})`
+
+#!csharp
+
+// params в действии
+int Sum(params int[] numbers)
+{
+    int total = 0;
+    foreach (int n in numbers)
+        total += n;
+    return total;
+}
+
+Console.WriteLine(Sum(1, 2, 3));          // 6
+Console.WriteLine(Sum(10, 20, 30, 40));   // 100
+Console.WriteLine(Sum());                 // 0
+
+// Можно передать массив напрямую
+int[] data = {5, 10, 15};
+Console.WriteLine(Sum(data));             // 30
+
+#!csharp
+
+// params можно комбинировать с обычными параметрами
+void Log(string prefix, params object[] args)
+{
+    Console.Write($"[{prefix}] ");
+    foreach (var arg in args)
+        Console.Write($"{arg} ");
+    Console.WriteLine();
+}
+
+Log("INFO", "Сервер запущен", "порт", 8080);
+Log("ERROR", "Файл не найден:", "config.json");
+Log("DEBUG", 42, true, 3.14, "test");
+
+#!markdown
+
+### Попробуй сам: создай метод `string Join(string separator, params string[] words)`, который соединяет слова через разделитель. Проверь: `Join(", ", "кот", "пёс", "рыбка")` должен вернуть `"кот, пёс, рыбка"`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Значения по умолчанию (Default Parameters)
+
+Параметрам можно задать **значение по умолчанию**. Если аргумент не передан — используется значение по умолчанию:
+
+```csharp
+void Greet(string name, string greeting = "Привет")
+{
+    Console.WriteLine($"{greeting}, {name}!");
+}
+
+Greet("Анна");              // Привет, Анна!
+Greet("Анна", "Здравствуй"); // Здравствуй, Анна!
+```
+
+Правила:
+- Параметры с умолчаниями — **только после** обычных параметров
+- Значение по умолчанию должно быть **константой** (compile-time constant)
+
+```csharp
+// Правильно:
+void F(int x, int y = 0, string s = "abc") { }
+
+// Неправильно:
+void F(int x = 0, int y) { }   // ОШИБКА! x с умолчанием перед y без
+```
+
+#!csharp
+
+// Значения по умолчанию
+void PrintBorder(int length = 40, char symbol = '-')
+{
+    Console.WriteLine(new string(symbol, length));
+}
+
+PrintBorder();            // ---------------------------------------- (40 символов '-')
+PrintBorder(20);          // -------------------- (20 символов '-')
+PrintBorder(10, '*');     // ********** (10 символов '*')
+
+#!csharp
+
+// Практичный пример: форматирование цены
+string FormatPrice(double price, string currency = "₽", int decimals = 2)
+{
+    return $"{price.ToString($"F{decimals}")} {currency}";
+}
+
+Console.WriteLine(FormatPrice(1234.567));              // 1234.57 ₽
+Console.WriteLine(FormatPrice(1234.567, "$"));         // 1234.57 $
+Console.WriteLine(FormatPrice(1234.567, "€", 0));      // 1235 €
+
+#!markdown
+
+### Попробуй сам: создай метод `CreateUser(string name, int age = 18, string role = "user")`, который возвращает строку "name (age лет, role)". Вызови его тремя способами: только имя, имя + возраст, имя + возраст + роль.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Именованные аргументы (Named Arguments)
+
+Обычно аргументы передаются **по позиции**. Но можно указывать **имя параметра**:
+
+```csharp
+void Register(string name, int age, string city)
+{
+    Console.WriteLine($"{name}, {age}, {city}");
+}
+
+// По позиции:
+Register("Анна", 25, "Москва");
+
+// Именованные аргументы:
+Register(name: "Анна", age: 25, city: "Москва");
+
+// Можно менять порядок!
+Register(city: "Москва", name: "Анна", age: 25);
+```
+
+**Зачем нужны:**
+1. **Пропуск параметров с умолчанием** — главная причина
+2. **Читаемость** — понятно, что значит каждый аргумент
+3. **Порядок не важен** при именовании
+
+#!csharp
+
+// Именованные аргументы + значения по умолчанию
+void CreateReport(
+    string title,
+    string author = "Аноним",
+    int year = 2026,
+    bool draft = false)
+{
+    Console.WriteLine($"Отчёт: {title}");
+    Console.WriteLine($"Автор: {author}");
+    Console.WriteLine($"Год: {year}");
+    Console.WriteLine($"Черновик: {(draft ? "Да" : "Нет")}");
+    Console.WriteLine();
+}
+
+// Только обязательный параметр
+CreateReport("Продажи");
+
+// Пропускаем author и year, задаём только draft:
+CreateReport("Расходы", draft: true);
+
+// Задаём только author:
+CreateReport("Финансы", author: "Иванов");
+
+#!markdown
+
+### Попробуй сам: создай метод `SendEmail(string to, string subject = "Без темы", string body = "", bool urgent = false)`. Вызови его 3 способами, используя именованные аргументы для пропуска параметров.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Когда что использовать: ref vs out vs in vs params vs default
+
+| Задача | Используй |
+|---|---|
+| Метод должен **изменить** переменную | `ref` |
+| Метод **возвращает** несколько значений | `out` |
+| **Оптимизация** больших struct (только чтение) | `in` |
+| **Переменное** количество аргументов | `params` |
+| Аргумент **необязателен** (есть разумное умолчание) | Значение по умолчанию |
+| Ясность кода при вызове | Именованные аргументы |
+
+**Приоритет при выборе:**
+1. Если нужно вернуть одно значение → `return`
+2. Если нужно вернуть 2-3 значения → `out` или кортеж (tuple)
+3. Если нужно изменить переменную на месте → `ref`
+4. Если параметр необязателен → значение по умолчанию
+5. Если количество аргументов переменное → `params`
+
+```csharp
+// Вместо out можно использовать кортежи (более современный подход):
+(int min, int max) MinMax(int[] arr)
+{
+    return (arr.Min(), arr.Max());
+}
+
+var result = MinMax(new[] {3, 1, 4, 1, 5});
+Console.WriteLine($"{result.min}, {result.max}");
+```
+
+#!csharp
+
+// Кортеж vs out — современный подход
+(int Quotient, int Remainder) DivideModern(int a, int b)
+{
+    return (a / b, a % b);
+}
+
+var result = DivideModern(17, 5);
+Console.WriteLine($"17 / 5 = {result.Quotient}, остаток {result.Remainder}");
+
+// Деконструкция:
+var (q, r) = DivideModern(29, 7);
+Console.WriteLine($"29 / 7 = {q}, остаток {r}");
+
+#!markdown
+
+## ИТОГО:
+
+1. **`params`** — переменное количество аргументов, внутри метода это массив
+2. **Значения по умолчанию** — необязательные параметры (только в конце)
+3. **Именованные аргументы** — указываем имя параметра при вызове (можно пропускать параметры)
+4. Современная альтернатива `out` — **кортежи** (tuples)
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Сумма любых чисел (лёгкая)
+Создай метод `double Sum(params double[] numbers)`. Проверь: `Sum()`, `Sum(1.5)`, `Sum(1.1, 2.2, 3.3, 4.4)`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Логгер (лёгкая)
+Создай метод `Log(string message, string level = "INFO", bool showTime = true)`. Если showTime=true, выводи "[HH:mm:ss] [LEVEL] message". Проверь с разными комбинациями именованных аргументов.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Конкатенация с разделителем (средняя)
+Создай метод `string Concat(string separator = " ", params string[] parts)`. Подождите — это не скомпилируется! params должен быть последним. Реши эту проблему (подсказка: сделай params последним, separator — перед ним). Проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Генератор паролей (средняя)
+Создай метод `string GeneratePassword(int length = 8, bool useDigits = true, bool useSpecial = false)`. Сгенерируй случайную строку из букв (+ цифры если useDigits, + !@#$%& если useSpecial). Вызови с именованными аргументами: только длину 12, только useSpecial: true.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Статистика с params (сложная)
+Создай метод `(double avg, double min, double max) Stats(params double[] values)`, возвращающий кортеж. Если массив пустой — верни (0, 0, 0). Проверь с разным количеством аргументов.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Построитель SQL-запроса (сложная)
+Создай метод `string BuildSelect(string table, string columns = "*", string where = "", string orderBy = "", int limit = 0)`. Он возвращает строку вида `SELECT columns FROM table WHERE ... ORDER BY ... LIMIT ...`. Пропускай части, которые пустые/нулевые. Проверь с разными комбинациями именованных аргументов.
+
+#!csharp
+
+// Твой код здесь:

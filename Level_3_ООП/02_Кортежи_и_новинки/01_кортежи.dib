@@ -1,0 +1,410 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Кортежи, Collection Expressions и анонимные типы
+
+#!markdown
+
+## Зачем нужны кортежи?
+
+Иногда метод должен вернуть **несколько значений**. Например, метод `Divide` должен вернуть частное И остаток. Раньше для этого приходилось:
+- Создавать отдельный класс/struct
+- Использовать `out` параметры
+
+**Кортежи (tuples)** -- лёгкий способ объединить несколько значений **без создания отдельного типа**.
+
+#!markdown
+
+## 1. Базовый синтаксис кортежей
+
+Кортеж -- это группа значений в скобках `()`:
+
+```csharp
+// Кортеж из двух элементов
+(int, string) person = (25, "Алиса");
+
+// Доступ через Item1, Item2, ...
+Console.WriteLine(person.Item1);  // 25
+Console.WriteLine(person.Item2);  // Алиса
+```
+
+Можно создавать кортежи любого размера:
+
+```csharp
+(int, string, bool) triple = (1, "текст", true);
+(int, int, int, int) quad = (1, 2, 3, 4);
+```
+
+`Item1`, `Item2` -- не очень читаемые имена. Поэтому существуют **именованные кортежи**.
+
+#!csharp
+
+// Базовый кортеж
+(int, string) data = (42, "ответ");
+Console.WriteLine($"Item1 = {data.Item1}, Item2 = {data.Item2}");
+
+// Кортеж из трёх элементов
+(string, int, double) product = ("Молоко", 3, 89.90);
+Console.WriteLine($"Товар: {product.Item1}, кол-во: {product.Item2}, цена: {product.Item3}");
+
+// var тоже работает
+var point = (3.14, 2.71);
+Console.WriteLine($"x = {point.Item1}, y = {point.Item2}");
+
+#!markdown
+
+### Попробуй сам: создай кортеж из трёх int (координаты x, y, z) со значениями 10, 20, 30. Выведи каждый элемент.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Именованные элементы кортежей
+
+Вместо `Item1`, `Item2` можно дать элементам **осмысленные имена**:
+
+```csharp
+// Именованный кортеж
+(int Age, string Name) person = (25, "Алиса");
+Console.WriteLine(person.Name);  // Алиса
+Console.WriteLine(person.Age);   // 25
+
+// Item1/Item2 всё ещё работают
+Console.WriteLine(person.Item1); // 25
+```
+
+Имена можно указать и справа:
+
+```csharp
+var person = (Age: 25, Name: "Алиса");
+Console.WriteLine(person.Name);  // Алиса
+```
+
+#!csharp
+
+// Именованные элементы -- слева
+(string City, double Temperature, string Weather) forecast = ("Москва", -5.0, "Снег");
+Console.WriteLine($"{forecast.City}: {forecast.Temperature}C, {forecast.Weather}");
+
+// Именованные элементы -- справа (через var)
+var score = (Player: "Иван", Points: 1500, Level: 5);
+Console.WriteLine($"Игрок {score.Player}: {score.Points} очков, уровень {score.Level}");
+
+// Смешивать нельзя -- имена или слева, или справа
+// Если указаны и там, и там -- используются имена из типа (слева)
+
+// Кортежи с одинаковыми типами и значениями равны
+var a = (X: 1, Y: 2);
+var b = (A: 1, B: 2);  // Имена не влияют на сравнение!
+Console.WriteLine($"a == b: {a == b}");  // true (сравниваются значения)
+
+#!markdown
+
+### Попробуй сам: создай именованный кортеж `(string FirstName, string LastName, int BirthYear)` со своими данными. Выведи в формате "Фамилия И., год рождения".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Деконструкция кортежей
+
+Кортеж можно **разложить** на отдельные переменные -- это называется **деконструкция**:
+
+```csharp
+var person = (Name: "Алиса", Age: 25);
+
+// Деконструкция -- создаём отдельные переменные
+var (name, age) = person;
+Console.WriteLine(name);  // Алиса
+Console.WriteLine(age);   // 25
+```
+
+Можно указать типы явно:
+
+```csharp
+(string name, int age) = person;
+```
+
+Ненужные элементы можно **отбросить** через `_`:
+
+```csharp
+var (_, age) = person;  // нужен только возраст
+```
+
+#!csharp
+
+var data = (Name: "Товар", Price: 199.99, Quantity: 5, Category: "Еда");
+
+// Полная деконструкция
+var (name, price, qty, cat) = data;
+Console.WriteLine($"{name}: {price} руб., {qty} шт., категория: {cat}");
+
+// Частичная -- берём только нужное
+var (_, стоимость, количество, _) = data;
+Console.WriteLine($"Итого: {стоимость * количество} руб.");
+
+// Деконструкция в существующие переменные
+string productName;
+double productPrice;
+(productName, productPrice, _, _) = data;
+Console.WriteLine($"{productName} стоит {productPrice}");
+
+#!markdown
+
+### Попробуй сам: создай кортеж `(int Hours, int Minutes, int Seconds)` со значениями 14, 35, 20. Деконструируй его и выведи время в формате "14:35:20".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Возврат кортежа из метода
+
+Кортежи идеально подходят для методов, возвращающих **несколько значений**:
+
+```csharp
+// Метод возвращает кортеж
+(int Quotient, int Remainder) Divide(int a, int b)
+{
+    return (a / b, a % b);
+}
+
+var result = Divide(17, 5);
+Console.WriteLine($"17 / 5 = {result.Quotient}, остаток {result.Remainder}");
+
+// Или сразу деконструкция
+var (q, r) = Divide(17, 5);
+```
+
+#!csharp
+
+// Метод возвращает минимум и максимум массива
+(int Min, int Max) FindMinMax(int[] numbers)
+{
+    int min = numbers[0];
+    int max = numbers[0];
+    foreach (var n in numbers)
+    {
+        if (n < min) min = n;
+        if (n > max) max = n;
+    }
+    return (min, max);
+}
+
+int[] data = { 5, 2, 8, 1, 9, 3, 7 };
+var (min, max) = FindMinMax(data);
+Console.WriteLine($"Мин: {min}, Макс: {max}");  // Мин: 1, Макс: 9
+
+// Ещё пример: статистика строки
+(int Words, int Chars, int Spaces) AnalyzeText(string text)
+{
+    int words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+    int chars = text.Length;
+    int spaces = text.Count(c => c == ' ');
+    return (words, chars, spaces);
+}
+
+var (words, chars, spaces) = AnalyzeText("Привет мир, это C#!");
+Console.WriteLine($"Слов: {words}, символов: {chars}, пробелов: {spaces}");
+
+#!markdown
+
+### Попробуй сам: напиши метод `(double Sum, double Average) CalcStats(double[] numbers)`, который возвращает сумму и среднее массива чисел. Протестируй на массиве {10, 20, 30, 40, 50}.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Collection Expressions (C# 12) и spread
+
+C# 12 добавил **collection expressions** -- упрощённый синтаксис создания коллекций:
+
+```csharp
+// Раньше
+int[] old = new int[] { 1, 2, 3 };
+List<int> oldList = new List<int> { 1, 2, 3 };
+
+// C# 12 -- collection expression
+int[] arr = [1, 2, 3];
+List<int> list = [1, 2, 3];
+Span<int> span = [1, 2, 3];
+```
+
+**Spread** оператор `..` позволяет "встроить" одну коллекцию в другую:
+
+```csharp
+int[] first = [1, 2, 3];
+int[] second = [4, 5, 6];
+int[] combined = [..first, ..second];        // [1, 2, 3, 4, 5, 6]
+int[] withExtra = [0, ..first, 99, ..second]; // [0, 1, 2, 3, 99, 4, 5, 6]
+```
+
+Пустая коллекция:
+```csharp
+int[] empty = [];
+```
+
+#!csharp
+
+// Collection expressions
+int[] numbers = [10, 20, 30, 40, 50];
+Console.WriteLine($"Массив: {string.Join(", ", numbers)}");
+
+List<string> names = ["Алиса", "Боб", "Чарли"];
+Console.WriteLine($"Список: {string.Join(", ", names)}");
+
+// Spread
+int[] part1 = [1, 2, 3];
+int[] part2 = [7, 8, 9];
+int[] all = [..part1, 4, 5, 6, ..part2];
+Console.WriteLine($"Объединение: {string.Join(", ", all)}");
+
+// Пустой массив
+string[] empty = [];
+Console.WriteLine($"Пустой, длина: {empty.Length}");
+
+// Spread с фильтрацией
+int[] source = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+int[] evens = [..source.Where(x => x % 2 == 0)];
+Console.WriteLine($"Чётные: {string.Join(", ", evens)}");
+
+#!markdown
+
+### Попробуй сам: создай три массива строк с именами друзей (по 2-3 имени). Объедини их в один массив через spread `[..a, ..b, ..c]`. Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. Анонимные типы
+
+**Анонимный тип** -- объект без явного имени типа. Создаётся через `new { }`:
+
+```csharp
+var person = new { Name = "Алиса", Age = 25 };
+Console.WriteLine(person.Name);  // Алиса
+Console.WriteLine(person.Age);   // 25
+// person.Name = "Боб";  // Ошибка! Свойства readonly
+```
+
+Особенности:
+- Свойства **только для чтения** (immutable)
+- Тип определяется компилятором (нельзя указать явно)
+- Работают `ToString()`, `Equals()`, `GetHashCode()` по значению
+- Нельзя вернуть из метода (тип неизвестен)
+- **Часто используются в LINQ**
+
+| Характеристика | Кортеж | Анонимный тип | Record |
+|---|---|---|---|
+| Синтаксис | `(1, "text")` | `new { A = 1 }` | `record R(...)` |
+| Именованные поля | Опционально | Всегда | Всегда |
+| Иммутабельность | Нет (struct) | Да | Да (по умолч.) |
+| Возврат из метода | Да | Нет | Да |
+| Value equality | Да | Да | Да |
+
+#!csharp
+
+// Создание анонимного типа
+var car = new { Brand = "Toyota", Model = "Camry", Year = 2023 };
+Console.WriteLine(car);  // { Brand = Toyota, Model = Camry, Year = 2023 }
+Console.WriteLine($"Марка: {car.Brand}");
+
+// Анонимные типы в LINQ -- главное применение
+var products = new[]
+{
+    new { Name = "Молоко", Price = 89.90, Category = "Еда" },
+    new { Name = "Хлеб", Price = 45.00, Category = "Еда" },
+    new { Name = "Шампунь", Price = 250.00, Category = "Гигиена" },
+};
+
+// Проецируем в новый анонимный тип
+var summary = products
+    .Select(p => new { p.Name, TotalInfo = $"{p.Name}: {p.Price} руб." })
+    .ToList();
+
+foreach (var item in summary)
+    Console.WriteLine(item.TotalInfo);
+
+// Анонимные типы равны по значению
+var a = new { X = 1, Y = 2 };
+var b = new { X = 1, Y = 2 };
+Console.WriteLine($"a.Equals(b): {a.Equals(b)}");  // true
+
+#!markdown
+
+### Попробуй сам: создай массив из 3 анонимных типов `new { City, Population }` с данными о городах. Отфильтруй города с населением > 1_000_000 и выведи их.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Обмен значений (лёгкая)
+Объяви две переменные `int a = 10, b = 20`. Используя деконструкцию кортежа, поменяй их местами **одной строкой**: `(a, b) = (b, a)`. Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Метод с кортежем (лёгкая)
+Напиши метод `(string Name, int Length) LongestWord(string[] words)`, который находит самое длинное слово и возвращает его и его длину. Протестируй на массиве `["кот", "слон", "бегемот", "ёж"]`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Конвертер времени (средняя)
+Напиши метод `(int Hours, int Minutes, int Seconds) FromSeconds(int totalSeconds)`, который переводит секунды в часы, минуты и секунды. Пример: 3661 секунда = 1 час, 1 минута, 1 секунда. Протестируй на нескольких значениях.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Объединение с spread (средняя)
+Даны три массива оценок по разным предметам. Объедини их в один через spread. Посчитай общее количество оценок, среднюю оценку и количество пятёрок.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Статистика текста (средняя)
+Напиши метод, который принимает строку и возвращает кортеж `(int Letters, int Digits, int Spaces, int Other)` -- количество букв, цифр, пробелов и прочих символов. Подсказка: `char.IsLetter()`, `char.IsDigit()`, `c == ' '`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Анонимные типы и LINQ (сложная)
+Создай массив кортежей `(string Name, string Subject, int Score)` с оценками 5 студентов по разным предметам. Используя LINQ и анонимные типы, выведи: для каждого студента -- его имя и средний балл. Отсортируй по среднему баллу по убыванию.
+
+#!csharp
+
+// Твой код здесь:

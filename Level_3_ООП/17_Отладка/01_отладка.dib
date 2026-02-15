@@ -1,0 +1,854 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Отладка (Debugging) — инструменты и техники
+
+#!markdown
+
+## 1. Что такое отладка и зачем она нужна?
+
+**Отладка (debugging)** — это процесс поиска и исправления ошибок в программе. Название пошло от слова "bug" (жук) — легенда гласит, что в 1947 году настоящий мотылёк застрял в реле компьютера Harvard Mark II, вызвав сбой.
+
+**Виды ошибок:**
+
+| Вид | Когда обнаруживается | Пример |
+|---|---|---|
+| **Ошибка компиляции** | При сборке (красные подчёркивания) | `int x = "hello";` |
+| **Ошибка выполнения** | При запуске (исключение) | `arr[100]`, деление на 0 |
+| **Логическая ошибка** | При тестировании (неверный результат) | Сортировка работает, но в обратном порядке |
+
+Ошибки компиляции находит компилятор. Ошибки выполнения ловит `try/catch`. Но **логические ошибки** — самые коварные: программа работает, не падает, но даёт **неверный результат**. Именно для их поиска нужен отладчик.
+
+**Инструменты отладки:**
+- **VS Code** — встроенный отладчик (C# Dev Kit)
+- **JetBrains Rider** — мощный отладчик
+- **Visual Studio** — классический отладчик для .NET
+- **`Console.WriteLine()`** — "отладка бедного" (но иногда эффективно!)
+
+#!markdown
+
+## 2. Breakpoint — точка останова
+
+**Breakpoint** (точка останова) — место в коде, где выполнение **остановится**, чтобы вы могли изучить состояние программы.
+
+### Как поставить breakpoint:
+
+| IDE | Действие |
+|---|---|
+| **VS Code** | Клик на левое поле (gutter) рядом с номером строки — появится красная точка |
+| **Rider** | Клик на gutter ИЛИ `Ctrl+F8` на текущей строке |
+| **Visual Studio** | Клик на gutter ИЛИ `F9` |
+
+### Что происходит при остановке:
+
+Когда программа "встаёт" на breakpoint:
+1. Выполнение **приостанавливается** (не завершается!)
+2. Вы видите **текущие значения** всех переменных
+3. Можете **пошагово** выполнять код
+4. Можете **менять значения** переменных прямо в процессе
+5. Можете **продолжить** выполнение до следующего breakpoint
+
+```
+Код:
+1  | int a = 5;
+2  | int b = 10;          ← Breakpoint здесь (красная точка)
+3  | int sum = a + b;
+4  | Console.WriteLine(sum);
+
+При остановке на строке 2:
+- a = 5 (уже выполнена строка 1)
+- b = ??? (строка 2 ещё НЕ выполнена)
+- sum = ??? (ещё не существует)
+```
+
+### Conditional Breakpoint — условная точка останова
+
+Останавливается **только** при выполнении условия:
+
+```
+Breakpoint на строке в цикле, условие: i == 50
+→ остановится только на 50-й итерации (вместо всех 100)
+```
+
+**Как создать в VS Code:** ПКМ на breakpoint → "Edit Breakpoint" → ввести условие.
+**В Rider:** ПКМ на breakpoint → "Properties" → "Condition".
+
+### Tracepoint (Logpoint) — точка логирования
+
+Не останавливает программу, а **выводит сообщение** в консоль отладки:
+
+```
+Tracepoint: "Значение i = {i}, sum = {sum}"
+→ пишет в Debug Console при каждом прохождении
+```
+
+**Как создать в VS Code:** ПКМ на gutter → "Add Logpoint" → ввести сообщение с `{переменная}`.
+
+#!csharp
+
+// Этот код можно запустить в notebook для демонстрации
+// Но настоящая отладка с breakpoints работает только в IDE (VS Code / Rider)
+
+// Пример кода, который стоит отлаживать с breakpoints:
+int[] numbers = { 3, 7, 1, 9, 4, 6, 2, 8, 5 };
+int max = numbers[0];
+
+// Поставь breakpoint на строку с if —
+// и наблюдай, как max меняется на каждой итерации
+for (int i = 1; i < numbers.Length; i++)
+{
+    if (numbers[i] > max)
+    {
+        max = numbers[i]; // Breakpoint здесь: когда max обновляется?
+    }
+}
+
+Console.WriteLine($"Максимум: {max}");
+
+// Conditional breakpoint: остановись только когда i > 5
+for (int i = 0; i < 10; i++)
+{
+    Console.Write($"{i} ");  // Условие: i > 5
+}
+
+#!markdown
+
+### Попробуй сам: скопируй код ниже в .cs файл или консольный проект. Поставь breakpoint внутри цикла. Запусти отладку (F5) и понаблюдай за значениями переменных на каждой итерации
+
+```csharp
+// Скопируй этот код в Program.cs консольного проекта
+int sum = 0;
+for (int i = 1; i <= 10; i++)
+{
+    sum += i;           // Breakpoint здесь
+    // При каждой остановке смотри: i = ?, sum = ?
+}
+Console.WriteLine($"Сумма: {sum}");
+```
+
+#!csharp
+
+// В notebook breakpoints не работают, поэтому используй Console.WriteLine для отладки:
+// Это "ручная" версия отладки — выводим значения на каждом шаге
+
+int sum = 0;
+for (int i = 1; i <= 10; i++)
+{
+    sum += i;
+    Console.WriteLine($"  Шаг {i}: i={i}, sum={sum}");  // "трейспоинт" вручную
+}
+Console.WriteLine($"Итого: {sum}");
+
+#!markdown
+
+## 3. Watch и Locals — наблюдение за переменными
+
+Когда программа остановлена на breakpoint, вы можете видеть значения переменных в специальных панелях:
+
+### Locals (Локальные переменные)
+
+Автоматически показывает **все переменные** в текущей области видимости:
+
+```
+LOCALS
+├── i: 3
+├── sum: 6
+├── numbers: int[5] { 1, 2, 3, 4, 5 }
+│   ├── [0]: 1
+│   ├── [1]: 2
+│   └── ...
+└── result: null
+```
+
+### Watch (Наблюдение)
+
+Позволяет добавить **любое выражение** для наблюдения:
+
+```
+WATCH
+├── i * 2: 6
+├── numbers.Length: 5
+├── sum > 10: false
+├── numbers[i]: 4
+└── string.Join(", ", numbers): "1, 2, 3, 4, 5"
+```
+
+**Как добавить в Watch:**
+- **VS Code:** панель "Watch" → кнопка "+" → ввести выражение
+- **Rider:** панель "Watches" → "+" или `Alt+F8`
+- Можно писать **любые C# выражения**: `list.Count`, `dict.ContainsKey("x")`, `obj?.Name ?? "null"`
+
+### Immediate Window (Немедленное выполнение)
+
+Позволяет **выполнять код** прямо во время отладки:
+
+```
+> sum = 100          // изменить значение переменной
+> numbers.Length     // вычислить выражение → 5
+> Console.WriteLine("Тест")  // выполнить метод
+```
+
+**Как открыть:**
+- **VS Code:** Debug Console (внизу, вкладка "Debug Console")
+- **Rider:** "Evaluate Expression" (`Alt+F8`)
+- **Visual Studio:** Debug → Windows → Immediate (`Ctrl+Alt+I`)
+
+#!csharp
+
+// Код для практики с Watch и Locals
+// Запусти в IDE с breakpoint и добавь в Watch:
+// - students.Count
+// - student.Name
+// - student.Grade > 3
+// - total / students.Count (средний балл)
+
+var students = new List<(string Name, int Grade)>
+{
+    ("Анна", 5),
+    ("Пётр", 3),
+    ("Ира", 4),
+    ("Олег", 5),
+    ("Маша", 2)
+};
+
+int total = 0;
+int countGood = 0;
+
+foreach (var student in students)
+{
+    total += student.Grade;                    // Watch: total
+    if (student.Grade >= 4)
+    {
+        countGood++;                           // Watch: countGood
+    }
+    // Breakpoint здесь: наблюдай student.Name и student.Grade
+}
+
+double average = (double)total / students.Count;
+Console.WriteLine($"Средний балл: {average:F1}");
+Console.WriteLine($"Хорошистов и отличников: {countGood}");
+
+#!markdown
+
+### Попробуй сам: в VS Code или Rider создай консольный проект с этим кодом. Поставь breakpoint в цикле. Добавь в Watch: `student.Name`, `student.Grade >= 4`, `total`, `(double)total / (students.IndexOf(student) + 1)` (текущий средний). Пройди по шагам
+
+#!csharp
+
+// В notebook — "ручная" версия Watch:
+var items = new Dictionary<string, double>
+{
+    ["Хлеб"] = 45.5,
+    ["Молоко"] = 89.9,
+    ["Сыр"] = 250.0,
+    ["Масло"] = 120.0
+};
+
+double budget = 300;
+double spent = 0;
+List<string> bought = new List<string>();
+
+foreach (var (product, price) in items)
+{
+    // "Watch" — выводим то, что наблюдали бы в отладчике
+    Console.WriteLine($"[Watch] product={product}, price={price:F1}, spent={spent:F1}, " +
+                      $"remaining={budget - spent:F1}, canAfford={price <= budget - spent}");
+
+    if (price <= budget - spent)
+    {
+        spent += price;
+        bought.Add(product);
+    }
+}
+
+Console.WriteLine($"\nКуплено: {string.Join(", ", bought)}");
+Console.WriteLine($"Потрачено: {spent:F1}₽ из {budget:F1}₽");
+
+#!markdown
+
+## 4. Пошаговое выполнение: Step Over, Step Into, Step Out
+
+Когда программа остановлена на breakpoint, можно двигаться по коду **по шагам**:
+
+| Действие | VS Code | Rider | Visual Studio | Описание |
+|---|---|---|---|---|
+| **Step Over** | `F10` | `F8` | `F10` | Выполнить текущую строку. Если это вызов метода — **не заходить** внутрь |
+| **Step Into** | `F11` | `F7` | `F11` | Выполнить текущую строку. Если это вызов метода — **зайти** внутрь |
+| **Step Out** | `Shift+F11` | `Shift+F8` | `Shift+F11` | Выполнить до конца текущего метода и **выйти** к вызывающему |
+| **Continue** | `F5` | `F9` | `F5` | **Продолжить** выполнение до следующего breakpoint |
+| **Stop** | `Shift+F5` | `Ctrl+F2` | `Shift+F5` | **Остановить** отладку |
+
+### Когда что использовать:
+
+```csharp
+int x = Calculate(5);    // ← Вы здесь, на breakpoint
+Console.WriteLine(x);
+
+int Calculate(int n)
+{
+    int result = 0;
+    for (int i = 0; i < n; i++)
+        result += i;
+    return result;
+}
+```
+
+- **Step Over (F10):** выполнит `Calculate(5)` целиком, x получит результат. Вы окажетесь на `Console.WriteLine`.
+- **Step Into (F11):** зайдёт внутрь `Calculate` — вы окажетесь на `int result = 0;`
+- **Step Out (Shift+F11):** если вы внутри `Calculate` — выполнит его до конца и вернёт вас к `int x = ...`
+
+**Совет:** обычно используйте Step Over. Step Into — только когда хотите разобраться, что происходит внутри метода.
+
+#!csharp
+
+// Демонстрация пошагового выполнения
+// В IDE: поставь breakpoint на первую строку Main и используй F10/F11
+
+int Multiply(int a, int b)
+{
+    // Step Into (F11) приведёт сюда
+    int result = a * b;
+    return result;
+}
+
+double Average(int[] nums)
+{
+    // Step Into (F11) приведёт сюда
+    int sum = 0;
+    foreach (int n in nums)
+        sum += n;
+    return (double)sum / nums.Length;
+}
+
+// Основной код — поставь breakpoint здесь
+int[] data = { 10, 20, 30, 40, 50 };
+
+int product = Multiply(3, 7);    // F10 — пропустит, F11 — зайдёт внутрь
+Console.WriteLine($"Произведение: {product}");
+
+double avg = Average(data);       // F10 — пропустит, F11 — зайдёт внутрь
+Console.WriteLine($"Среднее: {avg}");
+
+int total = 0;
+for (int i = 0; i < data.Length; i++)  // F10 по шагам цикла
+{
+    total += data[i];
+    Console.WriteLine($"  Шаг {i}: total = {total}");
+}
+
+#!markdown
+
+### Попробуй сам: создай консольный проект с несколькими методами. Потренируйся:
+1. Step Over (F10) — пропуская методы
+2. Step Into (F11) — заходя внутрь методов
+3. Step Out (Shift+F11) — выходя из методов
+4. Continue (F5) — до следующего breakpoint
+
+#!csharp
+
+// В notebook практикуем "мысленную отладку":
+// Определи результат, мысленно проходя по шагам
+
+int Mystery(int n)
+{
+    if (n <= 1) return n;
+    return Mystery(n - 1) + Mystery(n - 2);
+}
+
+// Мысленно пройди по шагам (Step Into):
+// Mystery(5) → Mystery(4) + Mystery(3)
+// Mystery(4) → Mystery(3) + Mystery(2)
+// ...
+// Что вернёт Mystery(5)?
+
+Console.WriteLine($"Mystery(5) = {Mystery(5)}");
+// Узнал функцию? Это числа Фибоначчи!
+
+#!markdown
+
+## 5. Call Stack — стек вызовов
+
+**Call Stack** показывает **цепочку вызовов** — какой метод вызвал какой:
+
+```
+Call Stack:
+→ CalculateDiscount()     line 25    ← текущий метод (вы здесь)
+  ProcessOrder()           line 15    ← вызвал CalculateDiscount
+  HandleRequest()          line 8     ← вызвал ProcessOrder
+  Main()                   line 3     ← точка входа
+```
+
+**Читается снизу вверх:** Main вызвал HandleRequest, тот вызвал ProcessOrder, тот вызвал CalculateDiscount.
+
+**Зачем нужен Call Stack:**
+- Понять, **как** вы попали в текущий метод
+- Увидеть **контекст** — какие данные были переданы на каждом уровне
+- Перейти к **любому уровню** стека и посмотреть его переменные
+- При ошибке — понять **цепочку**, которая привела к проблеме
+
+**Как открыть:**
+- **VS Code:** панель "Call Stack" (появляется автоматически при отладке)
+- **Rider:** панель "Frames" в окне отладки
+- **Visual Studio:** Debug → Windows → Call Stack
+
+#!csharp
+
+// Код для изучения Call Stack
+void Level1()
+{
+    Console.WriteLine("Вошли в Level1");
+    Level2();
+    Console.WriteLine("Вышли из Level1");
+}
+
+void Level2()
+{
+    Console.WriteLine("  Вошли в Level2");
+    Level3();
+    Console.WriteLine("  Вышли из Level2");
+}
+
+void Level3()
+{
+    Console.WriteLine("    Вошли в Level3");
+    // Breakpoint здесь! Посмотри Call Stack:
+    // → Level3 (текущий)
+    //   Level2
+    //   Level1
+    //   Main/<top-level>
+
+    // Имитация Call Stack через Environment.StackTrace
+    Console.WriteLine("\n    Call Stack:");
+    string stack = Environment.StackTrace;
+    foreach (string line in stack.Split('\n').Take(6))
+    {
+        if (line.Contains("Level") || line.Contains("Main"))
+            Console.WriteLine($"    {line.Trim()}");
+    }
+
+    Console.WriteLine("    Вышли из Level3");
+}
+
+Level1();
+
+#!markdown
+
+### Попробуй сам: создай 4 метода, вызывающих друг друга по цепочке. В самом глубоком поставь breakpoint (в IDE). Посмотри Call Stack и попробуй переключаться между уровнями
+
+#!csharp
+
+// Демонстрация: как Call Stack помогает при отладке ошибок
+void ProcessOrder(string customer, decimal amount)
+{
+    Console.WriteLine($"Обработка заказа: {customer}");
+    ApplyDiscount(customer, amount);
+}
+
+void ApplyDiscount(string customer, decimal amount)
+{
+    decimal discount = GetDiscount(customer);
+    decimal final_amount = amount * (1 - discount);
+    Console.WriteLine($"  Скидка: {discount:P0}, итого: {final_amount:F2}₽");
+}
+
+decimal GetDiscount(string customer)
+{
+    // Здесь может быть ошибка — Call Stack покажет, кто вызвал
+    Dictionary<string, decimal> discounts = new Dictionary<string, decimal>
+    {
+        ["VIP"] = 0.20m,
+        ["Regular"] = 0.05m
+    };
+
+    if (discounts.TryGetValue(customer, out decimal discount))
+        return discount;
+    return 0; // без скидки
+}
+
+ProcessOrder("VIP", 1000);
+ProcessOrder("Regular", 500);
+ProcessOrder("New", 300);
+
+#!markdown
+
+## 6. Debug vs Release и директивы компиляции
+
+### Конфигурации сборки
+
+| Свойство | Debug | Release |
+|---|---|---|
+| **Оптимизация** | Выключена | Включена |
+| **Отладочная информация** | Полная (PDB) | Минимальная |
+| **Скорость** | Медленнее | **Быстрее** |
+| **Размер** | Больше | **Меньше** |
+| **Отладка** | **Удобная** | Затруднена |
+| **Назначение** | Разработка | **Продакшн** |
+
+Переключение:
+```bash
+dotnet build -c Debug      # конфигурация Debug (по умолчанию)
+dotnet build -c Release    # конфигурация Release
+dotnet run -c Release      # запуск в Release
+```
+
+### Директива #if DEBUG
+
+Код, который выполняется **только** в Debug-сборке:
+
+```csharp
+#if DEBUG
+    Console.WriteLine("Debug-версия: подробное логирование");
+    Console.WriteLine($"Переменная x = {x}");
+#endif
+
+// Или в одну строку:
+#if DEBUG
+    ValidateInternalState();
+#endif
+```
+
+**Применение:**
+- Дополнительное логирование в Debug
+- Проверки целостности данных
+- Тестовые данные
+- Подробные сообщения об ошибках
+
+#!csharp
+
+// Демонстрация #if DEBUG
+// В Polyglot Notebook DEBUG обычно определён
+
+void ProcessData(int[] data)
+{
+    #if DEBUG
+    Console.WriteLine($"[DEBUG] ProcessData вызван с {data.Length} элементами");
+    Console.WriteLine($"[DEBUG] Данные: {string.Join(", ", data)}");
+    #endif
+
+    int sum = data.Sum();
+
+    #if DEBUG
+    Console.WriteLine($"[DEBUG] Промежуточный результат: sum = {sum}");
+    #endif
+
+    double average = (double)sum / data.Length;
+    Console.WriteLine($"Средний: {average:F2}");
+}
+
+ProcessData(new[] { 10, 20, 30, 40, 50 });
+
+Console.WriteLine();
+Console.WriteLine("В Release-сборке строки с [DEBUG] не будут скомпилированы вообще");
+Console.WriteLine("Они не просто не выполнятся — их не будет в исполняемом файле!");
+
+#!markdown
+
+### Попробуй сам: напиши метод, который в `#if DEBUG` выводит подробные шаги вычисления, а в Release — только результат. Создай консольный проект и запусти в обоих режимах: `dotnet run` и `dotnet run -c Release`
+
+#!csharp
+
+// Пример для консольного проекта (скопируй в Program.cs):
+Console.WriteLine("Конфигурация:");
+#if DEBUG
+    Console.WriteLine("  Режим: DEBUG");
+#else
+    Console.WriteLine("  Режим: RELEASE");
+#endif
+
+// Попробуй запустить:
+// dotnet run         → "DEBUG"
+// dotnet run -c Release → "RELEASE"
+
+#!markdown
+
+## 7. Debug.Assert() и Debug.WriteLine()
+
+Класс `System.Diagnostics.Debug` предоставляет инструменты, которые работают **только в Debug-сборке** и автоматически удаляются в Release.
+
+### Debug.Assert() — утверждение
+
+```csharp
+Debug.Assert(условие, "Сообщение если условие false");
+```
+
+Если условие `false`:
+- В **Debug**: программа **останавливается** с диалогом ошибки
+- В **Release**: вызов полностью **удаляется** — нулевое влияние на производительность
+
+```csharp
+void SetAge(int age)
+{
+    Debug.Assert(age >= 0, "Возраст не может быть отрицательным");
+    Debug.Assert(age <= 150, $"Нереальный возраст: {age}");
+    // ... код
+}
+```
+
+**Когда использовать Assert:**
+- Проверка **инвариантов** — условий, которые **всегда** должны быть true
+- Это **не** замена `throw` — Assert для ошибок **программиста** (багов), throw для ошибок **пользователя**
+
+### Debug.WriteLine() — вывод в окно отладки
+
+```csharp
+Debug.WriteLine("Сообщение");                    // простое сообщение
+Debug.WriteLine($"x = {x}, y = {y}");           // с переменными
+Debug.WriteLineIf(x > 100, "x слишком большое"); // условный вывод
+```
+
+Выводит **только в Debug** в окно "Output" / "Debug Console". В Release — удаляется полностью.
+
+**Отличие от `Console.WriteLine`:**
+- `Console.WriteLine` → видит **пользователь** (в консоли)
+- `Debug.WriteLine` → видит **разработчик** (в окне отладки)
+
+#!csharp
+
+using System.Diagnostics;
+
+// Debug.Assert — проверка инвариантов
+void TransferMoney(decimal from, decimal to, decimal amount)
+{
+    // Эти проверки — для поиска багов программиста
+    Debug.Assert(amount > 0, $"Сумма перевода должна быть положительной, получено: {amount}");
+    Debug.Assert(from >= amount, $"Недостаточно средств: баланс {from}, запрошено {amount}");
+
+    decimal newFrom = from - amount;
+    decimal newTo = to + amount;
+
+    // Инвариант: общая сумма не изменилась
+    Debug.Assert(newFrom + newTo == from + to,
+        "Нарушен инвариант: сумма до и после перевода не совпадает!");
+
+    Console.WriteLine($"  Перевод {amount:F2}₽: {from:F2} → {newFrom:F2}, {to:F2} → {newTo:F2}");
+}
+
+TransferMoney(1000, 500, 200);
+TransferMoney(1000, 500, 0); // Assert сработает в Debug!
+
+Console.WriteLine();
+
+// Debug.WriteLine — отладочные сообщения
+void SortAndShow(int[] data)
+{
+    Debug.WriteLine($"[SortAndShow] Вход: {string.Join(", ", data)}");
+
+    Array.Sort(data);
+
+    Debug.WriteLine($"[SortAndShow] После сортировки: {string.Join(", ", data)}");
+    Debug.WriteLineIf(data.Length > 100, "[SortAndShow] ПРЕДУПРЕЖДЕНИЕ: большой массив");
+
+    Console.WriteLine($"  Отсортировано: {string.Join(", ", data)}");
+}
+
+SortAndShow(new[] { 5, 3, 8, 1, 9 });
+
+Console.WriteLine("\nDebug.Assert и Debug.WriteLine работают ТОЛЬКО в Debug-сборке.");
+Console.WriteLine("В Release они полностью удаляются компилятором.");
+
+#!markdown
+
+### Попробуй сам: напиши метод `CalculateAverage(int[] grades)` с Debug.Assert проверками: массив не null, массив не пуст, все оценки от 1 до 5. Добавь Debug.WriteLine для вывода промежуточных шагов. Протестируй с корректными и некорректными данными
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 8. Практические советы по отладке
+
+### Стратегия отладки — пошаговый план
+
+1. **Воспроизведи ошибку** — убедись, что можешь стабильно вызвать баг
+2. **Изолируй** — сужай область поиска (какой метод? какой вход?)
+3. **Гипотеза** — предположи, где ошибка
+4. **Проверь** — breakpoint, Watch, Assert
+5. **Исправь** — внеси изменение
+6. **Подтверди** — убедись, что исправление работает и не сломало другое
+
+### Приёмы "rubber duck debugging"
+
+**Rubber duck debugging** (отладка утёнком) — объясни проблему вслух (или утёнку на столе). Часто в процессе объяснения ты сам находишь ошибку.
+
+### Распространённые баги и как их искать:
+
+| Баг | Признак | Как искать |
+|---|---|---|
+| Off-by-one | Цикл выполняется на 1 раз больше/меньше | Breakpoint + Watch на `i` и `Length` |
+| Null reference | `NullReferenceException` | Watch на подозрительные переменные |
+| Неверное условие | Не заходит в if/else | Breakpoint на условие, Watch на выражение |
+| Мутация коллекции | Неожиданные значения | Watch на `.Count` и содержимое |
+| Целочисленное деление | 5/2 == 2 (не 2.5) | Watch на типы переменных |
+| Проблема с кодировкой | Кракозябры | Debug.WriteLine для проверки строк |
+
+### Полезные приёмы в VS Code / Rider:
+
+```
+1. Run to Cursor      — выполнить до строки, где стоит курсор (без breakpoint)
+   VS Code: ПКМ → "Run to Cursor"
+   Rider: Alt+F9
+
+2. Set Next Statement — перескочить к другой строке (пропустить код)
+   Rider: Ctrl+Shift+F10
+   VS Code: drag жёлтую стрелку
+
+3. Edit and Continue  — изменить код во время отладки (не везде работает)
+
+4. Exception Settings — остановиться при ЛЮБОМ исключении (даже обработанном)
+   VS Code: панель "Breakpoints" → галочка "All Exceptions"
+```
+
+#!csharp
+
+// Пример: найди баг в этом коде
+
+// Задача: найти среднее значение положительных чисел
+int[] numbers = { -3, 5, -1, 8, 0, 12, -7, 3 };
+
+int sum = 0;
+int count = 0;
+
+for (int i = 0; i <= numbers.Length; i++)  // Баг 1: <= вместо <
+{
+    if (numbers[i] >= 0)  // Баг 2: >= включает 0, а нужны только положительные (>)
+    {
+        sum += numbers[i];
+        count++;
+    }
+}
+
+double average = sum / count;  // Баг 3: целочисленное деление!
+Console.WriteLine($"Среднее положительных: {average}");
+
+// Попробуй найти все 3 бага. Подсказки в комментариях выше.
+
+#!markdown
+
+### Попробуй сам: исправь все 3 бага в коде выше. Проверь результат (правильный ответ для положительных {5, 8, 12, 3}: среднее = 7.0)
+
+#!csharp
+
+// Твой код здесь: исправленная версия
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Найди баг — Off-by-one (лёгкая)
+В этом коде ошибка. Найди и исправь, используя "мысленную отладку" (прослеживай значения переменных по шагам):
+
+```csharp
+// Задача: вывести числа от 1 до 5
+for (int i = 1; i < 5; i++)
+{
+    Console.Write($"{i} ");
+}
+// Ожидается: 1 2 3 4 5
+// Получается: 1 2 3 4
+```
+
+#!csharp
+
+// Твой код здесь: найди и исправь баг
+
+
+#!markdown
+
+## Задача 2: Найди баг — логическая ошибка (лёгкая)
+Этот код должен подсчитать сумму чётных чисел от 1 до 10, но даёт неверный результат:
+
+```csharp
+int sum = 0;
+for (int i = 1; i <= 10; i++)
+{
+    if (i % 2 == 1) // проверка на чётность
+        sum += i;
+}
+Console.WriteLine($"Сумма чётных: {sum}");
+// Ожидается: 30 (2+4+6+8+10)
+```
+
+#!csharp
+
+// Твой код здесь: найди и исправь баг
+
+
+#!markdown
+
+## Задача 3: Debug.Assert для проверки инвариантов (средняя)
+Напиши метод `SortedInsert(List<int> sortedList, int value)`, который вставляет число в уже отсортированный список так, чтобы он остался отсортированным. Используй `Debug.Assert` до и после вставки, чтобы проверить, что список действительно отсортирован.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Найди 5 багов (средняя)
+В этом коде 5 ошибок. Найди все, используя мысленную отладку:
+
+```csharp
+// Задача: посчитать среднюю оценку и найти максимальную
+int[] grades = { 5, 3, 4, 5, 2, 4, 5, 3 };
+int sum = 1;                    // баг?
+int max = 0;                    // баг?
+for (int i = 1; i <= grades.Length; i++)  // баг?
+{
+    sum += grades[i];           // баг?
+    if (grades[i] > max)
+        max = grades[i];
+}
+int average = sum / grades.Length;  // баг?
+Console.WriteLine($"Средняя: {average}, Макс: {max}");
+```
+
+#!csharp
+
+// Твой код здесь: исправь все 5 багов
+
+
+#!markdown
+
+## Задача 5: Трассировка с Debug.WriteLine (сложная)
+Напиши метод сортировки пузырьком (`BubbleSort`). Добавь `Debug.WriteLine` на каждом шаге: какие элементы сравниваются, происходит ли обмен, состояние массива после каждого прохода. Отсортируй `{ 64, 34, 25, 12, 22, 11, 90 }`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Комплексная отладка (сложная)
+Этот метод должен находить два числа в массиве, сумма которых равна target. Код содержит ошибки. Используй мысленную отладку (пошагово, с записью значений переменных), Debug.Assert и Debug.WriteLine для поиска и исправления:
+
+```csharp
+int[] TwoSum(int[] nums, int target)
+{
+    Dictionary<int, int> seen = new();
+    for (int i = 0; i <= nums.Length; i++)
+    {
+        int complement = target + nums[i];
+        if (seen.ContainsKey(complement))
+            return new[] { seen[complement], i };
+        seen[nums[i]] = i;
+    }
+    return new int[0];
+}
+
+// Тест: nums = {2, 7, 11, 15}, target = 9
+// Ожидается: [0, 1] (nums[0] + nums[1] = 2 + 7 = 9)
+```
+
+#!csharp
+
+// Твой код здесь: найди и исправь баги, добавь Debug.Assert и Debug.WriteLine

@@ -1,0 +1,561 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Инкапсуляция
+
+#!markdown
+
+## Что такое инкапсуляция?
+
+**Инкапсуляция** -- один из четырёх столпов ООП. Это принцип **скрытия внутренней реализации** и предоставления контролируемого доступа через публичный интерфейс.
+
+Аналогия: **автомобиль**. Ты нажимаешь педаль газа (публичный интерфейс), но не лезешь в двигатель напрямую (внутренняя реализация). Если бы каждый мог крутить любые шестерёнки -- машина быстро бы сломалась.
+
+Зачем:
+1. **Защита данных** -- нельзя установить некорректные значения
+2. **Гибкость** -- можно менять реализацию, не ломая внешний код
+3. **Простота** -- пользователь видит только то, что ему нужно
+
+#!markdown
+
+## 1. Приватные поля + публичные свойства
+
+Классический паттерн инкапсуляции:
+- Поля -- **private** (скрыты)
+- Свойства -- **public** (контролируемый доступ)
+
+```csharp
+public class Person
+{
+    // Приватное поле -- скрыто
+    private string _name;
+
+    // Публичное свойство -- контролируемый доступ
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Имя не может быть пустым");
+            _name = value;
+        }
+    }
+}
+```
+
+Без инкапсуляции любой мог бы записать `person.name = ""` или `person.age = -100`. С инкапсуляцией -- невозможно.
+
+#!csharp
+
+// Без инкапсуляции -- ПЛОХО
+public class BadBankAccount
+{
+    public decimal Balance;  // Публичное поле -- нет контроля!
+}
+
+var badAccount = new BadBankAccount();
+badAccount.Balance = -1000000;  // Отрицательный баланс? Легко!
+Console.WriteLine($"Плохой счёт: {badAccount.Balance}");
+
+// С инкапсуляцией -- ХОРОШО
+public class GoodBankAccount
+{
+    private decimal _balance;  // Приватное поле
+
+    public decimal Balance => _balance;  // Только чтение через свойство
+
+    public GoodBankAccount(decimal initialBalance)
+    {
+        if (initialBalance < 0)
+            throw new ArgumentException("Начальный баланс не может быть отрицательным");
+        _balance = initialBalance;
+    }
+
+    public void Deposit(decimal amount)
+    {
+        if (amount <= 0) throw new ArgumentException("Сумма должна быть положительной");
+        _balance += amount;
+        Console.WriteLine($"Пополнение: +{amount:C}. Баланс: {_balance:C}");
+    }
+
+    public void Withdraw(decimal amount)
+    {
+        if (amount <= 0) throw new ArgumentException("Сумма должна быть положительной");
+        if (amount > _balance) throw new InvalidOperationException("Недостаточно средств");
+        _balance -= amount;
+        Console.WriteLine($"Списание: -{amount:C}. Баланс: {_balance:C}");
+    }
+}
+
+var account = new GoodBankAccount(10000);
+account.Deposit(5000);
+account.Withdraw(3000);
+// account.Balance = -1000000;  // Ошибка компиляции! Нет сеттера
+// account.Withdraw(100000);     // InvalidOperationException!
+
+#!markdown
+
+### Попробуй сам: создай класс `Temperature` с приватным полем `_celsius`. Публичное свойство `Celsius` с проверкой (не ниже -273.15). Добавь read-only свойство `Fahrenheit` (формула: C * 9/5 + 32). Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Валидация в сеттере
+
+Сеттер свойства -- идеальное место для **валидации** (проверки корректности данных):
+
+```csharp
+public class Person
+{
+    private int _age;
+
+    public int Age
+    {
+        get => _age;
+        set
+        {
+            if (value < 0 || value > 150)
+                throw new ArgumentOutOfRangeException(nameof(value), "Возраст: 0-150");
+            _age = value;
+        }
+    }
+}
+```
+
+Варианты реакции на некорректные данные:
+1. **Бросить исключение** -- строгий подход, рекомендуется
+2. **Ограничить значение** (clamp) -- мягкий подход
+3. **Игнорировать** -- худший вариант (скрывает ошибки)
+
+#!csharp
+
+public class Product
+{
+    private string _name = "";
+    private decimal _price;
+    private int _stock;
+
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Название не может быть пустым");
+            if (value.Length > 100)
+                throw new ArgumentException("Название слишком длинное (макс. 100)");
+            _name = value.Trim();  // Автоматически обрезаем пробелы
+        }
+    }
+
+    public decimal Price
+    {
+        get => _price;
+        set
+        {
+            if (value < 0)
+                throw new ArgumentOutOfRangeException(nameof(value), "Цена не может быть отрицательной");
+            _price = Math.Round(value, 2);  // Округляем до копеек
+        }
+    }
+
+    public int Stock
+    {
+        get => _stock;
+        set => _stock = Math.Max(0, value);  // Clamp: не меньше 0
+    }
+
+    public override string ToString() => $"{Name}: {Price:C} (остаток: {Stock})";
+}
+
+var product = new Product();
+product.Name = "   Ноутбук   ";   // Автоматически Trim -> "Ноутбук"
+product.Price = 49999.999m;        // Округлится до 50000.00
+product.Stock = -5;                 // Станет 0 (clamp)
+
+Console.WriteLine(product);
+
+try { product.Name = ""; }
+catch (ArgumentException ex) { Console.WriteLine($"Ошибка: {ex.Message}"); }
+
+try { product.Price = -100; }
+catch (ArgumentOutOfRangeException ex) { Console.WriteLine($"Ошибка: {ex.Message}"); }
+
+#!markdown
+
+### Попробуй сам: создай класс `Email` со свойством `Address`, которое валидирует: не пустое, содержит '@', содержит '.', длина >= 5. При ошибке -- бросай ArgumentException с понятным сообщением.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. private set, init -- уровни доступа к сеттеру
+
+В C# можно задать **разные** уровни доступа для get и set:
+
+| Синтаксис | get (чтение) | set (запись) |
+|---|---|---|
+| `{ get; set; }` | Публичный | Публичный |
+| `{ get; private set; }` | Публичный | Только внутри класса |
+| `{ get; protected set; }` | Публичный | Класс + наследники |
+| `{ get; init; }` | Публичный | Только при создании объекта |
+| `{ get; }` | Публичный | Только в конструкторе |
+
+#!csharp
+
+public class User
+{
+    // Только через конструктор
+    public int Id { get; }
+
+    // init -- при создании объекта (конструктор или object initializer)
+    public required string Name { get; init; }
+
+    // private set -- только внутри класса
+    public DateTime LastLogin { get; private set; }
+
+    // Обычный set -- откуда угодно
+    public string Status { get; set; } = "Offline";
+
+    public User(int id)
+    {
+        Id = id;
+        LastLogin = DateTime.Now;
+    }
+
+    public void Login()
+    {
+        LastLogin = DateTime.Now;  // OK -- private set доступен внутри класса
+        Status = "Online";
+    }
+}
+
+var user = new User(1) { Name = "Алиса" };
+Console.WriteLine($"#{user.Id} {user.Name}, последний вход: {user.LastLogin:HH:mm:ss}");
+
+// user.Id = 2;        // Ошибка! Только get
+// user.Name = "Боб";  // Ошибка! init-only
+// user.LastLogin = ...; // Ошибка! private set
+
+user.Status = "Busy";   // OK -- обычный set
+user.Login();            // LastLogin обновляется изнутри
+
+Console.WriteLine($"Статус: {user.Status}, вход: {user.LastLogin:HH:mm:ss}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Counter` с init свойством `Name`, private set свойством `Count`, методами `Increment()` и `Reset()`. Снаружи Count только читается. Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. set vs private set vs init -- сравнение
+
+```csharp
+public class Demo
+{
+    public string A { get; set; }          // Свободная запись
+    public string B { get; private set; }  // Запись только изнутри
+    public string C { get; init; }         // Запись только при создании
+    public string D { get; }               // Запись только в конструкторе
+}
+```
+
+| Сценарий | `set` | `private set` | `init` | `get;` only |
+|---|---|---|---|---|
+| В конструкторе | + | + | + | + |
+| В object initializer `new X { Prop = ... }` | + | - | + | - |
+| В методе класса | + | + | - | - |
+| Снаружи класса | + | - | - | - |
+
+#!csharp
+
+public class GameCharacter
+{
+    // get; -- только конструктор
+    public string Name { get; }
+
+    // init -- конструктор + object initializer
+    public string Class { get; init; }
+
+    // private set -- методы класса могут менять
+    public int Level { get; private set; } = 1;
+    public int Experience { get; private set; } = 0;
+    public int Health { get; private set; }
+
+    // set -- все могут менять
+    public string Guild { get; set; } = "Без гильдии";
+
+    public GameCharacter(string name, int maxHealth)
+    {
+        Name = name;
+        Health = maxHealth;
+    }
+
+    public void GainXP(int xp)
+    {
+        Experience += xp;
+        if (Experience >= Level * 100)
+        {
+            Experience -= Level * 100;
+            Level++;
+            Console.WriteLine($"{Name} повышен до уровня {Level}!");
+        }
+    }
+
+    public void TakeDamage(int damage)
+    {
+        Health = Math.Max(0, Health - damage);
+        if (Health == 0) Console.WriteLine($"{Name} побеждён!");
+    }
+
+    public override string ToString()
+        => $"{Name} [{Class}] Ур.{Level} HP:{Health} XP:{Experience} ({Guild})";
+}
+
+var hero = new GameCharacter("Артас", 100) { Class = "Паладин" };  // init OK
+Console.WriteLine(hero);
+
+hero.Guild = "Альянс";    // set OK
+hero.GainXP(150);         // private set -- изнутри OK
+hero.TakeDamage(30);
+Console.WriteLine(hero);
+
+// hero.Name = "Другой";   // Ошибка! get; only
+// hero.Class = "Маг";     // Ошибка! init -- только при создании
+// hero.Level = 99;         // Ошибка! private set
+// hero.Health = 999;       // Ошибка! private set
+
+#!markdown
+
+### Попробуй сам: создай класс `TodoItem` с: get-only `Id`, init `Title`, private set `IsCompleted` (default false), set `Priority`. Метод `Complete()` ставит IsCompleted = true. Создай 3 задачи, завершай их и выводи состояние.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. Иммутабельные классы
+
+**Иммутабельный** (immutable) объект -- объект, состояние которого **нельзя изменить** после создания.
+
+Создание иммутабельного класса:
+1. Все поля -- `readonly` (или свойства `get;` / `get; init;`)
+2. Все значения задаются через конструктор
+3. Нет методов, изменяющих состояние
+4. Для "изменения" -- создаётся **новый** объект
+
+```csharp
+public class ImmutablePoint
+{
+    public double X { get; }
+    public double Y { get; }
+
+    public ImmutablePoint(double x, double y) { X = x; Y = y; }
+
+    // "Изменение" -- создаём новый объект!
+    public ImmutablePoint Move(double dx, double dy)
+        => new ImmutablePoint(X + dx, Y + dy);
+}
+```
+
+#!csharp
+
+public class Money
+{
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    public Money(decimal amount, string currency)
+    {
+        if (amount < 0) throw new ArgumentException("Сумма не может быть отрицательной");
+        Amount = amount;
+        Currency = currency;
+    }
+
+    // "Операции" возвращают НОВЫЙ объект
+    public Money Add(Money other)
+    {
+        if (Currency != other.Currency)
+            throw new InvalidOperationException("Нельзя складывать разные валюты");
+        return new Money(Amount + other.Amount, Currency);
+    }
+
+    public Money Subtract(Money other)
+    {
+        if (Currency != other.Currency)
+            throw new InvalidOperationException("Нельзя вычитать разные валюты");
+        if (other.Amount > Amount)
+            throw new InvalidOperationException("Недостаточно средств");
+        return new Money(Amount - other.Amount, Currency);
+    }
+
+    public Money MultiplyBy(decimal factor)
+        => new Money(Amount * factor, Currency);
+
+    public override string ToString() => $"{Amount:N2} {Currency}";
+}
+
+var salary = new Money(150000, "RUB");
+Console.WriteLine($"Зарплата: {salary}");
+
+var tax = salary.MultiplyBy(0.13m);
+Console.WriteLine($"Налог (13%): {tax}");
+
+var netSalary = salary.Subtract(tax);
+Console.WriteLine($"На руки: {netSalary}");
+
+// Оригинал НЕ изменился!
+Console.WriteLine($"Зарплата по-прежнему: {salary}");
+
+// salary.Amount = 200000;  // Ошибка! Иммутабельный
+
+#!markdown
+
+## 6. Преимущества иммутабельности
+
+| Преимущество | Объяснение |
+|---|---|
+| **Потокобезопасность** | Нет мутации = нет гонок данных в многопоточности |
+| **Предсказуемость** | Объект не изменится "за спиной" |
+| **Безопасность** | Нельзя случайно испортить данные |
+| **Кеширование** | Можно безопасно кешировать и переиспользовать |
+| **Хеширование** | GetHashCode() всегда одинаков (безопасно в Dictionary/HashSet) |
+| **Отладка** | Легче отследить, когда состояние создаётся, а не мутирует |
+
+Примеры иммутабельных типов в .NET: `string`, `DateTime`, `TimeSpan`, все `record`
+
+```csharp
+string s = "hello";
+s.ToUpper();           // Не меняет s!
+string upper = s.ToUpper();  // Создаёт НОВУЮ строку
+```
+
+#!csharp
+
+// Пример: история изменений (audit trail)
+public class AccountState
+{
+    public decimal Balance { get; }
+    public string LastOperation { get; }
+    public DateTime Timestamp { get; }
+
+    public AccountState(decimal balance, string operation)
+    {
+        Balance = balance;
+        LastOperation = operation;
+        Timestamp = DateTime.Now;
+    }
+
+    public AccountState Deposit(decimal amount)
+        => new AccountState(Balance + amount, $"Пополнение +{amount:C}");
+
+    public AccountState Withdraw(decimal amount)
+        => Balance >= amount
+            ? new AccountState(Balance - amount, $"Списание -{amount:C}")
+            : throw new InvalidOperationException("Недостаточно средств");
+
+    public override string ToString()
+        => $"[{Timestamp:HH:mm:ss}] {Balance:C} ({LastOperation})";
+}
+
+// Каждая операция создаёт НОВОЕ состояние -- старые сохраняются!
+var history = new List<AccountState>();
+
+var state = new AccountState(0, "Открытие счёта");
+history.Add(state);
+
+state = state.Deposit(10000);
+history.Add(state);
+
+state = state.Withdraw(3000);
+history.Add(state);
+
+state = state.Deposit(5000);
+history.Add(state);
+
+Console.WriteLine("=== История операций ===");
+foreach (var s in history)
+    Console.WriteLine(s);
+
+Console.WriteLine($"\nТекущий баланс: {state.Balance:C}");
+
+#!markdown
+
+### Попробуй сам: создай иммутабельный класс `Vector2D(double X, double Y)` с методами `Add(Vector2D other)`, `Scale(double factor)`, `Length()` (длина вектора: sqrt(x^2 + y^2)). Каждый метод возвращает новый Vector2D. Продемонстрируй цепочку операций.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Защищённое свойство (лёгкая)
+Создай класс `Password` с приватным полем. Свойство `Value` -- set с проверкой: длина >= 8, содержит цифру, содержит букву. Метод `IsMatch(string input)` проверяет совпадение. Свойство Value для чтения возвращает "********".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: private set счётчик (лёгкая)
+Создай класс `ClickCounter` с private set свойством `Clicks`, методами `Click()`, `DoubleClick()`, `Reset()`. Добавь событие -- каждые 10 кликов выводи "Milestone: N кликов!".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Валидация в сеттере (средняя)
+Создай класс `StudentGrade` с свойствами: Name (не пустое, 2-50 символов), Subject (не пустое), Grade (1-5), Date (не в будущем). Все с валидацией в сеттерах. Создай несколько объектов, попробуй установить некорректные значения.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Иммутабельный класс (средняя)
+Создай иммутабельный класс `ShoppingCart` с readonly списком товаров. Методы: `AddItem(string name, decimal price)` -> новая корзина, `RemoveItem(string name)` -> новая корзина, `Total` -> сумма. Продемонстрируй, что старая корзина не меняется.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Инкапсуляция с наследованием (средняя)
+Создай abstract class `Shape` с protected полем `_color` и abstract double `Area()`. Создай `Circle` и `Rectangle` с собственной валидацией (радиус > 0, стороны > 0). Добавь private set свойство `CalculationCount`, увеличивающееся при каждом вызове Area().
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Банковская система (сложная)
+Создай иммутабельную систему: class `Transaction(decimal Amount, string Type, DateTime Date)`, class `Account(string Owner, IReadOnlyList<Transaction> Transactions)` с методами `Deposit()`, `Withdraw()` (возвращают новый Account). Свойства: `Balance` (вычисляемый), `TransactionCount`. Сделай 5 операций, выведи историю и баланс.
+
+#!csharp
+
+// Твой код здесь:

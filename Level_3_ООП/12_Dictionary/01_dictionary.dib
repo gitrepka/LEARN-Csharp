@@ -1,0 +1,502 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Dictionary\<TKey, TValue\> — словарь
+
+#!markdown
+
+## 1. Что такое словарь?
+
+**Dictionary** — это коллекция пар **"ключ → значение"**. Представь реальный словарь: ищешь слово (ключ) — получаешь перевод (значение).
+
+```
+"apple"   → "яблоко"
+"cat"     → "кот"
+"house"   → "дом"
+```
+
+В программировании это выглядит так:
+
+```csharp
+Dictionary<string, string> dict = new Dictionary<string, string>
+{
+    { "apple", "яблоко" },
+    { "cat", "кот" },
+    { "house", "дом" }
+};
+```
+
+**`TKey`** — тип ключа, **`TValue`** — тип значения. Могут быть любыми:
+
+| Пример | Ключ | Значение | Смысл |
+|---|---|---|---|
+| `Dictionary<string, int>` | имя | возраст | справочник возрастов |
+| `Dictionary<int, string>` | ID | ФИО | база студентов |
+| `Dictionary<string, List<int>>` | предмет | оценки | журнал |
+
+**Главные правила:**
+- Ключи **уникальны** — не может быть двух одинаковых ключей
+- Поиск по ключу **очень быстрый** (O(1) в среднем)
+- Порядок элементов **не гарантирован**
+
+#!markdown
+
+## 2. Создание словаря и Add()
+
+```csharp
+// Пустой словарь
+Dictionary<string, int> ages = new Dictionary<string, int>();
+
+// С начальными значениями (collection initializer)
+Dictionary<string, int> ages2 = new Dictionary<string, int>
+{
+    { "Анна", 25 },
+    { "Пётр", 30 },
+    { "Ира", 22 }
+};
+
+// Альтернативный синтаксис (index initializer, C# 6+)
+Dictionary<string, int> ages3 = new Dictionary<string, int>
+{
+    ["Анна"] = 25,
+    ["Пётр"] = 30,
+    ["Ира"] = 22
+};
+```
+
+**Добавление элементов:**
+
+```csharp
+ages.Add("Олег", 28);     // добавить пару ключ-значение
+ages["Маша"] = 19;        // тоже добавление (или замена, если ключ существует)
+```
+
+Разница между `Add()` и `dict[key] = value`:
+- **`Add()`** — бросит исключение, если ключ **уже есть**
+- **`dict[key] = value`** — **перезапишет** значение, если ключ есть; добавит, если нет
+
+#!csharp
+
+Dictionary<string, int> ages = new Dictionary<string, int>
+{
+    { "Анна", 25 },
+    { "Пётр", 30 }
+};
+
+// Add — добавление
+ages.Add("Ира", 22);
+Console.WriteLine($"После Add: Count = {ages.Count}");
+
+// Индексатор — добавление нового
+ages["Олег"] = 28;
+Console.WriteLine($"После ['Олег'] = 28: Count = {ages.Count}");
+
+// Индексатор — замена существующего
+ages["Анна"] = 26;
+Console.WriteLine($"Анне стало {ages["Анна"]} лет");
+
+// Вывод всех элементов
+foreach (var pair in ages)
+{
+    Console.WriteLine($"  {pair.Key}: {pair.Value}");
+}
+
+#!markdown
+
+### Попробуй сам: создай `Dictionary<string, string>` — словарь столиц (страна → столица). Добавь 4-5 стран. Выведи все пары через `foreach`
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Доступ по ключу и TryGetValue()
+
+### Доступ через индексатор `dict["key"]`
+
+```csharp
+string capital = capitals["Россия"];  // "Москва"
+```
+
+**Опасность:** если ключа нет — выбросит `KeyNotFoundException`!
+
+```csharp
+string capital = capitals["Атлантида"]; // ОШИБКА: KeyNotFoundException
+```
+
+### Безопасный доступ: TryGetValue()
+
+```csharp
+if (dict.TryGetValue(ключ, out var значение))
+{
+    // ключ найден, значение в переменной
+}
+else
+{
+    // ключа нет
+}
+```
+
+`TryGetValue()` — **лучший способ** получить значение: не бросает исключений и делает только один поиск (вместо `ContainsKey` + `dict[key]`, который ищет дважды).
+
+#!csharp
+
+Dictionary<string, string> capitals = new Dictionary<string, string>
+{
+    ["Россия"] = "Москва",
+    ["Казахстан"] = "Астана",
+    ["Германия"] = "Берлин"
+};
+
+// Прямой доступ (опасно!)
+Console.WriteLine($"Столица России: {capitals["Россия"]}");
+
+// Безопасный способ — TryGetValue
+if (capitals.TryGetValue("Франция", out string? capital))
+{
+    Console.WriteLine($"Столица Франции: {capital}");
+}
+else
+{
+    Console.WriteLine("Франция не найдена в словаре");
+}
+
+// Ещё пример
+string country = "Казахстан";
+if (capitals.TryGetValue(country, out string? result))
+{
+    Console.WriteLine($"Столица {country}: {result}");
+}
+
+#!markdown
+
+### Попробуй сам: создай словарь товаров и цен (`string → double`). Попробуй получить цену существующего и несуществующего товара через `TryGetValue()`. Выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. ContainsKey(), ContainsValue(), Remove()
+
+| Метод | Описание | Скорость |
+|---|---|---|
+| `ContainsKey(ключ)` | Есть ли ключ? | **Быстро** O(1) |
+| `ContainsValue(значение)` | Есть ли значение? | **Медленно** O(n) — перебирает всё |
+| `Remove(ключ)` | Удалить по ключу | **Быстро** O(1) |
+
+```csharp
+dict.ContainsKey("Анна");    // true/false
+dict.ContainsValue(25);      // true/false (медленно!)
+dict.Remove("Анна");         // удаляет пару с ключом "Анна"
+```
+
+**Совет:** `ContainsValue()` — редко нужен. Если часто ищете по значению, возможно, нужен другой тип коллекции или обратный словарь.
+
+#!csharp
+
+Dictionary<string, int> inventory = new Dictionary<string, int>
+{
+    ["Яблоки"] = 50,
+    ["Бананы"] = 30,
+    ["Вишня"] = 15,
+    ["Манго"] = 5
+};
+
+Console.WriteLine($"Есть ли 'Яблоки'? {inventory.ContainsKey("Яблоки")}");      // True
+Console.WriteLine($"Есть ли 'Ананас'? {inventory.ContainsKey("Ананас")}");       // False
+Console.WriteLine($"Есть ли количество 30? {inventory.ContainsValue(30)}");      // True
+
+// Remove
+Console.WriteLine($"\nДо удаления: Count = {inventory.Count}");
+bool removed = inventory.Remove("Манго");
+Console.WriteLine($"Remove('Манго'): {removed}, Count = {inventory.Count}");
+
+bool removed2 = inventory.Remove("Ананас");
+Console.WriteLine($"Remove('Ананас'): {removed2} (не было в словаре)");
+
+#!markdown
+
+### Попробуй сам: создай словарь студентов и оценок. Проверь, есть ли студент "Олег". Если нет — добавь. Удали одного студента. Выведи финальный словарь
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Count, Keys, Values
+
+| Свойство | Тип | Описание |
+|---|---|---|
+| `Count` | `int` | Количество пар |
+| `Keys` | `Dictionary<>.KeyCollection` | Коллекция всех ключей |
+| `Values` | `Dictionary<>.ValueCollection` | Коллекция всех значений |
+
+```csharp
+Dictionary<string, int> dict = new Dictionary<string, int>
+{
+    ["A"] = 1, ["B"] = 2, ["C"] = 3
+};
+
+dict.Count;     // 3
+dict.Keys;      // { "A", "B", "C" }
+dict.Values;    // { 1, 2, 3 }
+```
+
+`Keys` и `Values` можно перебирать в `foreach`, преобразовывать в список (`ToList()`) или массив (`ToArray()`).
+
+#!csharp
+
+Dictionary<string, double> prices = new Dictionary<string, double>
+{
+    ["Хлеб"] = 45.50,
+    ["Молоко"] = 89.90,
+    ["Сыр"] = 250.00,
+    ["Масло"] = 120.00
+};
+
+Console.WriteLine($"Товаров в словаре: {prices.Count}");
+
+Console.Write("Все товары: ");
+foreach (string key in prices.Keys)
+{
+    Console.Write($"{key}  ");
+}
+Console.WriteLine();
+
+Console.Write("Все цены: ");
+foreach (double price in prices.Values)
+{
+    Console.Write($"{price:F2}₽  ");
+}
+Console.WriteLine();
+
+// Преобразование в список
+List<string> productList = prices.Keys.ToList();
+productList.Sort();
+Console.WriteLine("Товары по алфавиту: " + string.Join(", ", productList));
+
+// Сумма всех цен
+double total = prices.Values.Sum();
+Console.WriteLine($"Общая сумма: {total:F2}₽");
+
+#!markdown
+
+### Попробуй сам: создай словарь 5 стран и населения (`string → int`). Выведи: все страны, все значения населения, общее население (сумму), количество стран
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. foreach с KeyValuePair
+
+При переборе словаря через `foreach` каждый элемент — это `KeyValuePair<TKey, TValue>`:
+
+```csharp
+foreach (KeyValuePair<string, int> pair in dict)
+{
+    Console.WriteLine($"{pair.Key}: {pair.Value}");
+}
+
+// Короче с var:
+foreach (var pair in dict)
+{
+    Console.WriteLine($"{pair.Key}: {pair.Value}");
+}
+
+// Ещё короче — деконструкция (C# 7+):
+foreach (var (key, value) in dict)
+{
+    Console.WriteLine($"{key}: {value}");
+}
+```
+
+Все три варианта делают одно и то же. Деконструкция — самый читаемый.
+
+#!csharp
+
+Dictionary<string, string> translations = new Dictionary<string, string>
+{
+    ["hello"] = "привет",
+    ["world"] = "мир",
+    ["cat"] = "кот",
+    ["dog"] = "собака",
+    ["book"] = "книга"
+};
+
+// Вариант 1: полный тип
+Console.WriteLine("=== KeyValuePair ===");
+foreach (KeyValuePair<string, string> pair in translations)
+{
+    Console.WriteLine($"  {pair.Key} → {pair.Value}");
+}
+
+// Вариант 2: var
+Console.WriteLine("\n=== var pair ===");
+foreach (var pair in translations)
+{
+    Console.WriteLine($"  {pair.Key} → {pair.Value}");
+}
+
+// Вариант 3: деконструкция
+Console.WriteLine("\n=== деконструкция ===");
+foreach (var (eng, rus) in translations)
+{
+    Console.WriteLine($"  {eng} → {rus}");
+}
+
+#!markdown
+
+### Попробуй сам: создай словарь `Dictionary<string, List<int>>` — предметы и оценки (например, "Математика" → [5, 4, 5, 3]). Выведи каждый предмет и средний балл
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. Исключение при дубликате ключа
+
+Попытка добавить **дубликат ключа** через `Add()` приведёт к `ArgumentException`:
+
+```csharp
+Dictionary<string, int> dict = new Dictionary<string, int>();
+dict.Add("ключ", 1);
+dict.Add("ключ", 2);  // ArgumentException: An item with the same key has already been added
+```
+
+**Как избежать:**
+
+```csharp
+// Способ 1: проверить перед добавлением
+if (!dict.ContainsKey("ключ"))
+{
+    dict.Add("ключ", значение);
+}
+
+// Способ 2: использовать TryAdd (C# 7.1+)
+dict.TryAdd("ключ", значение);  // вернёт false если ключ есть, без исключения
+
+// Способ 3: индексатор (перезапишет если есть)
+dict["ключ"] = значение;  // не бросает исключение, просто перезаписывает
+```
+
+| Метод | Ключ существует | Ключ не существует |
+|---|---|---|
+| `Add()` | **Исключение!** | Добавит |
+| `TryAdd()` | Вернёт `false` | Добавит, вернёт `true` |
+| `dict[key] = val` | **Перезапишет** | Добавит |
+
+#!csharp
+
+Dictionary<string, int> scores = new Dictionary<string, int>();
+
+// Add — безопасно первый раз
+scores.Add("Анна", 5);
+Console.WriteLine($"Добавлена Анна: {scores["Анна"]}");
+
+// TryAdd — безопасная попытка
+bool added1 = scores.TryAdd("Анна", 3);   // false — ключ уже есть
+bool added2 = scores.TryAdd("Пётр", 4);   // true — нового добавили
+Console.WriteLine($"TryAdd Анна: {added1}, TryAdd Пётр: {added2}");
+Console.WriteLine($"Анна по-прежнему: {scores["Анна"]}"); // 5 — не изменилась
+
+// Индексатор — перезапишет
+scores["Анна"] = 3;
+Console.WriteLine($"После dict['Анна'] = 3: {scores["Анна"]}"); // 3
+
+// Демонстрация исключения
+try
+{
+    scores.Add("Пётр", 5); // Пётр уже есть!
+}
+catch (ArgumentException ex)
+{
+    Console.WriteLine($"\nОШИБКА: {ex.Message}");
+}
+
+#!markdown
+
+### Попробуй сам: создай словарь и попробуй добавить один и тот же ключ дважды через `Add()`. Поймай исключение в `try/catch`. Потом покажи, что `TryAdd()` работает без ошибки
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Телефонная книга (лёгкая)
+Создай `Dictionary<string, string>` — телефонную книгу (имя → номер). Добавь 5 контактов. Выведи все контакты. Найди номер конкретного человека через `TryGetValue()`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Подсчёт символов (средняя)
+Дана строка `"hello world"`. Создай `Dictionary<char, int>` — сколько раз встречается каждый символ. Выведи результат. Подсказка: переберите строку посимвольно, для каждого символа используйте `TryGetValue()` или `ContainsKey()`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Подсчёт слов (средняя)
+Дано предложение `"кот и собака и кот и попугай и кот"`. Раздели на слова (`Split(' ')`). Подсчитай, сколько раз встречается каждое слово. Выведи в формате: `"кот: 3 раз(а)"`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Инвертирование словаря (средняя)
+Дан `Dictionary<string, int>` (имя → возраст). Создай обратный словарь `Dictionary<int, List<string>>` (возраст → список имён). Учти, что несколько людей могут быть одного возраста.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Журнал оценок (сложная)
+Создай `Dictionary<string, List<int>>` — журнал оценок (предмет → список оценок). Добавь 3 предмета, в каждый по 5 оценок. Выведи: 1) все предметы, 2) средний балл по каждому предмету, 3) предмет с максимальным средним баллом, 4) общий средний балл.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Объединение словарей (сложная)
+Даны два словаря `Dictionary<string, int>` (товар → цена). Создай третий словарь, объединяющий оба. Если товар есть в обоих — возьми **минимальную** цену. Выведи результат.
+
+#!csharp
+
+// Твой код здесь:

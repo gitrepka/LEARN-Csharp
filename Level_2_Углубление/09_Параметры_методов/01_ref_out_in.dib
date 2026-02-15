@@ -1,0 +1,341 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: ref, out, in — передача параметров по ссылке
+
+#!markdown
+
+## 1. Передача по значению (по умолчанию)
+
+В C# параметры передаются **по значению** — метод получает **копию**. Изменение копии **не влияет** на оригинал:
+
+```csharp
+void Double(int x)
+{
+    x = x * 2;   // изменяем копию
+}
+
+int num = 5;
+Double(num);
+// num всё ещё 5!
+```
+
+Это безопасно, но иногда нужно, чтобы метод **изменил** переменную вызывающего кода. Для этого есть `ref`, `out` и `in`.
+
+#!csharp
+
+// Проблема: метод не может изменить переменную
+void TryDouble(int x)
+{
+    x = x * 2;
+    Console.WriteLine($"Внутри метода: x = {x}");
+}
+
+int num = 5;
+TryDouble(num);
+Console.WriteLine($"После вызова: num = {num}");  // всё ещё 5!
+
+#!markdown
+
+### Попробуй сам: создай метод `TrySwap(int a, int b)`, который пытается поменять a и b местами (через временную переменную). Вызови его и убедись, что переменные снаружи НЕ изменились.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. ref — передача по ссылке
+
+**`ref`** передаёт **ссылку** на переменную. Метод работает с **оригиналом**, не с копией.
+
+Правила:
+- Ключевое слово `ref` пишется **и в объявлении, и при вызове**
+- Переменная **должна быть инициализирована** до передачи
+
+```csharp
+void Double(ref int x)    // ref в объявлении
+{
+    x = x * 2;            // изменяем оригинал!
+}
+
+int num = 5;
+Double(ref num);           // ref при вызове
+// num теперь 10!
+```
+
+#!csharp
+
+// ref в действии
+void Swap(ref int a, ref int b)
+{
+    int temp = a;
+    a = b;
+    b = temp;
+}
+
+int x = 10, y = 20;
+Console.WriteLine($"До:    x={x}, y={y}");
+
+Swap(ref x, ref y);
+
+Console.WriteLine($"После: x={x}, y={y}");  // x=20, y=10
+
+#!csharp
+
+// ref — переменная ДОЛЖНА быть инициализирована
+void Increment(ref int value)
+{
+    value++;
+}
+
+int counter = 0;     // обязательно задать значение!
+Increment(ref counter);
+Increment(ref counter);
+Increment(ref counter);
+Console.WriteLine($"counter = {counter}");  // 3
+
+#!markdown
+
+### Попробуй сам: создай метод `Clamp(ref int value, int min, int max)`, который ограничивает value диапазоном [min, max]. Если value < min, установи min. Если value > max, установи max. Проверь с числами -5, 50, 150 при диапазоне 0-100.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. out — выходной параметр
+
+**`out`** похож на `ref`, но:
+- Переменная **не обязана** быть инициализирована до вызова
+- Метод **обязан** присвоить значение до возврата
+
+Используется, когда метод должен **вернуть несколько значений** (return может вернуть только одно).
+
+```csharp
+void Divide(int a, int b, out int quotient, out int remainder)
+{
+    quotient = a / b;       // обязательно присвоить!
+    remainder = a % b;      // обязательно присвоить!
+}
+
+int q, r;                   // можно не инициализировать
+Divide(17, 5, out q, out r);
+// q = 3, r = 2
+```
+
+#!csharp
+
+// out — возврат нескольких значений
+void MinMax(int[] arr, out int min, out int max)
+{
+    min = arr[0];
+    max = arr[0];
+    for (int i = 1; i < arr.Length; i++)
+    {
+        if (arr[i] < min) min = arr[i];
+        if (arr[i] > max) max = arr[i];
+    }
+}
+
+int[] numbers = {7, 2, 9, 1, 5, 8, 3};
+
+MinMax(numbers, out int minimum, out int maximum);  // inline-объявление с out
+Console.WriteLine($"Минимум: {minimum}, Максимум: {maximum}");
+
+#!csharp
+
+// Классический пример: int.TryParse() использует out
+string input = "123";
+if (int.TryParse(input, out int result))
+{
+    Console.WriteLine($"Число: {result}");
+}
+else
+{
+    Console.WriteLine("Не удалось распарсить");
+}
+
+// Можно объявить переменную прямо в вызове: out int result
+// Если результат не нужен — можно использовать discard:
+bool ok = int.TryParse("abc", out _);   // _ — игнорируем значение
+Console.WriteLine($"Успешно? {ok}");
+
+#!markdown
+
+### Попробуй сам: создай метод `SplitName(string fullName, out string firstName, out string lastName)`, который разделяет полное имя на имя и фамилию (по пробелу). Проверь с "Иван Петров".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. in — только для чтения по ссылке
+
+**`in`** передаёт по ссылке, но **запрещает изменение** внутри метода. Это оптимизация для больших структур (struct) — не копируется, но и не меняется.
+
+```csharp
+void PrintInfo(in int value)
+{
+    Console.WriteLine(value);   // читать можно
+    // value = 10;              // ОШИБКА! Нельзя менять!
+}
+```
+
+**Когда использовать `in`:**
+- Для больших `struct` (чтобы избежать копирования)
+- Когда хочешь гарантировать, что метод не изменит параметр
+
+#!csharp
+
+// in — передача по ссылке без изменения
+void PrintPoint(in (double X, double Y) point)
+{
+    Console.WriteLine($"Точка: ({point.X}, {point.Y})");
+    // point.X = 0;  // ОШИБКА! in запрещает изменение
+}
+
+var p = (X: 3.14, Y: 2.71);
+PrintPoint(in p);   // "in" при вызове можно опустить, но лучше писать явно
+
+#!csharp
+
+// Сравнение: передача большой структуры
+struct LargeData
+{
+    public double X, Y, Z, W;
+    public double A, B, C, D;
+}
+
+// Без in — структура КОПИРУЕТСЯ (64 байта)
+double SumCopy(LargeData data)
+{
+    return data.X + data.Y + data.Z + data.W;
+}
+
+// С in — передаётся ССЫЛКА (8 байт), без копирования
+double SumRef(in LargeData data)
+{
+    return data.X + data.Y + data.Z + data.W;
+}
+
+var big = new LargeData { X = 1, Y = 2, Z = 3, W = 4 };
+Console.WriteLine(SumCopy(big));   // работает, но копирует
+Console.WriteLine(SumRef(in big)); // работает, без копирования
+
+#!markdown
+
+### Попробуй сам: создай метод `Distance(in (double X, double Y) a, in (double X, double Y) b)`, который вычисляет расстояние между двумя точками. Формула: `Math.Sqrt((b.X-a.X)^2 + (b.Y-a.Y)^2)`. Проверь с точками (0,0) и (3,4) — ответ должен быть 5.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Сравнительная таблица: ref vs out vs in
+
+| | **ref** | **out** | **in** |
+|---|---|---|---|
+| Передача | По ссылке | По ссылке | По ссылке |
+| Инициализация до вызова | Обязательна | Не обязательна | Обязательна |
+| Метод может изменить | Да | Обязан присвоить | Нет (readonly) |
+| Типичное применение | Изменить переменную | Вернуть несколько значений | Оптимизация больших struct |
+| Ключевое слово при вызове | `ref x` | `out x` | `in x` (необязательно) |
+
+**Частые ошибки:**
+```csharp
+// ref — забыли инициализировать:
+int a;
+Foo(ref a);   // ОШИБКА: a не инициализирована
+
+// out — забыли присвоить внутри метода:
+void Bar(out int x) { }  // ОШИБКА: x не присвоен
+
+// in — пытаемся изменить:
+void Baz(in int x) { x = 5; }  // ОШИБКА: in — readonly
+```
+
+#!markdown
+
+## ИТОГО:
+
+1. По умолчанию параметры передаются **по значению** (копия)
+2. **`ref`** — передача по ссылке, метод может изменить оригинал
+3. **`out`** — выходной параметр, метод обязан присвоить значение
+4. **`in`** — readonly ссылка, оптимизация для больших структур
+5. `TryParse()` — классический пример использования `out`
+6. `ref` и `out` пишутся и в объявлении, и при вызове
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Обмен значениями (лёгкая)
+Создай метод `SwapStrings(ref string a, ref string b)`, который меняет две строки местами. Проверь с "Привет" и "Мир".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Статистика массива (средняя)
+Создай метод `Stats(int[] arr, out int min, out int max, out double avg)`, который находит минимум, максимум и среднее массива. Проверь с массивом {4, 8, 2, 9, 1, 7, 5}.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: TryParse для даты (средняя)
+Создай метод `TryParseDate(string input, out int day, out int month, out int year)`, возвращающий bool. Формат: "15.02.2026". Разбей по точке, попробуй распарсить каждую часть. Если не получилось — верни false и установи всё в 0.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Нормализация вектора (средняя)
+Создай метод `Normalize(ref double x, ref double y)`, который нормализует 2D-вектор (делит каждую компоненту на длину вектора). Длина = `Math.Sqrt(x*x + y*y)`. Проверь с (3, 4) — результат должен быть (0.6, 0.8).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Разложение времени (сложная)
+Создай метод `DecomposeSeconds(int totalSeconds, out int hours, out int minutes, out int seconds)`. Например, 3661 секунда = 1 час, 1 минута, 1 секунда. Проверь с несколькими значениями.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Цепочка ref-вызовов (сложная)
+Создай методы: `DoubleIt(ref int x)` (удваивает), `AddTen(ref int x)` (прибавляет 10), `MakeNegative(ref int x)` (меняет знак). Начни с числа 3 и последовательно вызови все три метода. Какой результат? Объясни комментарием.
+
+#!csharp
+
+// Твой код здесь:

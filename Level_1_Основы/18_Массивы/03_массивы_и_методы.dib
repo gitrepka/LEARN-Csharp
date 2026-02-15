@@ -1,0 +1,300 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Массивы и методы
+
+#!markdown
+
+## 1. Массив как параметр метода
+
+Массив можно передать в метод — так же, как int или string:
+
+```csharp
+void PrintArray(int[] arr)
+{
+    for (int i = 0; i < arr.Length; i++)
+        Console.Write($"{arr[i]} ");
+    Console.WriteLine();
+}
+
+int[] numbers = {10, 20, 30, 40, 50};
+PrintArray(numbers);    // 10 20 30 40 50
+```
+
+Тип параметра: **`int[]`** — "массив целых чисел".
+
+#!markdown
+
+## 2. Важно: массив передаётся по ссылке!
+
+В отличие от `int` и `string`, массив **НЕ копируется** при передаче. Метод работает с **тем же** массивом:
+
+```csharp
+void DoubleAll(int[] arr)
+{
+    for (int i = 0; i < arr.Length; i++)
+        arr[i] *= 2;    // изменяем элементы ОРИГИНАЛА
+}
+
+int[] nums = {1, 2, 3, 4, 5};
+DoubleAll(nums);
+
+// Оригинал ИЗМЕНЁН:
+for (int i = 0; i < nums.Length; i++)
+    Console.Write($"{nums[i]} ");
+// 2 4 6 8 10
+```
+
+Это отличается от `int`, где передаётся **копия**:
+
+| Тип | Что передаётся | Изменяет оригинал? |
+|---|---|---|
+| `int`, `double`, `bool` | Копия значения | Нет |
+| `int[]`, `string[]` | Ссылка на массив | **Да** |
+
+#!markdown
+
+### Попробуй сам: создай метод `void FillWithIndex(int[] arr)`, который заполняет массив индексами (arr[0]=0, arr[1]=1, ...). Создай массив из 5 элементов, вызови метод, выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Полезные void-методы для массивов
+
+```csharp
+// Вывод массива
+void PrintArray(int[] arr)
+{
+    Console.Write("[");
+    for (int i = 0; i < arr.Length; i++)
+    {
+        Console.Write(arr[i]);
+        if (i < arr.Length - 1) Console.Write(", ");
+    }
+    Console.WriteLine("]");
+}
+
+// Заполнение одним значением
+void Fill(int[] arr, int value)
+{
+    for (int i = 0; i < arr.Length; i++)
+        arr[i] = value;
+}
+
+// Реверс
+void Reverse(int[] arr)
+{
+    for (int i = 0; i < arr.Length / 2; i++)
+    {
+        int temp = arr[i];
+        arr[i] = arr[arr.Length - 1 - i];
+        arr[arr.Length - 1 - i] = temp;
+    }
+}
+```
+
+Все эти методы **изменяют** переданный массив — потому что работают с оригиналом.
+
+#!markdown
+
+### Попробуй сам: создай метод `void ZeroNegatives(int[] arr)`, который заменяет все отрицательные числа на 0. Проверь: `{3, -2, 7, -5, 1}` → `{3, 0, 7, 0, 1}`
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Массив как возвращаемое значение
+
+Метод может **создать и вернуть** новый массив:
+
+```csharp
+int[] CreateRange(int from, int to)
+{
+    int[] result = new int[to - from + 1];
+    for (int i = 0; i < result.Length; i++)
+        result[i] = from + i;
+    return result;
+}
+
+int[] nums = CreateRange(5, 10);
+// nums = {5, 6, 7, 8, 9, 10}
+```
+
+Тип возврата: **`int[]`** — "метод возвращает массив int".
+
+#!markdown
+
+### Попробуй сам: создай метод `int[] CreateSquares(int n)`, который возвращает массив из n квадратов: {1, 4, 9, 16, ...}. Вызови с n=8 и выведи
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Методы, которые анализируют массив
+
+```csharp
+// Сумма
+int Sum(int[] arr)
+{
+    int sum = 0;
+    for (int i = 0; i < arr.Length; i++)
+        sum += arr[i];
+    return sum;
+}
+
+// Среднее
+double Average(int[] arr)
+{
+    return (double)Sum(arr) / arr.Length;    // вызываем Sum!
+}
+
+// Максимум
+int Max(int[] arr)
+{
+    int max = arr[0];
+    for (int i = 1; i < arr.Length; i++)
+        if (arr[i] > max) max = arr[i];
+    return max;
+}
+
+// Поиск индекса
+int IndexOf(int[] arr, int target)
+{
+    for (int i = 0; i < arr.Length; i++)
+        if (arr[i] == target) return i;
+    return -1;    // не найден
+}
+
+// Содержит ли массив значение
+bool Contains(int[] arr, int value)
+{
+    return IndexOf(arr, value) >= 0;    // вызываем IndexOf!
+}
+```
+
+Обрати внимание: `Average` вызывает `Sum`, а `Contains` вызывает `IndexOf` — **композиция методов** в действии.
+
+#!markdown
+
+### Попробуй сам: создай метод `int CountPositive(int[] arr)`, который возвращает количество положительных чисел. Проверь на `{-3, 5, 0, -1, 8, 2, -4}`
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Метод, возвращающий новый массив (фильтрация)
+
+Иногда нужно получить **новый массив** из элементов старого:
+
+```csharp
+int[] FilterPositive(int[] arr)
+{
+    // Сначала считаем, сколько положительных
+    int count = 0;
+    for (int i = 0; i < arr.Length; i++)
+        if (arr[i] > 0) count++;
+
+    // Создаём массив нужного размера
+    int[] result = new int[count];
+
+    // Заполняем
+    int j = 0;
+    for (int i = 0; i < arr.Length; i++)
+    {
+        if (arr[i] > 0)
+        {
+            result[j] = arr[i];
+            j++;
+        }
+    }
+    return result;
+}
+
+int[] data = {3, -2, 7, -5, 1, -8, 4};
+int[] positive = FilterPositive(data);
+// positive = {3, 7, 1, 4}
+```
+
+Два прохода: первый — считаем размер, второй — заполняем. Это нужно потому что **размер массива фиксирован** при создании.
+
+#!markdown
+
+## ИТОГО:
+
+1. Массив передаётся в метод как `int[] arr`
+2. Передаётся **по ссылке** — метод изменяет оригинал!
+3. Возвращается как `return массив;`, тип метода — `int[]`
+4. void-методы для массива: печать, заполнение, модификация
+5. return-методы: подсчёт, поиск, создание нового массива
+6. Фильтрация: два прохода (подсчёт + заполнение)
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Вывод (лёгкая)
+Создай метод `void PrintArray(string[] arr)` для строкового массива. Формат: "[Анна, Борис, Вера]". Проверь.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Сумма и среднее (лёгкая)
+Создай `int Sum(int[] arr)` и `double Average(int[] arr)` (Average вызывает Sum). Проверь на `{10, 20, 30, 40, 50}`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Копия массива (средняя)
+Создай метод `int[] Copy(int[] arr)`, который возвращает **копию** массива (новый массив с теми же значениями). Докажи, что это копия: измени элемент копии и покажи, что оригинал не изменился.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Фильтр чётных (средняя)
+Создай `int[] FilterEven(int[] arr)`, который возвращает новый массив из только чётных элементов. `{1,2,3,4,5,6}` → `{2,4,6}`.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Статистика (сложная)
+Создай набор методов: `int Min(int[] arr)`, `int Max(int[] arr)`, `double Average(int[] arr)`, `int CountAbove(int[] arr, int threshold)`. Потом создай `void PrintStats(int[] arr)`, который вызывает их все и красиво выводит. Проверь на `{23, 45, 12, 67, 34, 89, 56, 78}`.
+
+#!csharp
+
+// Твой код здесь:
+

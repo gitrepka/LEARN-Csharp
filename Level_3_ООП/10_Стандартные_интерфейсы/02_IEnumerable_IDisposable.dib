@@ -1,0 +1,536 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: IEnumerable<T>, IDisposable, yield и итераторы
+
+#!markdown
+
+## Обзор
+
+В этом уроке изучим два важнейших интерфейса .NET:
+- **IEnumerable<T>** -- делает объект перебираемым через foreach
+- **IDisposable** -- управление ресурсами (файлы, соединения, память)
+
+А также механизм **yield return** -- ленивую генерацию последовательностей.
+
+#!markdown
+
+## 1. IEnumerable<T> -- что это и зачем
+
+Когда ты пишешь `foreach`, компилятор ищет метод `GetEnumerator()`. Интерфейс `IEnumerable<T>` -- это **контракт**, гарантирующий наличие этого метода:
+
+```csharp
+public interface IEnumerable<T>
+{
+    IEnumerator<T> GetEnumerator();
+}
+
+public interface IEnumerator<T>
+{
+    T Current { get; }        // Текущий элемент
+    bool MoveNext();          // Перейти к следующему
+    void Reset();             // Вернуться в начало
+}
+```
+
+Всё, что реализует `IEnumerable<T>`, можно перебирать в foreach и использовать с LINQ.
+
+Кто уже реализует: `List<T>`, `T[]`, `Dictionary<K,V>`, `HashSet<T>`, `string`, и т.д.
+
+#!csharp
+
+// Пример: своя коллекция, реализующая IEnumerable<T>
+using System.Collections;
+
+public class NumberRange : IEnumerable<int>
+{
+    private readonly int _start;
+    private readonly int _end;
+
+    public NumberRange(int start, int end)
+    {
+        _start = start;
+        _end = end;
+    }
+
+    // Реализация IEnumerable<int>
+    public IEnumerator<int> GetEnumerator()
+    {
+        for (int i = _start; i <= _end; i++)
+        {
+            yield return i;  // Магия! Об этом подробнее позже
+        }
+    }
+
+    // Нужно для не-generic IEnumerable (совместимость)
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+// Теперь можно использовать foreach!
+var range = new NumberRange(1, 10);
+
+Console.WriteLine("foreach:");
+foreach (int n in range)
+    Console.Write($"{n} ");
+Console.WriteLine();
+
+// И LINQ!
+Console.WriteLine($"\nСумма: {range.Sum()}");
+Console.WriteLine($"Чётные: {string.Join(", ", range.Where(n => n % 2 == 0))}");
+Console.WriteLine($"Квадраты: {string.Join(", ", range.Select(n => n * n))}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Fibonacci : IEnumerable<long>`, который генерирует первые N чисел Фибоначчи. Используй его в foreach и с LINQ (Take, Where и т.д.).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. GetEnumerator() -- как foreach работает внутри
+
+Когда компилятор видит `foreach (var item in collection)`, он превращает это в:
+
+```csharp
+// foreach (var item in collection) { body }
+// Компилируется примерно в:
+
+var enumerator = collection.GetEnumerator();
+try
+{
+    while (enumerator.MoveNext())
+    {
+        var item = enumerator.Current;
+        // body
+    }
+}
+finally
+{
+    if (enumerator is IDisposable d)
+        d.Dispose();
+}
+```
+
+То есть foreach -- это **синтаксический сахар** над GetEnumerator/MoveNext/Current.
+
+#!csharp
+
+// Демонстрация: ручной перебор через IEnumerator
+var list = new List<string> { "Алиса", "Боб", "Чарли" };
+
+// Способ 1: foreach (обычный)
+Console.WriteLine("=== foreach ===");
+foreach (var name in list)
+    Console.WriteLine(name);
+
+// Способ 2: явный GetEnumerator (то, что делает foreach)
+Console.WriteLine("\n=== Ручной GetEnumerator ===");
+var enumerator = list.GetEnumerator();
+while (enumerator.MoveNext())
+{
+    string current = enumerator.Current;
+    Console.WriteLine(current);
+}
+enumerator.Dispose();
+
+// Они делают одно и то же!
+// foreach -- просто удобнее читать
+
+#!markdown
+
+## 3. IDisposable -- освобождение ресурсов
+
+Некоторые объекты держат **внешние ресурсы**: файлы, сетевые соединения, базы данных, таймеры. Сборщик мусора (GC) **не знает** про эти ресурсы -- нужно освобождать их вручную.
+
+`IDisposable` -- контракт "я держу ресурс, позови Dispose() когда закончишь":
+
+```csharp
+public interface IDisposable
+{
+    void Dispose();
+}
+```
+
+#!csharp
+
+// Пример: класс, управляющий ресурсом
+public class DatabaseConnection : IDisposable
+{
+    public string ConnectionString { get; }
+    public bool IsOpen { get; private set; }
+
+    public DatabaseConnection(string connectionString)
+    {
+        ConnectionString = connectionString;
+        IsOpen = true;
+        Console.WriteLine($"[DB] Соединение открыто: {connectionString}");
+    }
+
+    public void Query(string sql)
+    {
+        if (!IsOpen) throw new InvalidOperationException("Соединение закрыто!");
+        Console.WriteLine($"[DB] Выполняю: {sql}");
+    }
+
+    // IDisposable -- освобождаем ресурс
+    public void Dispose()
+    {
+        if (IsOpen)
+        {
+            IsOpen = false;
+            Console.WriteLine("[DB] Соединение закрыто");
+        }
+    }
+}
+
+// Без using -- нужно помнить о Dispose()
+Console.WriteLine("=== Без using ===");
+var db1 = new DatabaseConnection("Server=localhost");
+db1.Query("SELECT * FROM users");
+db1.Dispose();  // Легко забыть!
+
+Console.WriteLine();
+
+// С using statement -- Dispose() вызывается автоматически
+Console.WriteLine("=== С using statement ===");
+using (var db2 = new DatabaseConnection("Server=prod"))
+{
+    db2.Query("SELECT * FROM orders");
+    db2.Query("INSERT INTO logs ...");
+}  // <- Dispose() вызван автоматически здесь!
+
+Console.WriteLine();
+
+// С using declaration (C# 8+) -- ещё короче
+Console.WriteLine("=== С using declaration ===");
+using var db3 = new DatabaseConnection("Server=test");
+db3.Query("DELETE FROM temp");
+// Dispose() будет вызван в конце области видимости
+
+#!markdown
+
+### Попробуй сам: создай класс `Timer : IDisposable`, который в конструкторе запоминает время создания, а в Dispose() выводит "Прошло: X мс". Используй с `using` для измерения времени выполнения кода.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. using statement и using declaration
+
+Два способа автоматического вызова Dispose():
+
+### using statement (блочный) -- C# 1+
+```csharp
+using (var resource = new SomeDisposable())
+{
+    // работаем с resource
+}  // Dispose() вызван здесь
+```
+
+### using declaration -- C# 8+
+```csharp
+using var resource = new SomeDisposable();
+// работаем с resource
+// Dispose() вызван в конце области видимости (метода/блока)
+```
+
+Оба гарантируют вызов Dispose() **даже при исключении**.
+
+#!csharp
+
+public class FileWrapper : IDisposable
+{
+    public string FileName { get; }
+    private bool _disposed = false;
+
+    public FileWrapper(string fileName)
+    {
+        FileName = fileName;
+        Console.WriteLine($"  Открыт файл: {fileName}");
+    }
+
+    public void Write(string text)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(FileWrapper));
+        Console.WriteLine($"  Запись в {FileName}: {text}");
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _disposed = true;
+            Console.WriteLine($"  Закрыт файл: {FileName}");
+        }
+    }
+}
+
+// Блочный using -- старый стиль
+Console.WriteLine("=== Блочный using ===");
+using (var file1 = new FileWrapper("log.txt"))
+{
+    file1.Write("Строка 1");
+    file1.Write("Строка 2");
+}  // Dispose() здесь
+
+Console.WriteLine();
+
+// using declaration -- современный стиль
+Console.WriteLine("=== using declaration ===");
+void ProcessFile()
+{
+    using var file2 = new FileWrapper("data.csv");
+    file2.Write("name,age");
+    file2.Write("Alice,25");
+    // Dispose() в конце метода
+}
+ProcessFile();
+
+Console.WriteLine();
+
+// Dispose() вызывается даже при исключении!
+Console.WriteLine("=== При исключении ===");
+try
+{
+    using var file3 = new FileWrapper("error.txt");
+    file3.Write("Начало");
+    throw new Exception("Что-то пошло не так!");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"  Поймано: {ex.Message}");
+}
+// file3.Dispose() был вызван ДО catch!
+
+#!markdown
+
+### Попробуй сам: создай класс `TempDirectory : IDisposable`, который в конструкторе "создаёт" временную папку (просто выводит сообщение), а в Dispose() "удаляет" её. Используй nested using для двух папок и покажи порядок удаления (LIFO).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 5. yield return -- ленивая генерация
+
+**`yield return`** позволяет создавать **итераторы** -- методы, которые возвращают элементы **по одному**, по мере запроса:
+
+```csharp
+IEnumerable<int> GetNumbers()
+{
+    yield return 1;  // Возвращает 1, приостанавливается
+    yield return 2;  // Возвращает 2, приостанавливается
+    yield return 3;  // Возвращает 3, приостанавливается
+}
+```
+
+Ключевые особенности:
+- Метод **приостанавливается** после каждого yield return
+- Следующий элемент генерируется **только когда его просят** (ленивость)
+- **yield break** -- досрочное завершение итератора
+- Тип возвращаемого значения: `IEnumerable<T>` или `IEnumerator<T>`
+
+#!csharp
+
+// Простой итератор
+IEnumerable<string> GetGreetings()
+{
+    Console.WriteLine("  (генерирую первый)");
+    yield return "Привет!";
+
+    Console.WriteLine("  (генерирую второй)");
+    yield return "Как дела?";
+
+    Console.WriteLine("  (генерирую третий)");
+    yield return "Пока!";
+}
+
+Console.WriteLine("=== Ленивая генерация ===");
+foreach (var greeting in GetGreetings())
+{
+    Console.WriteLine($"Получил: {greeting}");
+}
+
+Console.WriteLine("\n=== Можно взять только часть ===");
+var first = GetGreetings().First();  // Генерирует только первый!
+Console.WriteLine($"Первый: {first}");
+
+// Бесконечная последовательность!
+Console.WriteLine("\n=== Бесконечная последовательность ===");
+IEnumerable<int> InfiniteCounter(int start = 0)
+{
+    int current = start;
+    while (true)  // Бесконечный цикл -- но это OK для итератора!
+    {
+        yield return current++;
+    }
+}
+
+// Берём только 10 элементов из бесконечности
+var first10 = InfiniteCounter(100).Take(10);
+Console.WriteLine($"Первые 10: {string.Join(", ", first10)}");
+
+#!markdown
+
+### Попробуй сам: напиши метод `IEnumerable<int> EvenNumbers(int max)`, который с помощью yield return генерирует все чётные числа от 0 до max. Используй с LINQ (Take, Where, Sum).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 6. yield break и продвинутые итераторы
+
+**`yield break`** -- досрочно завершает итератор:
+
+```csharp
+IEnumerable<int> TakeWhilePositive(int[] numbers)
+{
+    foreach (var n in numbers)
+    {
+        if (n < 0) yield break;  // Стоп! Дальше не генерируем
+        yield return n;
+    }
+}
+```
+
+#!csharp
+
+// yield break -- досрочная остановка
+IEnumerable<int> TakeUntilZero(int[] numbers)
+{
+    foreach (var n in numbers)
+    {
+        if (n == 0) yield break;
+        yield return n;
+    }
+}
+
+var data = new[] { 5, 3, 8, 0, 2, 7 };
+Console.WriteLine($"До нуля: {string.Join(", ", TakeUntilZero(data))}");
+// 5, 3, 8
+
+// Генератор диапазонов
+IEnumerable<(int Start, int End)> Chunks(int total, int chunkSize)
+{
+    for (int i = 0; i < total; i += chunkSize)
+    {
+        yield return (i, Math.Min(i + chunkSize - 1, total - 1));
+    }
+}
+
+Console.WriteLine("\nРазбиение 25 на части по 7:");
+foreach (var (start, end) in Chunks(25, 7))
+    Console.WriteLine($"  [{start}..{end}]");
+
+// Генератор случайных данных
+IEnumerable<string> RandomNames(int count)
+{
+    var names = new[] { "Алиса", "Боб", "Чарли", "Диана", "Евгений" };
+    var rng = new Random(42);
+
+    for (int i = 0; i < count; i++)
+    {
+        yield return names[rng.Next(names.Length)];
+    }
+}
+
+Console.WriteLine($"\n5 случайных имён: {string.Join(", ", RandomNames(5))}");
+
+// Цепочка итераторов
+IEnumerable<T> Interleave<T>(IEnumerable<T> a, IEnumerable<T> b)
+{
+    using var ea = a.GetEnumerator();
+    using var eb = b.GetEnumerator();
+
+    while (true)
+    {
+        bool hasA = ea.MoveNext();
+        bool hasB = eb.MoveNext();
+
+        if (hasA) yield return ea.Current;
+        if (hasB) yield return eb.Current;
+
+        if (!hasA && !hasB) yield break;
+    }
+}
+
+var odds = new[] { 1, 3, 5, 7 };
+var evens = new[] { 2, 4, 6 };
+Console.WriteLine($"\nЧередование: {string.Join(", ", Interleave(odds, evens))}");
+
+#!markdown
+
+### Попробуй сам: напиши итератор `IEnumerable<string> ReadLines(string text)`, который через yield return возвращает строки текста по одной (Split по '\n'). Добавь yield break, если встретится строка "STOP". Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Простой итератор (лёгкая)
+Напиши метод `IEnumerable<int> Range(int start, int end, int step)` с yield return. Протестируй: Range(0, 20, 3) -> 0, 3, 6, 9, 12, 15, 18.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: IDisposable ресурс (лёгкая)
+Создай класс `LogSession : IDisposable`, который в конструкторе выводит "Сессия начата: {name}", при Log() -- "[{name}] {message}", при Dispose() -- "Сессия завершена: {name}". Используй using для двух вложенных сессий.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Бесконечный генератор (средняя)
+Напиши бесконечный итератор `IEnumerable<int> Primes()`, который генерирует простые числа: 2, 3, 5, 7, 11, 13, ... Используй Take(20) для получения первых 20 простых чисел. Используй First(p => p > 100) для нахождения первого простого > 100.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Своя коллекция (средняя)
+Создай класс `CircularBuffer<T> : IEnumerable<T>, IDisposable` с фиксированным размером. Методы: Add(T item) -- добавляет (перезаписывает старые при переполнении). Итерация через IEnumerable возвращает элементы в порядке добавления. Dispose() очищает буфер.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Конвейер обработки (средняя)
+Используя yield return, создай цепочку методов-итераторов: `ReadData()` -> `FilterValid()` -> `Transform()` -> `Format()`. Каждый принимает IEnumerable и возвращает IEnumerable, обрабатывая элементы лениво. Покажи, что элементы обрабатываются по одному (через Console.WriteLine внутри каждого шага).
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Дерево с итерацией (сложная)
+Создай класс `TreeNode<T>(T Value)` с `List<TreeNode<T>> Children`. Реализуй `IEnumerable<T>` через yield return с рекурсией (обход в глубину). Также реализуй метод `IEnumerable<T> BreadthFirst()` (обход в ширину через Queue). Создай дерево из 7+ узлов и выведи оба обхода.
+
+#!csharp
+
+// Твой код здесь:

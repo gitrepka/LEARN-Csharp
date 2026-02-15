@@ -1,0 +1,360 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Replace, Split, Join и проверка строк
+
+#!markdown
+
+## 1. Replace() — замена подстроки
+
+**`Replace()`** заменяет **все вхождения** одной подстроки на другую:
+
+```csharp
+string text = "Привет, мир! Привет, C#!";
+string result = text.Replace("Привет", "Здравствуй");
+Console.WriteLine(result);
+// Здравствуй, мир! Здравствуй, C#!
+```
+
+Заменяются **все** совпадения, а не только первое.
+
+Можно заменять и **одиночные символы**:
+```csharp
+string phone = "+7 (999) 123-45-67";
+string clean = phone.Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "");
+Console.WriteLine(clean);   // +79991234567
+```
+
+Замена на **пустую строку** — это по сути **удаление**:
+```csharp
+string text = "Hello, World!";
+Console.WriteLine(text.Replace(",", ""));    // Hello World!
+Console.WriteLine(text.Replace(" ", ""));    // Hello,World!
+```
+
+Как обычно, оригинал **не меняется**:
+```csharp
+string s = "AAA";
+s.Replace("A", "B");     // результат "BBB" потерян — никуда не сохранён
+Console.WriteLine(s);     // AAA (оригинал не изменился!)
+
+s = s.Replace("A", "B"); // ✅ теперь s = "BBB"
+Console.WriteLine(s);     // BBB
+```
+
+#!markdown
+
+### Попробуй сам: строка `string msg = "Я люблю Java! Java - лучший язык!"`. Замени все "Java" на "C#". Выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. Split() — разбиение строки на массив
+
+**`Split()`** разбивает строку по **разделителю** и возвращает **массив строк**:
+
+```csharp
+string csv = "Анна,Борис,Вера,Глеб";
+string[] names = csv.Split(',');
+
+// names = {"Анна", "Борис", "Вера", "Глеб"}
+Console.WriteLine(names.Length);   // 4
+Console.WriteLine(names[0]);      // Анна
+Console.WriteLine(names[2]);      // Вера
+```
+
+Разбиение по **пробелу**:
+```csharp
+string sentence = "Мама мыла раму";
+string[] words = sentence.Split(' ');
+
+foreach (string word in words)
+    Console.WriteLine(word);
+// Мама
+// мыла
+// раму
+```
+
+Разбиение по **нескольким разделителям**:
+```csharp
+string data = "один;два,три:четыре";
+string[] parts = data.Split(',', ';', ':');
+// {"один", "два", "три", "четыре"}
+```
+
+**Проблема с несколькими пробелами:**
+```csharp
+string text = "слово1  слово2   слово3";
+string[] words = text.Split(' ');
+// {"слово1", "", "слово2", "", "", "слово3"} — пустые элементы!
+```
+
+**Решение** — `StringSplitOptions.RemoveEmptyEntries`:
+```csharp
+string text = "слово1  слово2   слово3";
+string[] words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+// {"слово1", "слово2", "слово3"} — чисто!
+```
+
+#!markdown
+
+### Попробуй сам: строка `string fruits = "яблоко|банан|апельсин|виноград"`. Разбей по `|` в массив. Выведи каждый фрукт с номером: "1. яблоко", "2. банан" и т.д.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. string.Join() — сборка массива в строку
+
+**`string.Join()`** — обратная операция к `Split()`. Собирает массив в одну строку с **разделителем**:
+
+```csharp
+string[] words = {"Привет", "мир", "C#"};
+string result = string.Join(", ", words);
+Console.WriteLine(result);   // Привет, мир, C#
+```
+
+Разные разделители:
+```csharp
+string[] items = {"один", "два", "три"};
+
+Console.WriteLine(string.Join(" ", items));     // один два три
+Console.WriteLine(string.Join(" - ", items));   // один - два - три
+Console.WriteLine(string.Join("", items));      // одиндватри (без разделителя)
+Console.WriteLine(string.Join("\n", items));     // каждое на новой строке
+```
+
+**Split + Join** — мощная комбинация:
+```csharp
+// Заменить несколько пробелов на один
+string messy = "слово1    слово2     слово3";
+string[] words = messy.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+string clean = string.Join(" ", words);
+Console.WriteLine(clean);   // слово1 слово2 слово3
+```
+
+Ещё пример — **переворот слов**:
+```csharp
+string text = "Привет, мир!";
+string[] words = text.Split(' ');
+Array.Reverse(words);
+string reversed = string.Join(" ", words);
+Console.WriteLine(reversed);   // мир! Привет,
+```
+
+#!markdown
+
+### Попробуй сам: массив `string[] tags = {"csharp", "dotnet", "programming", "tutorial"}`. Собери строку хэштегов: "#csharp #dotnet #programming #tutorial". Подсказка: сначала добавь "#" к каждому тегу (через for), потом Join
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. string.IsNullOrEmpty()
+
+**`string.IsNullOrEmpty()`** — проверяет, является ли строка `null` или **пустой** (`""`):
+
+```csharp
+string s1 = null;
+string s2 = "";
+string s3 = "Hello";
+string s4 = "   ";
+
+Console.WriteLine(string.IsNullOrEmpty(s1));   // True  (null)
+Console.WriteLine(string.IsNullOrEmpty(s2));   // True  (пустая)
+Console.WriteLine(string.IsNullOrEmpty(s3));   // False (есть текст)
+Console.WriteLine(string.IsNullOrEmpty(s4));   // False (пробелы — не пусто!)
+```
+
+**Зачем?** Если строка `null`, вызов метода вызовет ошибку:
+```csharp
+string name = null;
+// name.Length — NullReferenceException!
+// name.ToUpper() — NullReferenceException!
+
+// Безопасная проверка:
+if (!string.IsNullOrEmpty(name))
+    Console.WriteLine(name.Length);   // не выполнится
+```
+
+**Применение** — валидация ввода:
+```csharp
+Console.Write("Введи имя: ");
+string input = Console.ReadLine();
+
+if (string.IsNullOrEmpty(input))
+    Console.WriteLine("Ошибка: имя не может быть пустым!");
+else
+    Console.WriteLine($"Привет, {input}!");
+```
+
+#!markdown
+
+### Попробуй сам: создай массив `string[] data = {"Анна", "", null, "Борис", "", "Вера", null}`. Выведи только непустые и не-null элементы, используя IsNullOrEmpty
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. string.IsNullOrWhiteSpace()
+
+**`string.IsNullOrWhiteSpace()`** — как `IsNullOrEmpty`, но также считает строку "пустой", если она состоит **только из пробелов** (или табов, переносов):
+
+```csharp
+string s1 = null;
+string s2 = "";
+string s3 = "   ";
+string s4 = "\t\n";
+string s5 = "Hello";
+
+Console.WriteLine(string.IsNullOrWhiteSpace(s1));   // True  (null)
+Console.WriteLine(string.IsNullOrWhiteSpace(s2));   // True  (пустая)
+Console.WriteLine(string.IsNullOrWhiteSpace(s3));   // True  (только пробелы)
+Console.WriteLine(string.IsNullOrWhiteSpace(s4));   // True  (только пробельные символы)
+Console.WriteLine(string.IsNullOrWhiteSpace(s5));   // False (есть текст)
+```
+
+Сравнение двух методов:
+
+| Строка | `IsNullOrEmpty` | `IsNullOrWhiteSpace` |
+|---|---|---|
+| `null` | True | True |
+| `""` | True | True |
+| `"   "` | **False** | **True** |
+| `"Hello"` | False | False |
+
+**На практике `IsNullOrWhiteSpace` используется чаще** — строка из одних пробелов тоже бесполезна:
+
+```csharp
+Console.Write("Введи пароль: ");
+string password = Console.ReadLine();
+
+if (string.IsNullOrWhiteSpace(password))
+    Console.WriteLine("Пароль не может быть пустым!");
+else if (password.Trim().Length < 6)
+    Console.WriteLine("Пароль слишком короткий!");
+else
+    Console.WriteLine("Пароль принят.");
+```
+
+#!markdown
+
+## 6. Комбинируем всё вместе
+
+Реальный пример — обработка CSV-строки:
+```csharp
+string csv = " Анна , 25 , Алматы ";
+
+// 1. Split по запятой
+string[] parts = csv.Split(',');
+
+// 2. Trim каждую часть
+string name = parts[0].Trim();    // "Анна"
+string age = parts[1].Trim();     // "25"
+string city = parts[2].Trim();    // "Алматы"
+
+Console.WriteLine($"Имя: {name}, возраст: {age}, город: {city}");
+```
+
+Ещё пример — подсчёт слов в тексте:
+```csharp
+string text = "  Привет,   мир!  Как   дела?  ";
+string[] words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+Console.WriteLine($"Слов в тексте: {words.Length}");   // 4
+```
+
+#!markdown
+
+## ИТОГО:
+
+1. **`Replace(old, new)`** — заменяет все вхождения подстроки
+2. **`Split(separator)`** — разбивает строку в массив
+3. **`StringSplitOptions.RemoveEmptyEntries`** — убирает пустые элементы при Split
+4. **`string.Join(separator, array)`** — собирает массив в строку
+5. **`string.IsNullOrEmpty(s)`** — проверяет null или `""`
+6. **`string.IsNullOrWhiteSpace(s)`** — проверяет null, `""` или только пробелы
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Цензура (лёгкая)
+Строка `string text = "Этот фильм — полный отстой и ерунда"`. Замени слова "отстой" и "ерунда" на "***". Выведи результат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: CSV в таблицу (лёгкая)
+Строка `string csv = "Яблоко,120,кг;Молоко,85,л;Хлеб,45,шт"`. Разбей сначала по `;` (строки), потом каждую строку по `,` (колонки). Выведи таблицу:
+```
+Товар: Яблоко | Цена: 120 | Ед.: кг
+Товар: Молоко | Цена: 85 | Ед.: л
+Товар: Хлеб | Цена: 45 | Ед.: шт
+```
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Подсчёт слов (средняя)
+Строка `string text = "  Привет   мир   как   дела   у   тебя  "`. Подсчитай количество слов, используя Split с RemoveEmptyEntries. Выведи: "Слов: N".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: CamelCase в слова (средняя)
+Строка `string camel = "myVariableName"`. Раздели на слова: "my Variable Name". Подсказка: пройди по символам, если символ заглавный — вставь пробел перед ним. Потом через Split + Join убери лишние пробелы.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Валидация ввода (средняя)
+Массив ввода от "пользователей": `string[] inputs = {"Анна", "  ", "", null, "Борис", "  Вера  ", null, "  "}`. Обработай каждый элемент: пропусти null и пустые (IsNullOrWhiteSpace), остальные — Trim(). Собери из валидных имён строку через Join: "Анна, Борис, Вера".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Шифр замены (сложная)
+Строка `string text = "hello world"`. Ключ замены: каждую букву заменить на следующую в алфавите (a→b, b→c, ..., z→a). Результат: "ifmmp xpsme". Подсказка: собери новую строку посимвольно. Для каждого символа: если буква — сдвинь на 1 (`(char)(c + 1)`), если `z` — замени на `a`. Пробелы и прочее — оставь как есть.
+
+#!csharp
+
+// Твой код здесь:

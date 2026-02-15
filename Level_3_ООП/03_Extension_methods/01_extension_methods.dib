@@ -1,0 +1,423 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: Методы расширения (Extension Methods)
+
+#!markdown
+
+## Зачем нужны методы расширения?
+
+Представь: ты хочешь добавить метод `WordCount()` к типу `string`. Но `string` -- **встроенный тип**, ты не можешь его изменить.
+
+Раньше пришлось бы писать **утилитарный класс**:
+
+```csharp
+static class StringHelper
+{
+    public static int WordCount(string text)
+    {
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+}
+
+// Использование -- неудобно
+int count = StringHelper.WordCount("Привет мир");
+```
+
+**Методы расширения** позволяют "добавить" метод к существующему типу **без его изменения**:
+
+```csharp
+// Использование -- как будто метод принадлежит string!
+int count = "Привет мир".WordCount();
+```
+
+Это синтаксический сахар: компилятор превращает `"text".WordCount()` в `StringExtensions.WordCount("text")`.
+
+#!markdown
+
+## 1. Синтаксис: ключевое слово this
+
+Метод расширения -- это **static** метод в **static** классе, первый параметр которого помечен ключевым словом **`this`**:
+
+```csharp
+public static class StringExtensions
+{
+    //          ↓ this -- делает метод расширением для string
+    public static int WordCount(this string text)
+    {
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+}
+```
+
+Правила:
+1. Метод должен быть **static**
+2. Класс должен быть **static**
+3. Первый параметр -- **`this ТипКоторыйРасширяем`**
+4. Класс должен быть в области видимости (using namespace)
+
+#!csharp
+
+// Определяем методы расширения для string
+public static class StringExtensions
+{
+    // Подсчёт слов
+    public static int WordCount(this string text)
+    {
+        return text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    // Первая буква заглавная
+    public static string Capitalize(this string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        return char.ToUpper(text[0]) + text[1..];
+    }
+}
+
+// Используем как обычные методы string!
+string phrase = "привет мир, это csharp";
+Console.WriteLine($"Слов: {phrase.WordCount()}");          // 4
+Console.WriteLine($"Capitalize: {phrase.Capitalize()}");   // Привет мир, это csharp
+
+// Можно в цепочке
+string result = "  hello world  ".Trim().Capitalize();
+Console.WriteLine(result);  // Hello world
+
+#!markdown
+
+### Попробуй сам: создай метод расширения `Reverse()` для `string`, который переворачивает строку. Например, "привет" -> "тевирп". Подсказка: `new string(text.Reverse().ToArray())`.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. Расширения для числовых типов
+
+Расширения работают для **любых типов** -- int, double, DateTime и т.д.:
+
+```csharp
+public static class IntExtensions
+{
+    public static bool IsEven(this int number) => number % 2 == 0;
+    public static bool IsOdd(this int number) => number % 2 != 0;
+    public static int Squared(this int number) => number * number;
+}
+
+// Использование
+5.IsEven();    // false
+5.IsOdd();     // true
+5.Squared();   // 25
+```
+
+#!csharp
+
+public static class NumberExtensions
+{
+    // Чётное?
+    public static bool IsEven(this int n) => n % 2 == 0;
+
+    // В диапазоне?
+    public static bool IsBetween(this int n, int min, int max) => n >= min && n <= max;
+
+    // Повторить действие N раз
+    public static void Times(this int count, Action<int> action)
+    {
+        for (int i = 0; i < count; i++)
+            action(i);
+    }
+
+    // Ограничить в диапазоне (clamp)
+    public static double Clamp(this double value, double min, double max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+}
+
+Console.WriteLine($"4 чётное: {4.IsEven()}");           // true
+Console.WriteLine($"7 чётное: {7.IsEven()}");           // false
+Console.WriteLine($"5 в [1..10]: {5.IsBetween(1, 10)}"); // true
+Console.WriteLine($"15 в [1..10]: {15.IsBetween(1, 10)}"); // false
+
+// Повторить 3 раза
+3.Times(i => Console.WriteLine($"Итерация {i}"));
+
+// Clamp
+Console.WriteLine($"150.0 clamp [0..100]: {150.0.Clamp(0, 100)}"); // 100
+Console.WriteLine($"-5.0 clamp [0..100]: {(-5.0).Clamp(0, 100)}");  // 0
+
+#!markdown
+
+### Попробуй сам: создай метод расширения `Factorial()` для `int`, который возвращает факториал числа (long). Пример: `5.Factorial()` -> 120.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. Расширения для коллекций
+
+Все методы LINQ (`Where`, `Select`, `OrderBy` и т.д.) -- это **методы расширения** для `IEnumerable<T>`! Ты можешь создавать свои:
+
+```csharp
+public static class EnumerableExtensions
+{
+    public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
+    {
+        foreach (var item in source)
+            action(item);
+    }
+}
+
+// Использование
+new[] { 1, 2, 3 }.ForEach(x => Console.WriteLine(x));
+```
+
+#!csharp
+
+public static class CollectionExtensions
+{
+    // ForEach для любой коллекции
+    public static void ForEach<T>(this IEnumerable<T> source, Action<T> action)
+    {
+        foreach (var item in source)
+            action(item);
+    }
+
+    // Случайный элемент
+    public static T RandomElement<T>(this IList<T> list)
+    {
+        var rng = new Random();
+        return list[rng.Next(list.Count)];
+    }
+
+    // Разделить на части (chunk) -- до C# 12 не было встроенного
+    public static string JoinWith<T>(this IEnumerable<T> source, string separator)
+    {
+        return string.Join(separator, source);
+    }
+
+    // Безопасный доступ по индексу
+    public static T? SafeGet<T>(this IList<T> list, int index)
+    {
+        if (index >= 0 && index < list.Count) return list[index];
+        return default;
+    }
+}
+
+// ForEach
+Console.WriteLine("=== ForEach ===");
+new[] { "Алиса", "Боб", "Чарли" }.ForEach(name => Console.WriteLine($"Привет, {name}!"));
+
+// JoinWith
+var csv = new[] { 1, 2, 3, 4, 5 }.JoinWith(", ");
+Console.WriteLine($"CSV: {csv}");  // 1, 2, 3, 4, 5
+
+// RandomElement
+var colors = new List<string> { "красный", "синий", "зелёный", "жёлтый" };
+Console.WriteLine($"Случайный цвет: {colors.RandomElement()}");
+
+// SafeGet
+var numbers = new List<int> { 10, 20, 30 };
+Console.WriteLine($"Индекс 1: {numbers.SafeGet(1)}");   // 20
+Console.WriteLine($"Индекс 99: {numbers.SafeGet(99)}");  // 0 (default для int)
+
+#!markdown
+
+### Попробуй сам: создай метод расширения `SecondMax()` для `IEnumerable<int>`, который возвращает второе максимальное значение. Пример: `new[] {5, 3, 8, 1, 8, 7}.SecondMax()` -> 7.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. Правила и ограничения
+
+| Правило | Подробности |
+|---|---|
+| **static class + static method** | Обязательно! Иначе не компилируется |
+| **this в первом параметре** | Определяет тип, который расширяем |
+| **Приоритет** | Обычные методы класса имеют приоритет над расширениями |
+| **null** | Можно вызывать на null! (`string s = null; s.MyMethod()` -- не бросит NRE, если метод это обрабатывает) |
+| **Не видят private/protected** | Расширения видят только public API типа |
+| **Нужен using** | Если класс расширений в другом namespace, нужен `using` |
+
+```csharp
+// Расширение можно вызывать на null!
+public static class SafeExtensions
+{
+    public static bool IsNullOrEmpty(this string? s) => string.IsNullOrEmpty(s);
+    public static int SafeCount<T>(this IEnumerable<T>? source) => source?.Count() ?? 0;
+}
+```
+
+**Когда НЕ использовать расширения:**
+- Если метод логически принадлежит классу -- добавь его в сам класс
+- Если расширение слишком специфично для одного места -- используй обычный метод
+- Не злоупотребляй: 100 расширений для string -- плохо
+
+#!csharp
+
+// Демонстрация приоритета и null-безопасности
+
+public class MyClass
+{
+    public string Greet() => "Привет из обычного метода!";
+}
+
+public static class MyClassExtensions
+{
+    // Этот метод НЕ будет вызван -- у класса уже есть Greet()
+    public static string Greet(this MyClass obj) => "Привет из расширения!";
+
+    // Этот метод будет работать -- такого нет в классе
+    public static string Shout(this MyClass obj) => "КРИЧУ ИЗ РАСШИРЕНИЯ!";
+}
+
+var obj = new MyClass();
+Console.WriteLine(obj.Greet());  // Привет из обычного метода! (приоритет у класса)
+Console.WriteLine(obj.Shout());  // КРИЧУ ИЗ РАСШИРЕНИЯ!
+
+// Вызов на null -- работает!
+public static class NullSafe
+{
+    public static string OrDefault(this string? s, string def) => s ?? def;
+}
+
+string? name = null;
+Console.WriteLine(name.OrDefault("Аноним"));  // Аноним (не бросило исключение!)
+
+#!markdown
+
+## 5. Когда использовать расширения -- best practices
+
+**Хорошие примеры использования:**
+
+1. **Утилиты для встроенных типов** -- string, int, DateTime
+2. **Расширение библиотечных типов**, которые ты не можешь менять
+3. **Fluent API** -- цепочки вызовов для удобочитаемости
+4. **Адаптация интерфейса** -- добавление удобных методов к IEnumerable, IList и т.д.
+
+```csharp
+// Fluent API через расширения
+public static class QueryExtensions
+{
+    public static List<T> WhereNot<T>(this IEnumerable<T> source, Func<T, bool> predicate)
+        => source.Where(x => !predicate(x)).ToList();
+
+    public static string ToDebugString<T>(this IEnumerable<T> source)
+        => $"[{string.Join(", ", source)}]";
+}
+```
+
+#!csharp
+
+// Пример: Fluent API для форматирования
+public static class FormatExtensions
+{
+    public static string Surround(this string s, string wrapper)
+        => $"{wrapper}{s}{wrapper}";
+
+    public static string Repeat(this string s, int count)
+        => string.Concat(Enumerable.Repeat(s, count));
+
+    public static string Truncate(this string s, int maxLength)
+        => s.Length <= maxLength ? s : s[..maxLength] + "...";
+}
+
+// Цепочка вызовов -- читается как предложение
+string result = "важно"
+    .Surround("**")
+    .Surround(" ")
+    .Repeat(3);
+Console.WriteLine(result);  //  **важно**  **важно**  **важно**
+
+// Truncate
+string longText = "Это очень длинный текст, который нужно обрезать";
+Console.WriteLine(longText.Truncate(20));  // Это очень длинный т...
+
+// Цепочка с LINQ
+var data = new[] { 3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5 };
+Console.WriteLine(
+    data.Distinct()
+        .OrderByDescending(x => x)
+        .Take(5)
+        .Select(x => x.ToString())
+        .Aggregate((a, b) => $"{a}, {b}")
+);
+
+#!markdown
+
+### Попробуй сам: создай метод расширения `ToTitleCase()` для string, который делает первую букву каждого слова заглавной. Пример: "привет мир" -> "Привет Мир". Подсказка: Split, Capitalize каждое слово, Join.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: IsPositive / IsNegative (лёгкая)
+Создай методы расширения `IsPositive()` и `IsNegative()` для `int`. Протестируй на числах -5, 0, 7.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Pluralize (лёгкая)
+Создай метод расширения `Pluralize(this int count, string one, string few, string many)` для int. Пример: `1.Pluralize("яблоко", "яблока", "яблок")` -> "1 яблоко", `5.Pluralize(...)` -> "5 яблок". Правила: 1 -> one, 2-4 -> few, 5-20 -> many, 21 -> one, 22-24 -> few, 25-30 -> many и т.д.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Расширения для DateTime (средняя)
+Создай методы расширения для `DateTime`: `IsWeekend()` -- выходной ли день, `AgeInYears()` -- сколько полных лет от этой даты до сегодня, `ToShortRussian()` -- формат "15 фев 2024". Протестируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Median для коллекции (средняя)
+Создай метод расширения `Median()` для `IEnumerable<double>`, который возвращает медиану (среднее значение отсортированного массива; если элементов чётное число -- среднее двух центральных). Протестируй на {1, 3, 5, 7, 9} и {1, 2, 3, 4}.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 5: Fluent Builder (сложная)
+Создай класс `Pizza` с полями Size, Crust, Toppings (список). Создай методы расширения для `Pizza`: `.WithSize("Large")`, `.WithCrust("Thin")`, `.AddTopping("Cheese")` -- каждый возвращает новый объект Pizza (иммутабельный стиль). Построй пиццу цепочкой вызовов и выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 6: Цепочка обработки данных (сложная)
+Создай набор расширений для `IEnumerable<string>`: `.TrimAll()` -- обрезает пробелы, `.RemoveEmpty()` -- удаляет пустые, `.ToUpperAll()` -- всё в верхний регистр, `.SortAlphabetically()` -- сортировка. Обработай массив `[" привет ", "", "  МИР  ", " ", "csharp", "  Код "]` цепочкой и выведи результат.
+
+#!csharp
+
+// Твой код здесь:

@@ -1,0 +1,407 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: DateOnly, TimeOnly, Stopwatch
+
+#!markdown
+
+## 1. DateOnly — только дата (без времени)
+
+**`DateOnly`** (C# 10 / .NET 6+) — хранит **только дату**, без компоненты времени. Идеально для дней рождения, праздников, дедлайнов.
+
+```csharp
+DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+DateOnly birthday = new DateOnly(2000, 5, 15);
+```
+
+**Зачем?** DateTime хранит дату И время. Если время не нужно — DateOnly безопаснее (нет проблем с часовыми поясами, сравнением, и т.д.).
+
+| DateTime | DateOnly |
+|---|---|
+| `15.02.2026 14:30:00` | `15.02.2026` |
+| Дата + время | Только дата |
+| struct 8 байт | struct 4 байта |
+
+#!csharp
+
+// Создание DateOnly
+DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+DateOnly birthday = new DateOnly(2000, 5, 15);
+DateOnly newYear = new DateOnly(2027, 1, 1);
+
+Console.WriteLine($"Сегодня:         {today}");
+Console.WriteLine($"День рождения:   {birthday}");
+Console.WriteLine($"Новый год:       {newYear}");
+
+// Свойства
+Console.WriteLine($"\nГод:    {today.Year}");
+Console.WriteLine($"Месяц:  {today.Month}");
+Console.WriteLine($"День:   {today.Day}");
+Console.WriteLine($"День недели: {today.DayOfWeek}");
+Console.WriteLine($"День года:   {today.DayOfYear}");
+
+// Арифметика
+DateOnly nextWeek = today.AddDays(7);
+DateOnly nextMonth = today.AddMonths(1);
+Console.WriteLine($"\nЧерез неделю:  {nextWeek}");
+Console.WriteLine($"Через месяц:   {nextMonth}");
+
+// Разница — количество дней
+int daysToNewYear = newYear.DayNumber - today.DayNumber;
+Console.WriteLine($"\nДо Нового года: {daysToNewYear} дней");
+
+#!csharp
+
+// Форматирование DateOnly
+DateOnly date = new DateOnly(2026, 2, 15);
+
+Console.WriteLine($"По умолчанию:     {date}");
+Console.WriteLine($"dd.MM.yyyy:       {date:dd.MM.yyyy}");
+Console.WriteLine($"dd MMMM yyyy:     {date:dd MMMM yyyy}");
+Console.WriteLine($"yyyy-MM-dd:       {date:yyyy-MM-dd}");       // ISO формат
+Console.WriteLine($"d MMM yyyy:       {date:d MMM yyyy}");
+Console.WriteLine($"dddd:             {date:dddd}");              // день недели полностью
+
+// ToString с форматом
+Console.WriteLine($"\nToString:         {date.ToString("dd.MM.yyyy")}");
+
+#!markdown
+
+### Попробуй сам: создай DateOnly для текущей даты и для даты через 100 дней. Выведи обе в формате "dd MMMM yyyy (dddd)".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 2. TimeOnly — только время (без даты)
+
+**`TimeOnly`** (C# 10 / .NET 6+) — хранит **только время** (часы, минуты, секунды). Для расписаний, будильников, графиков работы.
+
+```csharp
+TimeOnly now = TimeOnly.FromDateTime(DateTime.Now);
+TimeOnly alarm = new TimeOnly(7, 30);        // 07:30
+TimeOnly precise = new TimeOnly(14, 30, 45); // 14:30:45
+```
+
+#!csharp
+
+// Создание TimeOnly
+TimeOnly now = TimeOnly.FromDateTime(DateTime.Now);
+TimeOnly morning = new TimeOnly(7, 0);
+TimeOnly lunch = new TimeOnly(12, 30);
+TimeOnly evening = new TimeOnly(18, 0);
+
+Console.WriteLine($"Сейчас:  {now}");
+Console.WriteLine($"Утро:    {morning}");
+Console.WriteLine($"Обед:    {lunch}");
+Console.WriteLine($"Вечер:   {evening}");
+
+// Свойства
+Console.WriteLine($"\nЧас:     {now.Hour}");
+Console.WriteLine($"Минута:  {now.Minute}");
+Console.WriteLine($"Секунда: {now.Second}");
+
+// Арифметика
+TimeOnly later = now.AddHours(2);
+TimeOnly earlier = now.AddMinutes(-30);
+Console.WriteLine($"\nЧерез 2 часа:    {later}");
+Console.WriteLine($"30 минут назад:  {earlier}");
+
+// IsBetween — проверка, попадает ли время в диапазон
+bool isWorkTime = now.IsBetween(new TimeOnly(9, 0), new TimeOnly(18, 0));
+Console.WriteLine($"\nРабочее время? {isWorkTime}");
+
+#!csharp
+
+// Форматирование TimeOnly
+TimeOnly time = new TimeOnly(14, 30, 45);
+
+Console.WriteLine($"По умолчанию:  {time}");
+Console.WriteLine($"HH:mm:ss:      {time:HH:mm:ss}");
+Console.WriteLine($"HH:mm:         {time:HH:mm}");
+Console.WriteLine($"hh:mm tt:      {time:hh:mm tt}");    // 12-часовой формат
+Console.WriteLine($"H:mm:          {time:H:mm}");         // без лидирующего нуля
+
+#!markdown
+
+### Попробуй сам: создай TimeOnly для начала и конца рабочего дня. Проверь через IsBetween, является ли текущее время рабочим. Вычисли разницу между началом и концом (через TimeSpan).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Кастомные форматы даты и времени
+
+**Спецификаторы формата** для дат:
+
+| Спецификатор | Описание | Пример |
+|---|---|---|
+| `dd` | День (01-31) | 15 |
+| `MM` | Месяц (01-12) | 02 |
+| `MMM` | Месяц (сокр.) | фев |
+| `MMMM` | Месяц (полный) | февраля |
+| `yy` | Год (2 цифры) | 26 |
+| `yyyy` | Год (4 цифры) | 2026 |
+| `HH` | Час 24ч (00-23) | 14 |
+| `hh` | Час 12ч (01-12) | 02 |
+| `mm` | Минуты (00-59) | 30 |
+| `ss` | Секунды (00-59) | 45 |
+| `tt` | AM/PM | PM |
+| `dddd` | День недели | суббота |
+| `ddd` | День недели (сокр.) | сб |
+
+#!csharp
+
+DateTime now = DateTime.Now;
+
+Console.WriteLine("=== Стандартные форматы ===");
+Console.WriteLine($"d  (short date):  {now:d}");
+Console.WriteLine($"D  (long date):   {now:D}");
+Console.WriteLine($"t  (short time):  {now:t}");
+Console.WriteLine($"T  (long time):   {now:T}");
+Console.WriteLine($"f  (full short):  {now:f}");
+Console.WriteLine($"F  (full long):   {now:F}");
+Console.WriteLine($"g  (general):     {now:g}");
+Console.WriteLine($"o  (ISO 8601):    {now:o}");
+
+Console.WriteLine("\n=== Кастомные форматы ===");
+Console.WriteLine($"dd.MM.yyyy:       {now:dd.MM.yyyy}");
+Console.WriteLine($"dd/MM/yyyy:       {now:dd/MM/yyyy}");
+Console.WriteLine($"yyyy-MM-dd:       {now:yyyy-MM-dd}");
+Console.WriteLine($"HH:mm:ss:         {now:HH:mm:ss}");
+Console.WriteLine($"dd MMMM yyyy:     {now:dd MMMM yyyy}");
+Console.WriteLine($"dddd, d MMMM:     {now:dddd, d MMMM}");
+Console.WriteLine($"HH:mm dd.MM.yy:   {now:HH:mm dd.MM.yy}");
+
+#!markdown
+
+### Попробуй сам: выведи текущую дату в форматах: ISO (yyyy-MM-dd), европейский (dd.MM.yyyy), американский (MM/dd/yyyy), и свой собственный формат.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Stopwatch — замер производительности
+
+**`Stopwatch`** (System.Diagnostics) — точный таймер для измерения времени выполнения:
+
+```csharp
+using System.Diagnostics;
+
+var sw = new Stopwatch();
+sw.Start();          // запуск
+// ... код ...
+sw.Stop();           // остановка
+
+Console.WriteLine(sw.Elapsed);              // TimeSpan
+Console.WriteLine(sw.ElapsedMilliseconds);  // миллисекунды
+```
+
+| Метод / Свойство | Описание |
+|---|---|
+| `Start()` | Запустить таймер |
+| `Stop()` | Остановить |
+| `Reset()` | Сбросить (и остановить) |
+| `Restart()` | Сбросить и запустить заново |
+| `Elapsed` | Прошедшее время (TimeSpan) |
+| `ElapsedMilliseconds` | Миллисекунды (long) |
+| `IsRunning` | Запущен ли? |
+
+#!csharp
+
+using System.Diagnostics;
+
+// Замер простой операции
+var sw = new Stopwatch();
+
+sw.Start();
+int sum = 0;
+for (int i = 0; i < 10_000_000; i++)
+    sum += i;
+sw.Stop();
+
+Console.WriteLine($"Сумма 10 млн чисел: {sum}");
+Console.WriteLine($"Время: {sw.ElapsedMilliseconds} мс");
+Console.WriteLine($"Точно: {sw.Elapsed}");
+
+// Restart — сброс и новый замер
+sw.Restart();
+double product = 1;
+for (int i = 1; i <= 1_000_000; i++)
+    product = i * 1.0001;
+sw.Stop();
+
+Console.WriteLine($"\nМиллион умножений: {sw.ElapsedMilliseconds} мс");
+
+#!csharp
+
+using System.Diagnostics;
+
+// Сравнение производительности: string vs StringBuilder
+Console.WriteLine("=== Сравнение строковых операций ===\n");
+
+int iterations = 50000;
+
+// string +=
+var sw = Stopwatch.StartNew();  // сокращённая запись: создать + запустить
+string s = "";
+for (int i = 0; i < iterations; i++)
+    s += "a";
+sw.Stop();
+Console.WriteLine($"string +=       ({iterations:N0} итераций): {sw.ElapsedMilliseconds} мс");
+
+// StringBuilder
+sw.Restart();
+var sb = new System.Text.StringBuilder();
+for (int i = 0; i < iterations; i++)
+    sb.Append("a");
+string result = sb.ToString();
+sw.Stop();
+Console.WriteLine($"StringBuilder   ({iterations:N0} итераций): {sw.ElapsedMilliseconds} мс");
+
+// string.Join
+sw.Restart();
+string[] arr = new string[iterations];
+for (int i = 0; i < iterations; i++)
+    arr[i] = "a";
+string joined = string.Join("", arr);
+sw.Stop();
+Console.WriteLine($"string.Join     ({iterations:N0} итераций): {sw.ElapsedMilliseconds} мс");
+
+#!markdown
+
+### Попробуй сам: замерь, сколько времени занимает: сортировка массива из 1 000 000 случайных чисел, поиск элемента в этом массиве. Используй Stopwatch.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. DateOnly + TimeOnly → DateTime
+
+Можно комбинировать DateOnly и TimeOnly обратно в DateTime:
+
+```csharp
+DateOnly date = new DateOnly(2026, 2, 15);
+TimeOnly time = new TimeOnly(14, 30);
+
+DateTime combined = date.ToDateTime(time);
+// 15.02.2026 14:30:00
+```
+
+И обратно:
+```csharp
+DateTime dt = DateTime.Now;
+DateOnly dateOnly = DateOnly.FromDateTime(dt);
+TimeOnly timeOnly = TimeOnly.FromDateTime(dt);
+```
+
+#!csharp
+
+// DateOnly + TimeOnly = DateTime
+DateOnly eventDate = new DateOnly(2026, 3, 20);
+TimeOnly eventTime = new TimeOnly(19, 0);
+
+DateTime eventDateTime = eventDate.ToDateTime(eventTime);
+Console.WriteLine($"Событие: {eventDateTime:dd.MM.yyyy HH:mm}");
+
+// DateTime → DateOnly + TimeOnly
+DateTime now = DateTime.Now;
+DateOnly todayDate = DateOnly.FromDateTime(now);
+TimeOnly currentTime = TimeOnly.FromDateTime(now);
+
+Console.WriteLine($"\nDateTime:  {now}");
+Console.WriteLine($"DateOnly:  {todayDate}");
+Console.WriteLine($"TimeOnly:  {currentTime}");
+
+// Расписание с DateOnly и TimeOnly
+Console.WriteLine("\n=== Расписание ===");
+var schedule = new (string Event, DateOnly Date, TimeOnly Time)[]
+{
+    ("Совещание", new DateOnly(2026, 2, 16), new TimeOnly(10, 0)),
+    ("Обед", new DateOnly(2026, 2, 16), new TimeOnly(13, 0)),
+    ("Презентация", new DateOnly(2026, 2, 17), new TimeOnly(15, 30)),
+};
+
+foreach (var item in schedule)
+{
+    Console.WriteLine($"  {item.Date:dd.MM} {item.Time:HH:mm} — {item.Event}");
+}
+
+#!markdown
+
+## ИТОГО:
+
+1. **`DateOnly`** — только дата (без времени), идеально для дней рождения, дедлайнов
+2. **`TimeOnly`** — только время (без даты), для расписаний, будильников
+3. **Форматы:** `dd.MM.yyyy`, `HH:mm:ss`, `dddd`, `MMMM` и другие
+4. **`Stopwatch`** — точный замер времени: Start(), Stop(), Elapsed
+5. `DateOnly.ToDateTime(TimeOnly)` — комбинирование обратно в DateTime
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Расписание (лёгкая)
+Создай массив из 5 событий с DateOnly и TimeOnly. Выведи расписание в формате "dd.MM.yyyy HH:mm — Название".
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Будильник (лёгкая)
+Создай TimeOnly для будильника (7:30). Выведи, сколько времени осталось до него (или прошло, если уже позже). Используй TimeOnly.FromDateTime(DateTime.Now).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Бенчмарк сортировок (средняя)
+С помощью Stopwatch сравни скорость: Array.Sort() vs пузырьковая сортировка на массиве из 10000 элементов. Выведи время каждой.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Форматирование дат (средняя)
+Создай метод `string FormatDate(DateTime dt, string style)`. Стили: "iso" → yyyy-MM-dd, "ru" → dd.MM.yyyy, "us" → MM/dd/yyyy, "full" → dddd, dd MMMM yyyy HH:mm. Проверь каждый.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Таймер с Stopwatch (сложная)
+Создай класс `LapTimer` (для замера кругов). Методы: Start(), Lap() — фиксирует промежуточное время, Stop(), PrintLaps() — выводит все круги и общее время. Используй Stopwatch внутри. Продемонстрируй работу.
+
+#!csharp
+
+// Твой код здесь:

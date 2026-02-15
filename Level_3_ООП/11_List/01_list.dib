@@ -1,0 +1,487 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: List\<T\> — динамический список
+
+#!markdown
+
+## 1. Зачем нужен List\<T\>?
+
+Массив (`int[]`) имеет **фиксированный размер** — нельзя добавить или удалить элемент. В реальных программах это неудобно: список товаров в корзине растёт, список пользователей меняется.
+
+**`List<T>`** — это **динамический массив**, который автоматически растёт при добавлении элементов.
+
+| Свойство | Массив `int[]` | Список `List<int>` |
+|---|---|---|
+| Размер | Фиксированный | Динамический |
+| Добавить элемент | Нельзя | `Add()` |
+| Удалить элемент | Нельзя | `Remove()` |
+| Доступ по индексу | `arr[i]` | `list[i]` |
+| Длина | `Length` | `Count` |
+
+**`T`** — это **обобщённый тип** (generic). Вместо `T` подставляем конкретный тип: `List<int>`, `List<string>`, `List<double>`.
+
+#!markdown
+
+## 2. Создание списка
+
+Есть несколько способов создать `List<T>`:
+
+```csharp
+// Пустой список
+List<int> numbers = new List<int>();
+
+// Список с начальными значениями (collection initializer)
+List<int> scores = new List<int> { 5, 4, 5, 3, 4 };
+
+// Сокращённая форма (C# 12+, target-typed new)
+List<string> names = new() { "Анна", "Пётр", "Ира" };
+
+// Создание из массива
+int[] arr = { 1, 2, 3 };
+List<int> fromArray = new List<int>(arr);
+
+// С указанием начальной ёмкости (не размера!)
+List<int> big = new List<int>(100); // ёмкость 100, но Count = 0
+```
+
+**Важно:** `new List<int>(100)` — это **ёмкость** (Capacity), а не размер. Список пуст (`Count == 0`), но зарезервировано место для 100 элементов.
+
+#!csharp
+
+// Демонстрация создания списков
+List<int> empty = new List<int>();
+Console.WriteLine($"Пустой список: Count = {empty.Count}");
+
+List<string> fruits = new List<string> { "Яблоко", "Банан", "Вишня" };
+Console.WriteLine($"Фрукты: Count = {fruits.Count}");
+
+// Доступ по индексу — как в массиве
+Console.WriteLine($"Первый фрукт: {fruits[0]}");
+Console.WriteLine($"Последний фрукт: {fruits[fruits.Count - 1]}");
+
+#!markdown
+
+### Попробуй сам: создай `List<double>` с оценками за 5 предметов (например, 4.5, 3.8, 5.0...). Выведи количество оценок и каждую оценку через цикл `for`
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Add() и AddRange() — добавление элементов
+
+```csharp
+list.Add(элемент);          // добавить один элемент в конец
+list.AddRange(коллекция);   // добавить несколько элементов в конец
+```
+
+**`Add()`** добавляет **один** элемент в конец списка:
+
+```csharp
+List<string> cities = new List<string>();
+cities.Add("Москва");
+cities.Add("Астана");
+cities.Add("Берлин");
+// cities: ["Москва", "Астана", "Берлин"]
+```
+
+**`AddRange()`** добавляет **коллекцию** (массив, другой список) целиком:
+
+```csharp
+cities.AddRange(new[] { "Париж", "Лондон" });
+// cities: ["Москва", "Астана", "Берлин", "Париж", "Лондон"]
+```
+
+#!csharp
+
+List<int> numbers = new List<int>();
+Console.WriteLine($"До добавления: Count = {numbers.Count}");
+
+numbers.Add(10);
+numbers.Add(20);
+numbers.Add(30);
+Console.WriteLine($"После Add: Count = {numbers.Count}");
+
+numbers.AddRange(new[] { 40, 50, 60 });
+Console.WriteLine($"После AddRange: Count = {numbers.Count}");
+
+// Вывод всех элементов
+Console.WriteLine("Элементы: " + string.Join(", ", numbers));
+
+#!markdown
+
+### Попробуй сам: создай пустой `List<string>` и добавь туда 3 города по одному через `Add()`. Потом добавь ещё 2 города через `AddRange()`. Выведи все города
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Insert() — вставка по индексу
+
+```csharp
+list.Insert(индекс, элемент);   // вставить элемент в позицию
+```
+
+`Add()` добавляет **только в конец**. Чтобы вставить элемент **в любую позицию**, используй `Insert()`:
+
+```csharp
+List<string> queue = new List<string> { "Анна", "Пётр", "Ира" };
+queue.Insert(0, "VIP-клиент");   // вставка в начало
+// queue: ["VIP-клиент", "Анна", "Пётр", "Ира"]
+
+queue.Insert(2, "Олег");         // вставка на позицию 2
+// queue: ["VIP-клиент", "Анна", "Олег", "Пётр", "Ира"]
+```
+
+Все элементы после позиции вставки **сдвигаются вправо**. Индекс может быть от `0` до `list.Count` (включительно).
+
+#!csharp
+
+List<string> animals = new List<string> { "Кот", "Собака", "Попугай" };
+Console.WriteLine("До: " + string.Join(", ", animals));
+
+animals.Insert(0, "Хомяк");     // в начало
+Console.WriteLine("После Insert(0): " + string.Join(", ", animals));
+
+animals.Insert(2, "Рыбка");     // между "Кот" и "Собака"
+Console.WriteLine("После Insert(2): " + string.Join(", ", animals));
+
+animals.Insert(animals.Count, "Черепаха"); // в конец (аналог Add)
+Console.WriteLine("После Insert(Count): " + string.Join(", ", animals));
+
+#!markdown
+
+### Попробуй сам: создай список из 3 чисел. Вставь число 999 в начало, число 555 в середину. Выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. Remove(), RemoveAt(), RemoveAll() — удаление элементов
+
+Три способа удалить элементы из списка:
+
+| Метод | Описание | Возвращает |
+|---|---|---|
+| `Remove(значение)` | Удаляет **первое** вхождение элемента | `bool` (нашёл ли) |
+| `RemoveAt(индекс)` | Удаляет элемент **по индексу** | `void` |
+| `RemoveAll(условие)` | Удаляет **все** элементы по условию | `int` (сколько удалено) |
+
+```csharp
+List<int> nums = new List<int> { 1, 2, 3, 2, 4, 2, 5 };
+
+nums.Remove(2);        // удалит ПЕРВУЮ двойку → [1, 3, 2, 4, 2, 5]
+nums.RemoveAt(0);      // удалит элемент с индексом 0 → [3, 2, 4, 2, 5]
+nums.RemoveAll(x => x == 2); // удалит ВСЕ двойки → [3, 4, 5]
+```
+
+**Внимание:** `Remove()` удаляет только **первое** вхождение! Если элемента нет — просто вернёт `false`.
+
+#!csharp
+
+List<string> tasks = new List<string> { "Завтрак", "Работа", "Обед", "Работа", "Ужин" };
+Console.WriteLine("До: " + string.Join(", ", tasks));
+
+// Remove — удалит первую "Работу"
+bool removed = tasks.Remove("Работа");
+Console.WriteLine($"Remove('Работа'): удалено = {removed} → {string.Join(", ", tasks)}");
+
+// RemoveAt — удалит по индексу
+tasks.RemoveAt(0); // удалит "Завтрак"
+Console.WriteLine($"RemoveAt(0) → {string.Join(", ", tasks)}");
+
+// RemoveAll с условием (лямбда) — удалит все строки длиной > 4
+List<int> scores = new List<int> { 2, 5, 3, 5, 1, 4, 5 };
+int count = scores.RemoveAll(x => x < 3);
+Console.WriteLine($"RemoveAll(x => x < 3): удалено {count} → {string.Join(", ", scores)}");
+
+#!markdown
+
+### Попробуй сам: создай список `{ 10, 20, 30, 40, 50 }`. Удали элемент 30 через `Remove()`. Удали первый элемент через `RemoveAt(0)`. Выведи результат
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Contains(), IndexOf() — поиск элементов
+
+| Метод | Описание | Возвращает |
+|---|---|---|
+| `Contains(значение)` | Есть ли элемент в списке? | `bool` |
+| `IndexOf(значение)` | Индекс первого вхождения | `int` (или -1 если нет) |
+| `LastIndexOf(значение)` | Индекс последнего вхождения | `int` (или -1 если нет) |
+
+```csharp
+List<string> names = new List<string> { "Анна", "Пётр", "Ира", "Пётр" };
+
+names.Contains("Анна");       // true
+names.Contains("Олег");       // false
+
+names.IndexOf("Пётр");       // 1 (первое вхождение)
+names.LastIndexOf("Пётр");   // 3 (последнее вхождение)
+names.IndexOf("Олег");       // -1 (не найден)
+```
+
+#!csharp
+
+List<int> numbers = new List<int> { 5, 10, 15, 20, 10, 25 };
+
+Console.WriteLine($"Содержит 10? {numbers.Contains(10)}");      // True
+Console.WriteLine($"Содержит 99? {numbers.Contains(99)}");      // False
+
+Console.WriteLine($"Индекс 10: {numbers.IndexOf(10)}");          // 1
+Console.WriteLine($"Последний индекс 10: {numbers.LastIndexOf(10)}"); // 4
+Console.WriteLine($"Индекс 99: {numbers.IndexOf(99)}");          // -1
+
+// Типичный паттерн: проверить перед действием
+if (numbers.Contains(15))
+{
+    Console.WriteLine($"Число 15 найдено на позиции {numbers.IndexOf(15)}");
+}
+
+#!markdown
+
+### Попробуй сам: создай список имён. Спроси пользователя имя (или задай в переменной). Если имя есть в списке — выведи его позицию. Если нет — выведи "Не найдено"
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 7. Count vs Capacity
+
+Эти два свойства часто путают:
+
+| Свойство | Описание |
+|---|---|
+| **`Count`** | Сколько элементов **реально** в списке |
+| **`Capacity`** | Сколько элементов **может поместиться** без расширения |
+
+`List<T>` внутри использует обычный массив. Когда массив заполняется, создаётся новый **в 2 раза больше**, и все элементы копируются.
+
+```
+Добавляем:  Count  Capacity
+  Add(1)      1       4      ← начальная ёмкость (зависит от реализации)
+  Add(2)      2       4
+  Add(3)      3       4
+  Add(4)      4       4
+  Add(5)      5       8      ← массив удвоился!
+```
+
+Если заранее знаете примерный размер — задайте `Capacity` в конструкторе, чтобы избежать лишних копирований:
+
+```csharp
+List<int> bigList = new List<int>(1000); // ёмкость 1000, Count = 0
+```
+
+#!csharp
+
+List<int> demo = new List<int>();
+Console.WriteLine($"Пустой: Count = {demo.Count}, Capacity = {demo.Capacity}");
+
+for (int i = 1; i <= 17; i++)
+{
+    demo.Add(i);
+    Console.WriteLine($"Add({i}): Count = {demo.Count}, Capacity = {demo.Capacity}");
+}
+
+#!markdown
+
+### Попробуй сам: создай `List<int>` с `Capacity = 5`. Добавляй числа по одному и на каждом шаге выводи `Count` и `Capacity`. Найди момент, когда Capacity удваивается
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 8. Sort(), Reverse(), лямбды и Find/FindAll/ForEach
+
+### Sort() и Reverse()
+
+```csharp
+list.Sort();       // сортировка по возрастанию
+list.Reverse();    // разворот списка (не сортировка по убыванию!)
+```
+
+```csharp
+List<int> nums = new List<int> { 5, 1, 3, 2, 4 };
+nums.Sort();       // [1, 2, 3, 4, 5]
+nums.Reverse();    // [5, 4, 3, 2, 1]
+```
+
+### Лямбда-выражения (кратко)
+
+**Лямбда** — это короткая запись анонимной функции:
+
+```csharp
+x => x > 5       // принимает x, возвращает true если x > 5
+x => x * 2       // принимает x, возвращает x умноженное на 2
+(a, b) => a + b  // принимает a и b, возвращает их сумму
+```
+
+Лямбды используются в методах `Find()`, `FindAll()`, `RemoveAll()`, `ForEach()`, `Sort()` и других.
+
+### Find(), FindAll(), Exists()
+
+| Метод | Описание | Возвращает |
+|---|---|---|
+| `Find(условие)` | **Первый** элемент, удовлетворяющий условию | Элемент или default |
+| `FindAll(условие)` | **Все** элементы, удовлетворяющие условию | `List<T>` |
+| `Exists(условие)` | Есть ли хотя бы один такой элемент? | `bool` |
+
+### ForEach()
+
+```csharp
+list.ForEach(x => Console.WriteLine(x));  // выполнить действие для каждого элемента
+```
+
+### ToArray()
+
+```csharp
+int[] array = list.ToArray();  // преобразовать список в массив
+```
+
+#!csharp
+
+// Sort и Reverse
+List<int> numbers = new List<int> { 42, 7, 15, 3, 28, 1, 99 };
+Console.WriteLine("Исходный: " + string.Join(", ", numbers));
+
+numbers.Sort();
+Console.WriteLine("Sort():   " + string.Join(", ", numbers));
+
+numbers.Reverse();
+Console.WriteLine("Reverse():" + string.Join(", ", numbers));
+
+Console.WriteLine();
+
+// Find, FindAll, Exists
+List<int> scores = new List<int> { 2, 5, 3, 5, 1, 4, 5 };
+
+int firstBig = scores.Find(x => x > 3);
+Console.WriteLine($"Find(x => x > 3): {firstBig}");          // 5
+
+List<int> allBig = scores.FindAll(x => x > 3);
+Console.WriteLine($"FindAll(x => x > 3): {string.Join(", ", allBig)}"); // 5, 5, 4, 5
+
+bool hasOne = scores.Exists(x => x == 1);
+Console.WriteLine($"Exists(x => x == 1): {hasOne}");         // True
+
+Console.WriteLine();
+
+// ForEach
+Console.Write("ForEach: ");
+scores.ForEach(x => Console.Write($"[{x}] "));
+Console.WriteLine();
+
+// ToArray
+int[] arr = scores.ToArray();
+Console.WriteLine($"ToArray: массив длиной {arr.Length}");
+
+// Sort с лямбдой (по убыванию)
+List<string> names = new List<string> { "Яна", "Анна", "Пётр", "Ира" };
+names.Sort((a, b) => a.Length.CompareTo(b.Length)); // сортировка по длине имени
+Console.WriteLine("Sort по длине: " + string.Join(", ", names));
+
+#!markdown
+
+### Попробуй сам: создай список `{ 12, 5, 8, 3, 19, 7, 15, 2 }`. Отсортируй его. Найди первое число больше 10 через `Find()`. Найди все числа больше 10 через `FindAll()`. Выведи результаты
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Список покупок (лёгкая)
+Создай `List<string>` — список покупок. Добавь 5 продуктов через `Add()`. Выведи список. Удали один продукт через `Remove()`. Добавь новый через `Insert()` на позицию 0. Выведи финальный список с нумерацией (1. Хлеб, 2. Молоко...).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Уникальные элементы (лёгкая)
+Дан `List<int> { 1, 3, 5, 3, 7, 1, 5, 9 }`. Создай новый список, содержащий только **уникальные** элементы (без дубликатов). Подсказка: проверяй `Contains()` перед добавлением.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Статистика оценок (средняя)
+Создай `List<int>` с 10 оценками (от 1 до 5). Найди и выведи: 1) количество оценок, 2) все пятёрки через `FindAll()`, 3) количество двоек, 4) есть ли единицы (`Exists()`), 5) отсортированный список.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Разделение на группы (средняя)
+Дан `List<int>` с числами от -10 до 10. Раздели на два списка: `positives` (положительные) и `negatives` (отрицательные) с помощью `FindAll()`. Ноль отнеси к отдельной группе. Выведи каждую группу.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Журнал действий (сложная)
+Создай `List<string>` — журнал действий. Реализуй меню:
+- `1` — добавить запись (придумай текст)
+- `2` — удалить последнюю запись
+- `3` — показать все записи
+- `4` — найти запись по ключевому слову (через `FindAll()` и `Contains()`)
+- `0` — выход
+
+Используй цикл `while` и `switch`. (В notebook можно просто вызвать каждое действие по очереди, без реального ввода.)
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Сортировка строк (сложная)
+Создай `List<string>` с 7-8 именами разной длины. Выведи:
+1. Отсортированный по алфавиту
+2. Отсортированный по длине строки (используй `Sort((a, b) => ...)`)
+3. В обратном алфавитном порядке
+4. Только имена длиннее 4 букв через `FindAll()`
+
+#!csharp
+
+// Твой код здесь:

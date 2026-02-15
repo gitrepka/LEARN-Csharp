@@ -1,0 +1,407 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: HashSet\<T\> — множество уникальных элементов
+
+#!markdown
+
+## 1. Что такое HashSet\<T\>?
+
+**HashSet\<T\>** — это коллекция **уникальных** элементов. Дубликаты автоматически игнорируются.
+
+Представь коробку, в которую можно положить только **уникальные** предметы. Если пытаешься положить то, что уже есть — коробка просто откажет, без ошибки.
+
+```csharp
+HashSet<string> fruits = new HashSet<string> { "Яблоко", "Банан", "Яблоко" };
+// Результат: { "Яблоко", "Банан" } — только 2 элемента!
+```
+
+**Сравнение коллекций:**
+
+| Свойство | `List<T>` | `HashSet<T>` | `Dictionary<K,V>` |
+|---|---|---|---|
+| Дубликаты | Разрешены | **Запрещены** | Ключи уникальны |
+| Доступ по индексу | `list[i]` | **Нет** | По ключу `dict[k]` |
+| Порядок | Сохраняется | **Не гарантирован** | Не гарантирован |
+| `Contains()` | Медленно O(n) | **Быстро O(1)** | Быстро O(1) |
+| Главное назначение | Упорядоченный список | Уникальность + быстрый поиск | Пары ключ-значение |
+
+**Когда использовать HashSet:**
+- Нужно хранить только уникальные значения
+- Нужен быстрый поиск (есть ли элемент?)
+- Нужны операции над множествами (объединение, пересечение)
+
+#!markdown
+
+## 2. Создание, Add(), Remove()
+
+```csharp
+// Пустой HashSet
+HashSet<int> numbers = new HashSet<int>();
+
+// С начальными значениями
+HashSet<string> colors = new HashSet<string> { "Красный", "Синий", "Зелёный" };
+
+// Из массива или списка
+int[] arr = { 1, 2, 2, 3, 3, 3 };
+HashSet<int> unique = new HashSet<int>(arr);  // { 1, 2, 3 }
+```
+
+### Add() — добавление
+
+```csharp
+bool added = set.Add(элемент);  // true если добавлен, false если дубликат
+```
+
+**Ключевое отличие от `List.Add()`**: возвращает `bool` — добавлен ли элемент. Дубликат **не вызывает ошибку**, просто игнорируется.
+
+### Remove() — удаление
+
+```csharp
+bool removed = set.Remove(элемент);  // true если удалён, false если не было
+```
+
+#!csharp
+
+HashSet<string> tags = new HashSet<string>();
+
+// Add — возвращает true/false
+Console.WriteLine($"Add 'C#': {tags.Add("C#")}");         // True
+Console.WriteLine($"Add 'Python': {tags.Add("Python")}"); // True
+Console.WriteLine($"Add 'C#': {tags.Add("C#")}");         // False — дубликат!
+Console.WriteLine($"Add 'Java': {tags.Add("Java")}");     // True
+
+Console.WriteLine($"Количество: {tags.Count}");  // 3 (не 4!)
+Console.WriteLine($"Элементы: {string.Join(", ", tags)}");
+
+// Remove
+Console.WriteLine($"\nRemove 'Python': {tags.Remove("Python")}");   // True
+Console.WriteLine($"Remove 'Go': {tags.Remove("Go")}");             // False — не было
+Console.WriteLine($"После удаления: {string.Join(", ", tags)}");
+
+// Создание из массива с дубликатами
+int[] data = { 5, 3, 8, 3, 5, 1, 8, 5, 3 };
+HashSet<int> uniqueNums = new HashSet<int>(data);
+Console.WriteLine($"\nМассив: {string.Join(", ", data)} ({data.Length} элементов)");
+Console.WriteLine($"HashSet: {string.Join(", ", uniqueNums)} ({uniqueNums.Count} уникальных)");
+
+#!markdown
+
+### Попробуй сам: создай массив с повторяющимися именами (8-10 штук). Преобразуй в `HashSet<string>`. Сколько уникальных имён получилось? Попробуй добавить уже существующее имя — что вернёт `Add()`?
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 3. Contains() — молниеносный поиск
+
+**`Contains()`** в HashSet работает за O(1) — **мгновенно**, независимо от размера коллекции!
+
+Для сравнения:
+- `List<T>.Contains()` — O(n), перебирает все элементы
+- `HashSet<T>.Contains()` — O(1), использует хеш-таблицу
+
+```csharp
+HashSet<int> bigSet = new HashSet<int>(Enumerable.Range(1, 1_000_000)); // миллион чисел
+bigSet.Contains(999_999);  // мгновенно!
+```
+
+Это делает HashSet идеальным для проверок вида **"есть ли элемент в коллекции?"**.
+
+#!csharp
+
+// Практический пример: чёрный список
+HashSet<string> blacklist = new HashSet<string>
+{
+    "spam@mail.ru",
+    "hacker@evil.com",
+    "bot@fake.net"
+};
+
+string[] incoming = { "user@gmail.com", "spam@mail.ru", "friend@ya.ru", "bot@fake.net" };
+
+foreach (string email in incoming)
+{
+    if (blacklist.Contains(email))
+    {
+        Console.WriteLine($"  ЗАБЛОКИРОВАНО: {email}");
+    }
+    else
+    {
+        Console.WriteLine($"  Доставлено: {email}");
+    }
+}
+
+Console.WriteLine();
+
+// Сравнение скорости: List vs HashSet
+List<int> list = Enumerable.Range(1, 100_000).ToList();
+HashSet<int> set = new HashSet<int>(list);
+
+var sw = System.Diagnostics.Stopwatch.StartNew();
+for (int i = 0; i < 10_000; i++) list.Contains(99_999);
+sw.Stop();
+Console.WriteLine($"List.Contains x10000:    {sw.ElapsedMilliseconds} мс");
+
+sw.Restart();
+for (int i = 0; i < 10_000; i++) set.Contains(99_999);
+sw.Stop();
+Console.WriteLine($"HashSet.Contains x10000: {sw.ElapsedMilliseconds} мс");
+
+#!markdown
+
+### Попробуй сам: создай `HashSet<string>` — набор "разрешённых" расширений файлов (".jpg", ".png", ".gif", ".bmp"). Проверь несколько имён файлов — разрешены ли они. Подсказка: используй `Path.GetExtension()` или просто проверяй строки
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 4. Операции над множествами: UnionWith(), IntersectWith(), ExceptWith()
+
+Это математические операции над множествами — мощный инструмент HashSet:
+
+| Метод | Операция | Описание |
+|---|---|---|
+| `UnionWith(other)` | A ∪ B | **Объединение**: все элементы из обоих множеств |
+| `IntersectWith(other)` | A ∩ B | **Пересечение**: только общие элементы |
+| `ExceptWith(other)` | A \ B | **Разность**: элементы A, которых нет в B |
+| `SymmetricExceptWith(other)` | A △ B | **Симметричная разность**: элементы, которые есть только в одном из множеств |
+
+**Важно:** все эти методы **изменяют** исходное множество (мутируют его).
+
+```
+A = {1, 2, 3, 4}    B = {3, 4, 5, 6}
+
+A.UnionWith(B)             → {1, 2, 3, 4, 5, 6}
+A.IntersectWith(B)         → {3, 4}
+A.ExceptWith(B)            → {1, 2}
+A.SymmetricExceptWith(B)   → {1, 2, 5, 6}
+```
+
+#!csharp
+
+// Навыки двух разработчиков
+HashSet<string> dev1 = new HashSet<string> { "C#", "SQL", "HTML", "CSS", "Git" };
+HashSet<string> dev2 = new HashSet<string> { "Python", "SQL", "HTML", "Docker", "Git" };
+
+Console.WriteLine($"Dev1: {string.Join(", ", dev1)}");
+Console.WriteLine($"Dev2: {string.Join(", ", dev2)}");
+
+// Пересечение — общие навыки
+HashSet<string> common = new HashSet<string>(dev1); // копия!
+common.IntersectWith(dev2);
+Console.WriteLine($"\nОбщие навыки: {string.Join(", ", common)}");
+
+// Объединение — все навыки команды
+HashSet<string> allSkills = new HashSet<string>(dev1);
+allSkills.UnionWith(dev2);
+Console.WriteLine($"Все навыки команды: {string.Join(", ", allSkills)}");
+
+// Разность — уникальные навыки Dev1
+HashSet<string> onlyDev1 = new HashSet<string>(dev1);
+onlyDev1.ExceptWith(dev2);
+Console.WriteLine($"Только у Dev1: {string.Join(", ", onlyDev1)}");
+
+// Разность — уникальные навыки Dev2
+HashSet<string> onlyDev2 = new HashSet<string>(dev2);
+onlyDev2.ExceptWith(dev1);
+Console.WriteLine($"Только у Dev2: {string.Join(", ", onlyDev2)}");
+
+// Симметричная разность — навыки, которые есть только у одного
+HashSet<string> unique = new HashSet<string>(dev1);
+unique.SymmetricExceptWith(dev2);
+Console.WriteLine($"Уникальные (у одного): {string.Join(", ", unique)}");
+
+#!markdown
+
+### Попробуй сам: создай два HashSet — любимые фильмы двух друзей (по 5-6 фильмов, с пересечениями). Найди: 1) общие фильмы, 2) все фильмы вместе, 3) фильмы, которые смотрел только первый
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 5. IsSubsetOf(), IsSupersetOf(), Overlaps(), SetEquals()
+
+Методы для **сравнения** множеств (не изменяют их):
+
+| Метод | Вопрос | Пример |
+|---|---|---|
+| `IsSubsetOf(other)` | A ⊆ B? Все элементы A есть в B? | {1,2} ⊆ {1,2,3} → true |
+| `IsSupersetOf(other)` | A ⊇ B? A содержит все элементы B? | {1,2,3} ⊇ {1,2} → true |
+| `IsProperSubsetOf(other)` | A ⊂ B? Подмножество, но не равно? | {1,2} ⊂ {1,2,3} → true |
+| `Overlaps(other)` | Есть ли хотя бы один общий элемент? | {1,2} ∩ {2,3} → true |
+| `SetEquals(other)` | Одинаковые множества? | {1,2,3} == {3,1,2} → true |
+
+#!csharp
+
+HashSet<string> requiredSkills = new HashSet<string> { "C#", "SQL", "Git" };
+HashSet<string> candidate1 = new HashSet<string> { "C#", "SQL", "Git", "Docker", "AWS" };
+HashSet<string> candidate2 = new HashSet<string> { "C#", "Python" };
+HashSet<string> candidate3 = new HashSet<string> { "C#", "SQL", "Git" };
+
+Console.WriteLine($"Требуемые навыки: {string.Join(", ", requiredSkills)}");
+Console.WriteLine();
+
+// Кандидат 1: все требуемые + дополнительные
+Console.WriteLine($"Кандидат 1: {string.Join(", ", candidate1)}");
+Console.WriteLine($"  Имеет все требуемые? {candidate1.IsSupersetOf(requiredSkills)}");  // True
+Console.WriteLine($"  Требуемые — подмножество? {requiredSkills.IsSubsetOf(candidate1)}"); // True
+
+// Кандидат 2: не все
+Console.WriteLine($"\nКандидат 2: {string.Join(", ", candidate2)}");
+Console.WriteLine($"  Имеет все требуемые? {candidate2.IsSupersetOf(requiredSkills)}");  // False
+Console.WriteLine($"  Есть пересечение? {candidate2.Overlaps(requiredSkills)}");          // True
+
+// Кандидат 3: ровно совпадает
+Console.WriteLine($"\nКандидат 3: {string.Join(", ", candidate3)}");
+Console.WriteLine($"  Точное совпадение? {candidate3.SetEquals(requiredSkills)}");         // True
+Console.WriteLine($"  Строгое подмножество? {candidate3.IsProperSubsetOf(requiredSkills)}"); // False (равны)
+
+#!markdown
+
+### Попробуй сам: создай HashSet "обязательных предметов" и HashSet "предметов студента". Проверь: 1) сдал ли студент все обязательные (`IsSupersetOf`), 2) есть ли пересечение (`Overlaps`), 3) совпадают ли множества (`SetEquals`)
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## 6. Полезные методы и приёмы
+
+```csharp
+set.Clear();                      // очистить множество
+set.Count;                        // количество элементов
+set.CopyTo(array);                // скопировать в массив
+set.RemoveWhere(x => x > 10);    // удалить по условию (аналог RemoveAll в List)
+```
+
+### Практический паттерн: удаление дубликатов из List
+
+```csharp
+List<int> withDupes = new List<int> { 1, 2, 2, 3, 3, 3 };
+List<int> unique = new HashSet<int>(withDupes).ToList();
+// unique: [1, 2, 3]
+```
+
+### Практический паттерн: подсчёт уникальных элементов
+
+```csharp
+string text = "мама мыла раму мама мыла";
+int uniqueWords = new HashSet<string>(text.Split(' ')).Count;
+// uniqueWords: 3 (мама, мыла, раму)
+```
+
+#!csharp
+
+// Удаление дубликатов из списка
+List<int> numbers = new List<int> { 5, 3, 8, 3, 5, 1, 8, 5, 3, 1 };
+Console.WriteLine($"Список: {string.Join(", ", numbers)} (Count: {numbers.Count})");
+
+List<int> unique = new HashSet<int>(numbers).ToList();
+Console.WriteLine($"Без дубликатов: {string.Join(", ", unique)} (Count: {unique.Count})");
+
+// Подсчёт уникальных слов
+string text = "кот и собака и кот и попугай и кот";
+string[] words = text.Split(' ');
+HashSet<string> uniqueWords = new HashSet<string>(words);
+Console.WriteLine($"\nТекст: \"{text}\"");
+Console.WriteLine($"Всего слов: {words.Length}, уникальных: {uniqueWords.Count}");
+Console.WriteLine($"Уникальные: {string.Join(", ", uniqueWords)}");
+
+// RemoveWhere — удаление по условию
+HashSet<int> scores = new HashSet<int> { 2, 5, 3, 4, 1, 5, 4 };
+Console.WriteLine($"\nОценки: {string.Join(", ", scores)}");
+int removed = scores.RemoveWhere(x => x < 3);
+Console.WriteLine($"Удалено оценок < 3: {removed}");
+Console.WriteLine($"Оставшиеся: {string.Join(", ", scores)}");
+
+#!markdown
+
+### Попробуй сам: дана строка `"the quick brown fox jumps over the lazy dog"`. Найди количество уникальных слов и выведи их
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Уникальные числа (лёгкая)
+Дан массив `{ 1, 5, 3, 5, 7, 3, 1, 9, 5 }`. Создай HashSet из этого массива. Выведи уникальные числа и их количество.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 2: Общие друзья (лёгкая)
+Создай два HashSet — друзья Анны и друзья Пётра (по 5-6 имён с пересечениями). Найди и выведи общих друзей (`IntersectWith`).
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 3: Лотерея (средняя)
+Создай HashSet из 6 "выигрышных" чисел (от 1 до 45). Создай массив из 6 чисел — "билет" игрока. Определи сколько чисел совпало. Если все 6 — "Джекпот!", если 4-5 — "Крупный выигрыш", если 2-3 — "Мелкий выигрыш", иначе — "Не повезло". Подсказка: используй `IntersectWith` на копии.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 4: Анализ текста (средняя)
+Даны два предложения. Найди: 1) слова, которые есть в обоих, 2) слова только из первого, 3) слова только из второго, 4) все уникальные слова из обоих. Используй операции множеств.
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 5: Проверка доступа (сложная)
+Есть `HashSet<string> admins`, `HashSet<string> moderators`, `HashSet<string> users`. Реализуй:
+1. Проверку: является ли пользователь админом, модератором, или обычным
+2. Найди пользователей, которые есть в нескольких ролях одновременно (ошибка!)
+3. Получи полный список всех уникальных пользователей системы
+4. Убедись, что admins — подмножество всех пользователей
+
+#!csharp
+
+// Твой код здесь:
+
+
+#!markdown
+
+## Задача 6: Генератор уникальных (сложная)
+Используя `Random` и `HashSet<int>`, сгенерируй 10 уникальных случайных чисел от 1 до 20. Подсказка: добавляй в HashSet в цикле `while`, пока `Count < 10`. Выведи числа отсортированными. Сколько попыток генерации понадобилось?
+
+#!csharp
+
+// Твой код здесь:

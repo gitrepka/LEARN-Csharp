@@ -1,0 +1,387 @@
+#!meta
+
+{"kernelInfo":{"defaultKernelName":"csharp","items":[{"name":"csharp"}]}}
+
+#!markdown
+
+# УРОК: IComparable<T> и IEquatable<T>
+
+#!markdown
+
+## Зачем нужны стандартные интерфейсы?
+
+.NET предоставляет набор **стандартных интерфейсов**, которые позволяют твоим классам **интегрироваться** с встроенными механизмами: сортировкой, поиском, коллекциями.
+
+Если твой класс реализует `IComparable<T>`, его объекты можно **сортировать** через `Array.Sort()`, `List.Sort()`, `OrderBy()`.
+Если реализует `IEquatable<T>`, его объекты можно **сравнивать** на равенство эффективнее.
+
+#!markdown
+
+## 1. IComparable<T> -- сравнение для сортировки
+
+Интерфейс `IComparable<T>` имеет один метод:
+
+```csharp
+public interface IComparable<T>
+{
+    int CompareTo(T? other);
+}
+```
+
+Метод `CompareTo()` возвращает:
+- **Отрицательное число** (обычно -1): текущий объект **МЕНЬШЕ** other
+- **0**: объекты **РАВНЫ**
+- **Положительное число** (обычно 1): текущий объект **БОЛЬШЕ** other
+
+Мнемоника: `this.CompareTo(other)` = `this - other` (знак результата).
+
+| this vs other | Результат | Значение |
+|---|---|---|
+| this < other | -1 | Текущий меньше |
+| this == other | 0 | Равны |
+| this > other | 1 | Текущий больше |
+
+#!csharp
+
+public class Student : IComparable<Student>
+{
+    public string Name { get; set; }
+    public double GPA { get; set; }
+
+    public Student(string name, double gpa)
+    {
+        Name = name;
+        GPA = gpa;
+    }
+
+    // Сортировка по GPA (по возрастанию)
+    public int CompareTo(Student? other)
+    {
+        if (other is null) return 1;  // null всегда "меньше"
+        return GPA.CompareTo(other.GPA);
+    }
+
+    public override string ToString() => $"{Name} (GPA: {GPA:F2})";
+}
+
+var students = new List<Student>
+{
+    new("Алиса", 4.5),
+    new("Боб", 3.8),
+    new("Чарли", 4.9),
+    new("Диана", 4.2),
+    new("Евгений", 3.5),
+};
+
+Console.WriteLine("До сортировки:");
+students.ForEach(s => Console.WriteLine($"  {s}"));
+
+// Sort() использует CompareTo()!
+students.Sort();
+
+Console.WriteLine("\nПосле Sort() -- по GPA возрастанию:");
+students.ForEach(s => Console.WriteLine($"  {s}"));
+
+// LINQ OrderBy тоже работает
+var sorted = students.OrderByDescending(s => s.GPA);
+Console.WriteLine("\nOrderByDescending:");
+foreach (var s in sorted)
+    Console.WriteLine($"  {s}");
+
+#!markdown
+
+### Попробуй сам: создай класс `Product(string Name, decimal Price)`, реализующий IComparable<Product> (сортировка по цене). Создай список из 5 продуктов, отсортируй и выведи.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 2. CompareTo() -- сложная сортировка
+
+Можно реализовать сортировку по **нескольким критериям**:
+
+```csharp
+public int CompareTo(Student? other)
+{
+    // Сначала по GPA (по убыванию)
+    int result = other.GPA.CompareTo(this.GPA);  // Обратный порядок!
+
+    // Если GPA одинаковый -- по имени (по алфавиту)
+    if (result == 0)
+        result = string.Compare(Name, other.Name, StringComparison.Ordinal);
+
+    return result;
+}
+```
+
+#!csharp
+
+public class Employee : IComparable<Employee>
+{
+    public string Name { get; set; }
+    public string Department { get; set; }
+    public int Salary { get; set; }
+
+    public Employee(string name, string dept, int salary)
+    {
+        Name = name;
+        Department = dept;
+        Salary = salary;
+    }
+
+    // Сортировка: сначала по отделу, потом по зарплате (по убыванию), потом по имени
+    public int CompareTo(Employee? other)
+    {
+        if (other is null) return 1;
+
+        // 1. По отделу
+        int result = string.Compare(Department, other.Department, StringComparison.Ordinal);
+        if (result != 0) return result;
+
+        // 2. По зарплате (по убыванию -- обратный порядок!)
+        result = other.Salary.CompareTo(Salary);
+        if (result != 0) return result;
+
+        // 3. По имени
+        return string.Compare(Name, other.Name, StringComparison.Ordinal);
+    }
+
+    public override string ToString() => $"{Department,-10} {Name,-15} {Salary,10:N0} руб.";
+}
+
+var employees = new List<Employee>
+{
+    new("Алиса", "IT", 150000),
+    new("Боб", "HR", 120000),
+    new("Чарли", "IT", 180000),
+    new("Диана", "HR", 120000),
+    new("Евгений", "IT", 150000),
+};
+
+employees.Sort();
+
+Console.WriteLine("Отсортированные сотрудники:");
+Console.WriteLine($"{"Отдел",-10} {"Имя",-15} {"Зарплата",10}");
+Console.WriteLine(new string('-', 37));
+employees.ForEach(e => Console.WriteLine(e));
+
+#!markdown
+
+### Попробуй сам: создай класс `Task(string Title, int Priority, DateTime DueDate)` с IComparable<Task>. Сортировка: сначала по Priority (высокий = 1 первый), при равном -- по DueDate (ближайший первый). Создай 5 задач и отсортируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 3. IEquatable<T> -- сравнение на равенство
+
+`IEquatable<T>` определяет **типизированный** метод Equals:
+
+```csharp
+public interface IEquatable<T>
+{
+    bool Equals(T? other);
+}
+```
+
+Зачем, если уже есть `object.Equals(object?)`?
+1. **Нет boxing** для value types (структур) -- лучшая производительность
+2. **Типобезопасность** -- параметр конкретного типа, а не object
+3. **Коллекции** (Dictionary, HashSet) используют IEquatable<T>.Equals() для поиска
+
+Правила: если реализуешь `IEquatable<T>`, **обязательно** также переопредели:
+- `override bool Equals(object? obj)` -- для совместимости
+- `override int GetHashCode()` -- для Dictionary/HashSet
+
+#!csharp
+
+public class Coordinate : IEquatable<Coordinate>
+{
+    public double Latitude { get; }
+    public double Longitude { get; }
+
+    public Coordinate(double lat, double lon)
+    {
+        Latitude = Math.Round(lat, 4);
+        Longitude = Math.Round(lon, 4);
+    }
+
+    // IEquatable<T>.Equals -- типизированный
+    public bool Equals(Coordinate? other)
+    {
+        if (other is null) return false;
+        return Latitude == other.Latitude && Longitude == other.Longitude;
+    }
+
+    // object.Equals -- переопределяем для совместимости
+    public override bool Equals(object? obj)
+        => obj is Coordinate other && Equals(other);
+
+    // ОБЯЗАТЕЛЬНО! Одинаковые объекты = одинаковый хеш
+    public override int GetHashCode()
+        => HashCode.Combine(Latitude, Longitude);
+
+    // Бонус: операторы == и !=
+    public static bool operator ==(Coordinate? a, Coordinate? b)
+    {
+        if (a is null) return b is null;
+        return a.Equals(b);
+    }
+    public static bool operator !=(Coordinate? a, Coordinate? b) => !(a == b);
+
+    public override string ToString() => $"({Latitude}, {Longitude})";
+}
+
+var moscow = new Coordinate(55.7558, 37.6173);
+var moscow2 = new Coordinate(55.7558, 37.6173);
+var london = new Coordinate(51.5074, -0.1278);
+
+Console.WriteLine($"Москва: {moscow}");
+Console.WriteLine($"Москва2: {moscow2}");
+Console.WriteLine($"Лондон: {london}");
+
+Console.WriteLine($"\nМосква == Москва2: {moscow == moscow2}");  // true
+Console.WriteLine($"Москва == Лондон: {moscow == london}");       // false
+Console.WriteLine($"Equals: {moscow.Equals(moscow2)}");            // true
+
+// Работает в HashSet!
+var visited = new HashSet<Coordinate> { moscow, london };
+Console.WriteLine($"\nВ visited Москва: {visited.Contains(moscow2)}");  // true (по значению!)
+Console.WriteLine($"Количество: {visited.Count}");
+
+// Работает в Dictionary!
+var cities = new Dictionary<Coordinate, string>
+{
+    [moscow] = "Москва",
+    [london] = "Лондон",
+};
+Console.WriteLine($"По координатам: {cities[moscow2]}");  // Москва (через moscow2!)
+
+#!markdown
+
+### Попробуй сам: создай struct `Color(byte R, byte G, byte B)`, реализующий IEquatable<Color>. Переопредели Equals и GetHashCode. Создай HashSet<Color>, добавь несколько цветов (включая дубликаты) и убедись, что дубликаты не добавляются.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## 4. IComparable + IEquatable -- полный пример
+
+На практике часто реализуют **оба** интерфейса:
+
+#!csharp
+
+public class Money : IComparable<Money>, IEquatable<Money>
+{
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    public Money(decimal amount, string currency)
+    {
+        Amount = amount;
+        Currency = currency.ToUpper();
+    }
+
+    // IComparable -- для сортировки (только в одной валюте!)
+    public int CompareTo(Money? other)
+    {
+        if (other is null) return 1;
+        if (Currency != other.Currency)
+            throw new InvalidOperationException($"Нельзя сравнить {Currency} и {other.Currency}");
+        return Amount.CompareTo(other.Amount);
+    }
+
+    // IEquatable -- для равенства
+    public bool Equals(Money? other)
+    {
+        if (other is null) return false;
+        return Amount == other.Amount && Currency == other.Currency;
+    }
+
+    public override bool Equals(object? obj) => obj is Money m && Equals(m);
+    public override int GetHashCode() => HashCode.Combine(Amount, Currency);
+    public override string ToString() => $"{Amount:N2} {Currency}";
+
+    public static bool operator ==(Money? a, Money? b)
+    {
+        if (a is null) return b is null;
+        return a.Equals(b);
+    }
+    public static bool operator !=(Money? a, Money? b) => !(a == b);
+    public static bool operator <(Money a, Money b) => a.CompareTo(b) < 0;
+    public static bool operator >(Money a, Money b) => a.CompareTo(b) > 0;
+}
+
+var prices = new List<Money>
+{
+    new(99.99m, "RUB"),
+    new(1500.00m, "RUB"),
+    new(49.50m, "RUB"),
+    new(1500.00m, "RUB"),
+    new(750.00m, "RUB"),
+};
+
+Console.WriteLine("До сортировки:");
+prices.ForEach(p => Console.WriteLine($"  {p}"));
+
+prices.Sort();  // IComparable
+
+Console.WriteLine("\nПосле сортировки:");
+prices.ForEach(p => Console.WriteLine($"  {p}"));
+
+// IEquatable
+var a = new Money(100, "RUB");
+var b = new Money(100, "RUB");
+Console.WriteLine($"\n{a} == {b}: {a == b}");    // true
+Console.WriteLine($"{a} > {new Money(50, "RUB")}: {a > new Money(50, "RUB")}");  // true
+
+// В HashSet -- убирает дубликаты
+var unique = new HashSet<Money>(prices);
+Console.WriteLine($"\nУникальных цен: {unique.Count}");
+
+#!markdown
+
+---
+# ПРАКТИКА
+
+#!markdown
+
+## Задача 1: Сортировка строк по длине (лёгкая)
+Создай класс `Word(string Text)`, реализующий IComparable<Word> (сортировка по длине, при равной длине -- по алфавиту). Отсортируй массив слов: "кот", "слон", "ёж", "жираф", "лев", "бегемот".
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 2: Уникальные точки (лёгкая)
+Создай struct `Point(int X, int Y)`, реализующий IEquatable<Point>. Создай массив из 10 точек с дубликатами. Используй HashSet для получения уникальных. Выведи оригинальный массив и уникальные точки.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 3: Сортировка по нескольким критериям (средняя)
+Создай класс `Movie(string Title, int Year, double Rating)`, реализующий IComparable<Movie>. Сортировка: по рейтингу (убывание), при равном -- по году (убывание), при равном -- по названию (алфавит). Создай 6 фильмов и отсортируй.
+
+#!csharp
+
+// Твой код здесь:
+
+#!markdown
+
+## Задача 4: Полная реализация (сложная)
+Создай класс `Version(int Major, int Minor, int Patch)` (как семантическое версионирование). Реализуй IComparable<Version> (1.2.3 < 1.3.0 < 2.0.0), IEquatable<Version>, операторы ==, !=, <, >, <=, >=. ToString() -> "1.2.3". Протестируй сортировку и поиск в коллекциях.
+
+#!csharp
+
+// Твой код здесь:
